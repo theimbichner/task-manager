@@ -1,6 +1,7 @@
 import uuid
 
 import task_data
+import task_storage
 
 # TODO restrict user property names. Can't be:
 # task_data.DATE_TYPE_FIELD
@@ -84,6 +85,29 @@ class Generator:
         set_object_from_dict(result, data, Generator.fieldMapping)
         return result
 
+    def generate_tasks(self, timestamp):
+        if timestamp <= self.generation_last_timestamp:
+            return []
+        start_times = self.generation_date_pattern.get_dates(
+            self.generation_last_timestamp,
+            timestamp)
+        new_tasks = [new_task(t) for t in start_times]
+        self.tasks += new_tasks
+        self.generation_last_timestamp = timestamp
+        return new_tasks
+
+    def new_task(self, start_time):
+        name = self.name if self.template_name is None else self.template_name
+        table = task_storage.get_table_by_id(self.template_table_id)
+        result = Task(name, table)
+        result.generator_id = self.id
+        result.markup = self.template_markup
+        result.properties = self.template_properties.copy()
+        date_time = task_data.DateTime(start_time, start_time + self.template_duration)
+        result.properties[self.generation_field] = date_time
+        return result
+
+# TODO should a table also count as a task?
 class Table:
     fieldMapping = {
         'id': 'id',
@@ -120,6 +144,11 @@ class Table:
         for key in schema:
             properties[key] = schema[key].new_default_value()
         return properties
+
+    def get_tasks(self, timestamp):
+        for g in self.generators:
+            self.tasks += g.generate_tasks(timestamp)
+        return self.tasks.copy()
 
 def set_object_from_dict(obj, data, mapping):
     for key in mapping:
