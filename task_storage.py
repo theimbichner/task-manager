@@ -38,6 +38,7 @@ def persist_table(table):
     persist(table, TABLES_FOLDER_NAME)
 
 # TODO use some specified base directory instead of ./
+# TODO what if the item doesn't exist
 def get_by_id(obj_id, folder, cls):
     path = f'./{folder}/{obj_id}.json'
     with open(path, 'r') as f:

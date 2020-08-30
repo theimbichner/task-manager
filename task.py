@@ -42,6 +42,13 @@ class Task:
         set_object_from_dict(result, data, Task.fieldMapping)
         return result
 
+    def sever_generator(self):
+        if self.generator_id is None:
+            return
+        generator = task_storage.get_generator_by_id(self.generator_id)
+        generator.tasks.remove(self.id)
+        self.generator_id = None
+
 class Generator:
     fieldMapping = {
         'id': 'id',
