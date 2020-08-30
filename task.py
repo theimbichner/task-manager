@@ -4,10 +4,13 @@ import task_data
 import task_storage
 
 # TODO restrict user property names. Can't be:
+# $duration
 # task_data.DATE_TYPE_FIELD
 # Name
 # Date Created
 # Date Last Modified
+# TODO complete this list
+# also include fields from generators, as well as backend names of system fields
 
 class Task:
     fieldMapping = {
@@ -49,6 +52,27 @@ class Task:
         generator.tasks.remove(self.id)
         self.generator_id = None
 
+    # TODO refactor if/else ladder
+    # TODO refactor so that system fields dont shadow properties
+    def modify(self, remove_generator=True, **kwargs):
+        for key in kwargs:
+            if key == 'name':
+                self.name = kwargs[key]
+            else if key == 'markup':
+                self.markup = kwargs[key]
+            else if key == '$duration' and self.generator_id is not None:
+                generator = task_storage.get_generator_by_id(self.generator_id)
+                date = self.properties[generator.generation_field]
+                date.end = date.start + kwargs[key]
+            else if key not in self.properties:
+                raise KeyError
+            else:
+                self.properties[key] = kwargs[key]
+        if remove_generator:
+            self.sever_generator()
+        if remove_generator or bool(kwargs):
+            self.date_last_modified = task_data.DateTime()
+
 class Generator:
     fieldMapping = {
         'id': 'id',
@@ -71,7 +95,7 @@ class Generator:
         self.name = name
         self.date_created = task_data.DateTime()
         self.date_last_modified = self.date_created
-        self.template_name = None
+        self.template_name = name
         self.template_markup = None
         self.template_table_id = table.id
         self.template_properties = table.new_default_properties()
@@ -104,7 +128,7 @@ class Generator:
         return new_tasks
 
     def new_task(self, start_time):
-        name = self.name if self.template_name is None else self.template_name
+        name = self.template_name
         table = task_storage.get_table_by_id(self.template_table_id)
         result = Task(name, table)
         result.generator_id = self.id
@@ -113,6 +137,32 @@ class Generator:
         date_time = task_data.DateTime(start_time, start_time + self.template_duration)
         result.properties[self.generation_field] = date_time
         return result
+
+    # TODO refactor if/else ladder
+    # TODO refactor so that system fields dont shadow properties
+    def modify(self, **kwargs):
+        task_deltas = {}
+        for key in kwargs:
+            if key == 'name':
+                self.name = kwargs[key]
+            else if key == 'template_name':
+                self.template_name = kwargs[key]
+                task_deltas['name'] = kwargs[key]
+            else if key == 'template_markup':
+                self.template_markup = kwargs[key]
+                task_deltas['markup'] = kwargs[key]
+            else if key == 'template_duration':
+                self.template_duration = kwargs[key]
+                task_deltas['$duration'] = kwargs[key]
+            else if key == self.generation_field or key not in self.template_properties:
+                raise KeyError
+            else:
+                self.template_properties[key] = kwargs[key]
+                task_deltas[key] = kwargs[key]
+        if bool(kwargs):
+            for t in tasks:
+                t.modify(False, **task_deltas)
+            self.date_last_modified = task_data.DateTime()
 
 # TODO should a table also count as a task?
 class Table:
