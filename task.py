@@ -164,6 +164,13 @@ class Generator:
                 t.modify(False, **task_deltas)
             self.date_last_modified = task_data.DateTime()
 
+    # TODO verify tasks are stored in the generator in order
+    def modify_tasks_following(self, task_id, **kwargs):
+        while self.tasks[0] != task_id:
+            task = task_storage.get_task_by_id(self.tasks[0])
+            task.sever_generator()
+        self.modify(**kwargs)
+
 # TODO should a table also count as a task?
 class Table:
     fieldMapping = {
