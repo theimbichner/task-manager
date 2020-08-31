@@ -4,13 +4,10 @@ import task_data
 import task_storage
 
 # TODO restrict user property names. Can't be:
-# $duration
 # task_data.DATE_TYPE_FIELD
 # Name
 # Date Created
 # Date Last Modified
-# TODO complete this list
-# also include fields from generators, as well as backend names of system fields
 
 class Task:
     fieldMapping = {
@@ -52,25 +49,27 @@ class Task:
         generator.tasks.remove(self.id)
         self.generator_id = None
 
-    # TODO refactor if/else ladder
-    # TODO refactor so that system fields dont shadow properties
-    def modify(self, remove_generator=True, **kwargs):
-        for key in kwargs:
-            if key == 'name':
-                self.name = kwargs[key]
-            else if key == 'markup':
-                self.markup = kwargs[key]
-            else if key == '$duration' and self.generator_id is not None:
+    def modify(self, delta):
+        self._modify(True, delta)
+
+    def _modify(self, remove_generator, delta):
+        for key in delta.properties:
+            if key in self.properties:
+                self.properties[key] = delta.properties[key]
+            else:
+                raise KeyError
+        for key in delta.fields:
+            if key in {'name', 'markup'}:
+                setattr(self, key, delta.fields[key])
+            elif key == 'duration' and self.generator_id is not None:
                 generator = task_storage.get_generator_by_id(self.generator_id)
                 date = self.properties[generator.generation_field]
-                date.end = date.start + kwargs[key]
-            else if key not in self.properties:
-                raise KeyError
+                date.end = date.start + delta.fields[key]
             else:
-                self.properties[key] = kwargs[key]
+                raise KeyError
         if remove_generator:
             self.sever_generator()
-        if remove_generator or bool(kwargs):
+        if remove_generator or delta.is_real_delta():
             self.date_last_modified = task_data.DateTime()
 
 class Generator:
@@ -138,38 +137,29 @@ class Generator:
         result.properties[self.generation_field] = date_time
         return result
 
-    # TODO refactor if/else ladder
-    # TODO refactor so that system fields dont shadow properties
-    def modify(self, **kwargs):
-        task_deltas = {}
-        for key in kwargs:
-            if key == 'name':
-                self.name = kwargs[key]
-            else if key == 'template_name':
-                self.template_name = kwargs[key]
-                task_deltas['name'] = kwargs[key]
-            else if key == 'template_markup':
-                self.template_markup = kwargs[key]
-                task_deltas['markup'] = kwargs[key]
-            else if key == 'template_duration':
-                self.template_duration = kwargs[key]
-                task_deltas['$duration'] = kwargs[key]
-            else if key == self.generation_field or key not in self.template_properties:
-                raise KeyError
+    def modify(self, delta):
+        for key in delta.properties:
+            if key in self.template_properties and key != self.generation_field:
+                self.template_properties[key] = delta.properties[key]
             else:
-                self.template_properties[key] = kwargs[key]
-                task_deltas[key] = kwargs[key]
-        if bool(kwargs):
+                raise KeyError
+        for key in delta.fields:
+            if key in {'name', 'template_name', 'template_markup', 'template_duration'}:
+                setattr(self, key, delta.fields[key])
+            else:
+                raise KeyError
+        if delta.is_real_delta():
+            instance_delta = delta.to_instance_delta()
             for t in tasks:
-                t.modify(False, **task_deltas)
+                t._modify(False, instance_delta)
             self.date_last_modified = task_data.DateTime()
 
     # TODO verify tasks are stored in the generator in order
-    def modify_tasks_following(self, task_id, **kwargs):
+    def modify_tasks_following(self, task_id, delta):
         while self.tasks[0] != task_id:
             task = task_storage.get_task_by_id(self.tasks[0])
             task.sever_generator()
-        self.modify(**kwargs)
+        self.modify(delta)
 
 # TODO should a table also count as a task?
 class Table:
@@ -213,6 +203,31 @@ class Table:
         for g in self.generators:
             self.tasks += g.generate_tasks(timestamp)
         return self.tasks.copy()
+
+class TaskDelta:
+    def __init__(self, fields, properties):
+        self.fields = fields
+        self.properties = properties
+
+    def with_fields(self, **kwargs):
+        self.fields.update(kwargs)
+        return self
+
+    def with_properties(self, **kwargs):
+        self.properties.update(kwargs)
+        return self
+
+    def to_instance_delta(self):
+        results = TaskDelta(self.fields.copy(), self.properties.copy())
+        for key in ['template_name', 'template_markup', 'template_duration']:
+            if key in results.fields:
+                replaced = key.replace('template_', '', 1)
+                results.fields[replaced] = results.fields[key]
+                del results.fields[key]
+        return results
+
+    def is_real_delta(self):
+        return bool(self.fields) or bool(self.properties)
 
 def set_object_from_dict(obj, data, mapping):
     for key in mapping:
