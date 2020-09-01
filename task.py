@@ -10,17 +10,6 @@ import task_storage
 # Date Last Modified
 
 class Task:
-    fieldMapping = {
-        'id': 'id',
-        'name': 'name',
-        'date_created': 'dateCreated',
-        'date_last_modified': 'dateLastModified',
-        'markup': 'markup',
-        'table_id': 'tableId',
-        'properties': 'properties',
-        'generator_id': 'generatorId'
-    }
-
     def __init__(self, name, table):
         self.id = str(uuid.uuid4())
         self.name = name
@@ -28,29 +17,32 @@ class Task:
         self.date_last_modified = self.date_created
         self.markup = None
         self.table_id = table.id
-        self.properties = table.new_default_properties()
+        self.properties = table._new_default_properties()
         self.generator_id = None
 
     def to_dict(self):
         data = {}
-        set_dict_from_object(self, data, Task.fieldMapping)
+        _set_dict_from_object(self, data, Task.__field_mapping)
         return data
 
     @staticmethod
     def from_dict(data):
         result = Task(None, None)
-        set_object_from_dict(result, data, Task.fieldMapping)
+        _set_object_from_dict(result, data, Task.__field_mapping)
         return result
-
-    def sever_generator(self):
-        if self.generator_id is None:
-            return
-        generator = task_storage.get_generator_by_id(self.generator_id)
-        generator.tasks.remove(self.id)
-        self.generator_id = None
 
     def modify(self, delta):
         self._modify(True, delta)
+
+    # TODO verify tasks are stored in the generator in order
+    def modify_following(self, delta):
+        if self.generator_id is None:
+            return
+        generator = task_storage.get_generator_by_id(self.generator_id)
+        while generator.tasks[0] != self.id:
+            other_task = task_storage.get_task_by_id(generator.tasks[0])
+            other_task._sever_generator()
+        generator.modify(delta)
 
     def _modify(self, remove_generator, delta):
         for key in delta.properties:
@@ -63,32 +55,37 @@ class Task:
                 setattr(self, key, delta.fields[key])
             elif key == 'duration' and self.generator_id is not None:
                 generator = task_storage.get_generator_by_id(self.generator_id)
-                date = self.properties[generator.generation_field]
-                date.end = date.start + delta.fields[key]
+                field = generator.generation_field
+                date = self.properties[field]
+                self.properties[field] = date.with_duration(delta.fields[key])
             else:
                 raise KeyError
         if remove_generator:
-            self.sever_generator()
+            self._sever_generator()
         if remove_generator or delta.is_real_delta():
             self.date_last_modified = task_data.DateTime()
 
-class Generator:
-    fieldMapping = {
+    # TODO should _sever_generator update the modification timestamp when
+    # modifying future tasks of a generator?
+    def _sever_generator(self):
+        if self.generator_id is None:
+            return
+        generator = task_storage.get_generator_by_id(self.generator_id)
+        generator.tasks.remove(self.id)
+        self.generator_id = None
+
+    __field_mapping = {
         'id': 'id',
         'name': 'name',
         'date_created': 'dateCreated',
         'date_last_modified': 'dateLastModified',
-        'template_name': 'templateName',
-        'template_markup': 'templateMarkup',
-        'template_table_id': 'templateTableId',
-        'template_properties': 'templateProperties',
-        'template_duration': 'templateDuration',
-        'generation_last_timestamp': 'generationLastTimestamp',
-        'generation_field': 'generationField',
-        'generation_date_pattern': 'generationDatePattern',
-        'tasks': 'tasks'
+        'markup': 'markup',
+        'table_id': 'tableId',
+        'properties': 'properties',
+        'generator_id': 'generatorId'
     }
 
+class Generator:
     def __init__(self, name, table, field_name, date_pattern):
         self.id = str(uuid.uuid4())
         self.name = name
@@ -97,7 +94,7 @@ class Generator:
         self.template_name = name
         self.template_markup = None
         self.template_table_id = table.id
-        self.template_properties = table.new_default_properties()
+        self.template_properties = table._new_default_properties()
         self.template_duration = 0
         self.generation_last_timestamp = self.date_created
         self.generation_field = field_name
@@ -106,35 +103,13 @@ class Generator:
 
     def to_dict(self):
         data = {}
-        set_dict_from_object(self, data, Generator.fieldMapping)
+        _set_dict_from_object(self, data, Generator.__field_mapping)
         return data
 
     @staticmethod
     def from_dict(data):
         result = Generator(None, None, None, None)
-        set_object_from_dict(result, data, Generator.fieldMapping)
-        return result
-
-    def generate_tasks(self, timestamp):
-        if timestamp <= self.generation_last_timestamp:
-            return []
-        start_times = self.generation_date_pattern.get_dates(
-            self.generation_last_timestamp,
-            timestamp)
-        new_tasks = [new_task(t) for t in start_times]
-        self.tasks += new_tasks
-        self.generation_last_timestamp = timestamp
-        return new_tasks
-
-    def new_task(self, start_time):
-        name = self.template_name
-        table = task_storage.get_table_by_id(self.template_table_id)
-        result = Task(name, table)
-        result.generator_id = self.id
-        result.markup = self.template_markup
-        result.properties = self.template_properties.copy()
-        date_time = task_data.DateTime(start_time, start_time + self.template_duration)
-        result.properties[self.generation_field] = date_time
+        _set_object_from_dict(result, data, Generator.__field_mapping)
         return result
 
     def modify(self, delta):
@@ -154,25 +129,46 @@ class Generator:
                 t._modify(False, instance_delta)
             self.date_last_modified = task_data.DateTime()
 
-    # TODO verify tasks are stored in the generator in order
-    def modify_tasks_following(self, task_id, delta):
-        while self.tasks[0] != task_id:
-            task = task_storage.get_task_by_id(self.tasks[0])
-            task.sever_generator()
-        self.modify(delta)
+    def _generate_tasks(self, timestamp):
+        if timestamp <= self.generation_last_timestamp:
+            return []
+        start_times = self.generation_date_pattern.get_dates(
+            self.generation_last_timestamp,
+            timestamp)
+        new_tasks = [__new_task(t) for t in start_times]
+        self.tasks += new_tasks
+        self.generation_last_timestamp = timestamp
+        return new_tasks
 
-# TODO should a table also count as a task?
-class Table:
-    fieldMapping = {
+    def __new_task(self, start_time):
+        name = self.template_name
+        table = task_storage.get_table_by_id(self.template_table_id)
+        result = Task(name, table)
+        result.generator_id = self.id
+        result.markup = self.template_markup
+        result.properties = self.template_properties.copy()
+        date_time = task_data.DateTime(start_time, start_time + self.template_duration)
+        result.properties[self.generation_field] = date_time
+        return result
+
+    __field_mapping = {
         'id': 'id',
         'name': 'name',
         'date_created': 'dateCreated',
         'date_last_modified': 'dateLastModified',
-        'tasks': 'tasks',
-        'generators': 'generators',
-        'schema': 'schema'
+        'template_name': 'templateName',
+        'template_markup': 'templateMarkup',
+        'template_table_id': 'templateTableId',
+        'template_properties': 'templateProperties',
+        'template_duration': 'templateDuration',
+        'generation_last_timestamp': 'generationLastTimestamp',
+        'generation_field': 'generationField',
+        'generation_date_pattern': 'generationDatePattern',
+        'tasks': 'tasks'
     }
 
+# TODO should a table also count as a task?
+class Table:
     def __init__(self, name, schema):
         self.id = str(uuid.uuid4())
         self.name = name
@@ -184,27 +180,37 @@ class Table:
 
     def to_dict(self):
         data = {}
-        set_dict_from_object(self, data, Table.fieldMapping)
+        _set_dict_from_object(self, data, Table.__field_mapping)
         return data
 
     @staticmethod
     def from_dict(data):
         result = Table(None, None)
-        set_object_from_dict(result, data, Table.fieldMapping)
+        _set_object_from_dict(result, data, Table.__field_mapping)
         return result
 
-    def new_default_properties(self):
+    def get_tasks(self, timestamp):
+        for g in self.generators:
+            self.tasks += g._generate_tasks(timestamp)
+        return self.tasks.copy()
+
+    def _new_default_properties(self):
         properties = {}
         for key in schema:
             properties[key] = schema[key].new_default_value()
         return properties
 
-    def get_tasks(self, timestamp):
-        for g in self.generators:
-            self.tasks += g.generate_tasks(timestamp)
-        return self.tasks.copy()
+    __field_mapping = {
+        'id': 'id',
+        'name': 'name',
+        'date_created': 'dateCreated',
+        'date_last_modified': 'dateLastModified',
+        'tasks': 'tasks',
+        'generators': 'generators',
+        'schema': 'schema'
+    }
 
-class TaskDelta:
+class Delta:
     def __init__(self, fields, properties):
         self.fields = fields
         self.properties = properties
@@ -218,7 +224,7 @@ class TaskDelta:
         return self
 
     def to_instance_delta(self):
-        results = TaskDelta(self.fields.copy(), self.properties.copy())
+        results = Delta(self.fields.copy(), self.properties.copy())
         for key in ['template_name', 'template_markup', 'template_duration']:
             if key in results.fields:
                 replaced = key.replace('template_', '', 1)
@@ -229,10 +235,10 @@ class TaskDelta:
     def is_real_delta(self):
         return bool(self.fields) or bool(self.properties)
 
-def set_object_from_dict(obj, data, mapping):
+def _set_object_from_dict(obj, data, mapping):
     for key in mapping:
         setattr(obj, key, data[mapping[key]])
 
-def set_dict_from_object(obj, data, mapping):
+def _set_dict_from_object(obj, data, mapping):
     for key in mapping:
         data[mapping[key]] = getattr(obj, key)
