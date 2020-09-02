@@ -125,7 +125,7 @@ class Generator:
                 raise KeyError
         if delta.is_real_delta():
             instance_delta = delta.to_instance_delta()
-            for t in tasks:
+            for t in self.tasks:
                 t._modify(False, instance_delta)
             self.date_last_modified = task_data.DateTime()
 
@@ -141,9 +141,8 @@ class Generator:
         return new_tasks
 
     def __new_task(self, start_time):
-        name = self.template_name
         table = task_storage.get_table_by_id(self.template_table_id)
-        result = Task(name, table)
+        result = Task(self.template_name, table)
         result.generator_id = self.id
         result.markup = self.template_markup
         result.properties = self.template_properties.copy()
@@ -174,9 +173,9 @@ class Table:
         self.name = name
         self.date_created = task_data.DateTime()
         self.date_last_modified = self.date_created
-        tasks = []
-        generators = []
-        schema = schema
+        self.tasks = []
+        self.generators = []
+        self.schema = schema
 
     def to_dict(self):
         data = {}
@@ -196,8 +195,8 @@ class Table:
 
     def _new_default_properties(self):
         properties = {}
-        for key in schema:
-            properties[key] = schema[key].new_default_value()
+        for key in self.schema:
+            properties[key] = self.schema[key].new_default_value()
         return properties
 
     __field_mapping = {
