@@ -1,7 +1,7 @@
 import uuid
 
-import task_data
-import task_storage
+import src.task_data as task_data
+import src.task_storage as task_storage
 
 # TODO restrict user property names. Can't be:
 # task_data.DATE_TYPE_FIELD

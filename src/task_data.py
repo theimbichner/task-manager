@@ -11,6 +11,11 @@ class DateTime:
         self.__start = start
         self.__end = end
 
+    def __eq__(self, other):
+        if isinstance(other, DateTime):
+            return self.start == other.start and self.end == other.end
+        return False
+
     @property
     def start(self):
         return self.__start

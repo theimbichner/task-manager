@@ -1,9 +1,26 @@
-def setup_function(function):
-    print('exec')
-    print(function)
+import time
+
+import src.task as task
+
+def setup_module(module):
+    module.schema = {}
 
 def test_init_table():
-    pass
+    start = int(time.time())
+    table = task.Table('Table Name', schema)
+    end = int(time.time())
+
+    assert start <= table.date_created.start
+    assert end >= table.date_created.start
+
+    assert table.date_created.start == table.date_created.end
+    assert table.date_created == table.date_last_modified
+
+    assert table.id # TODO
+    assert table.name == 'Table Name'
+    assert table.tasks == []
+    assert table.generators == []
+    assert table.schema == schema
 
 def test_init_task():
     pass
