@@ -1,10 +1,10 @@
 import uuid
 
-import src.task_data as task_data
+import src.task_time as task_time
 import src.task_storage as task_storage
 
 # TODO restrict user property names. Can't be:
-# task_data.DATE_TYPE_FIELD
+# task_data.DATA_TYPE_FIELD
 # Name
 # Date Created
 # Date Last Modified
@@ -13,7 +13,7 @@ class Task:
     def __init__(self, name, table):
         self.id = str(uuid.uuid4())
         self.name = name
-        self.date_created = task_data.DateTime()
+        self.date_created = task_time.DateTime()
         self.date_last_modified = self.date_created
         self.markup = None
         self.table_id = table.id
@@ -63,7 +63,7 @@ class Task:
         if remove_generator:
             self._sever_generator()
         if remove_generator or delta.is_real_delta():
-            self.date_last_modified = task_data.DateTime()
+            self.date_last_modified = task_time.DateTime()
 
     # TODO should _sever_generator update the modification timestamp when
     # modifying future tasks of a generator?
@@ -89,7 +89,7 @@ class Generator:
     def __init__(self, name, table, field_name, date_pattern):
         self.id = str(uuid.uuid4())
         self.name = name
-        self.date_created = task_data.DateTime()
+        self.date_created = task_time.DateTime()
         self.date_last_modified = self.date_created
         self.template_name = name
         self.template_markup = None
@@ -127,7 +127,7 @@ class Generator:
             instance_delta = delta.to_instance_delta()
             for t in self.tasks:
                 t._modify(False, instance_delta)
-            self.date_last_modified = task_data.DateTime()
+            self.date_last_modified = task_time.DateTime()
 
     def _generate_tasks(self, timestamp):
         if timestamp <= self.generation_last_timestamp:
@@ -146,7 +146,7 @@ class Generator:
         result.generator_id = self.id
         result.markup = self.template_markup
         result.properties = self.template_properties.copy()
-        date_time = task_data.DateTime(start_time, start_time + self.template_duration)
+        date_time = task_time.DateTime(start_time, start_time + self.template_duration)
         result.properties[self.generation_field] = date_time
         return result
 
@@ -171,7 +171,7 @@ class Table:
     def __init__(self, name, schema):
         self.id = str(uuid.uuid4())
         self.name = name
-        self.date_created = task_data.DateTime()
+        self.date_created = task_time.DateTime()
         self.date_last_modified = self.date_created
         self.tasks = []
         self.generators = []
