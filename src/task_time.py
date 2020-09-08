@@ -1,7 +1,5 @@
 import time
 
-from src.task_data import DATA_TYPE_FIELD
-
 class DateTime:
     def __init__(self, start=None, end=None):
         if start is None:
@@ -26,7 +24,6 @@ class DateTime:
 
     def to_dict(self):
         return {
-            DATA_TYPE_FIELD: type(self).__name__,
             'start': self.__start,
             'end': self.__end
         }

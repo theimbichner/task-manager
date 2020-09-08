@@ -1,5 +1,3 @@
-from src.task_data import DATA_TYPE_FIELD
-
 # get_dates must be inclusive of the end and exclusive of the start
 class UnionDatePattern:
     def __init__(self, date_patterns):
@@ -7,7 +5,6 @@ class UnionDatePattern:
 
     def to_dict(self):
         return {
-            DATA_TYPE_FIELD: type(self).__name__,
             'datePatterns': self.date_patterns
         }
 
@@ -25,7 +22,6 @@ class UniformDatePattern:
 
     def to_dict(self):
         return {
-            DATA_TYPE_FIELD: type(self).__name__,
             'initialTime': self.initial_time,
             'deltaTime': self.delta_time
         }

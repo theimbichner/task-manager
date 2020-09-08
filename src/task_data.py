@@ -22,5 +22,7 @@ def read_data_objects(data):
 
 def write_data_objects(obj):
     if any(isinstance(obj, x) for x in _DATA_CLASSES):
-        return obj.to_dict()
+        data = obj.to_dict()
+        data[DATA_TYPE_FIELD] = type(obj).__name__
+        return data
     raise TypeError

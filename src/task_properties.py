@@ -1,5 +1,3 @@
-from src.task_data import DATA_TYPE_FIELD
-
 # TODO validate type_name
 # Number
 # Integer
@@ -25,7 +23,6 @@ class TypeDescriptor:
 
     def to_dict(self):
         return {
-            DATA_TYPE_FIELD: type(self).__name__,
             'typeName': self.type_name
         }
 
@@ -44,7 +41,6 @@ class EnumerationTypeDescriptor:
 
     def to_dict(self):
         return {
-            DATA_TYPE_FIELD: type(self).__name__,
             'isList': self.is_list,
             'enumValues': self.enum_values
         }
