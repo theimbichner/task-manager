@@ -31,15 +31,15 @@ class UniformDatePattern:
         return UniformDatePattern(data['initialTime'], data['deltaTime'])
 
     def get_dates(self, start, end):
-        if initial_time > start:
-            time = initial_time
+        if self.initial_time > start:
+            time = self.initial_time
         else:
-            n = (start - initial_time) // delta_time + 1
-            time = initial_time + n * delta_time
+            n = (start - self.initial_time) // self.delta_time + 1
+            time = self.initial_time + n * self.delta_time
         result = []
         while time <= end:
             result.append(time)
-            time += delta_time
+            time += self.delta_time
         return result
 
 # TODO
