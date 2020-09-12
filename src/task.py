@@ -196,7 +196,7 @@ class Table:
     def _new_default_properties(self):
         properties = {}
         for key in self.schema:
-            properties[key] = self.schema[key].new_default_value()
+            properties[key] = self.schema[key].default_value()
         return properties
 
     __field_mapping = {
