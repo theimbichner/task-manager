@@ -13,7 +13,8 @@ class UnionDatePattern:
         return UnionDatePattern(data['datePatterns'])
 
     def get_dates(self, start, end):
-        return [date for p in self.date_patterns for date in p.get_dates(start, end)]
+        dates = {d for p in self.date_patterns for d in p.get_dates(start, end)}
+        return sorted(dates)
 
 class UniformDatePattern:
     def __init__(self, initial_time, delta_time):
@@ -44,15 +45,16 @@ class UniformDatePattern:
 
 # TODO
 class MonthlyDatePattern:
-    def __init__(self):
-        pass
-
-    def to_dict(self):
-        pass
-
-    @staticmethod
-    def from_dict(data):
-        pass
-
-    def get_dates(self, start, end):
-        pass
+    pass
+#     def __init__(self):
+#         pass
+#
+#     def to_dict(self):
+#         pass
+#
+#     @staticmethod
+#     def from_dict(data):
+#         pass
+#
+#     def get_dates(self, start, end):
+#         pass
