@@ -13,8 +13,10 @@ jobs:
       - python/save-cache
       - run:
           command: |
-            echo ~
-            /home/circleci/.local/lib/python3.8/site-packages/coverage run --branch -m pytest -v
+            ls ~/.local/lib/python3.8/site-packages
+            ls ~/.local/lib/python3.8/site-packages/coverage
+            ls ~/.local/bin
+            ~/.local/lib/python3.8/site-packages/coverage run --branch -m pytest -v
           name: Test
 
 workflows:
