@@ -5,6 +5,8 @@ orbs:
 
 jobs:
   build-and-test:
+    docker:
+      - image: circleci/python:3.8
     executor: python/default
     steps:
       - checkout
@@ -13,9 +15,7 @@ jobs:
       - python/save-cache
       - run:
           command: |
-            which python
-            echo .
-            ~/.local/lib/python3.8/site-packages/coverage run --branch -m pytest -v
+            coverage run --branch -m pytest -v
           name: Test
 
 workflows:
