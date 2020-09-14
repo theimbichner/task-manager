@@ -13,9 +13,8 @@ jobs:
       - python/save-cache
       - run:
           command: |
-            ls ~/.local/lib/python3.8/site-packages
-            ls ~/.local/lib/python3.8/site-packages/coverage
-            ls ~/.local/bin
+            which python
+            echo .
             ~/.local/lib/python3.8/site-packages/coverage run --branch -m pytest -v
           name: Test
 
