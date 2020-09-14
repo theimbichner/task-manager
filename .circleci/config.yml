@@ -12,7 +12,9 @@ jobs:
       - python/install-deps
       - python/save-cache
       - run:
-          command: ~/.local/bin/coverage run --branch -m pytest -v
+          command: |
+            which pip
+            /usr/local/lib/python3.8/site-packages/coverage run --branch -m pytest -v
           name: Test
 
 workflows:
