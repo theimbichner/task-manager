@@ -58,10 +58,3 @@ def test_date_time_with_duration():
     assert new_date_time.start == time_start
     assert new_date_time.end == time_start + duration
     assert date_time.end == time_end
-
-def test_date_time_to_from_dict():
-    date_time = task_time.DateTime(time_start, time_end)
-    data = date_time.to_dict()
-    new_date_time = task_time.DateTime.from_dict(data)
-
-    assert date_time == new_date_time

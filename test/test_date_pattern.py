@@ -9,18 +9,6 @@ example_union = date_pattern.UnionDatePattern([
     date_pattern.UniformDatePattern(89, 4)
 ])
 
-def test_uniform_to_from_dict():
-    pattern = date_pattern.UniformDatePattern(11, 13)
-    data = pattern.to_dict()
-    new_pattern = date_pattern.UniformDatePattern.from_dict(data)
-    assert pattern.get_dates(0, 1000) == new_pattern.get_dates(0, 1000)
-
-def test_union_to_from_dict():
-    pattern = example_union
-    data = pattern.to_dict()
-    new_pattern = date_pattern.UnionDatePattern.from_dict(data)
-    assert pattern.get_dates(0, 1000) == new_pattern.get_dates(0, 1000)
-
 get_dates_data = [
     # UnionDatePattern
     (example_union, 0, 100, [6, 30, 54, 75, 78, 82, 89, 93, 94, 95, 96, 97, 98, 99, 100]),
