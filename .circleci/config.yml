@@ -10,10 +10,10 @@ jobs:
     executor: python/default
     steps:
       - checkout
-      - python/load-cache
+        #- python/load-cache
       - python/install-deps
-      - python/save-cache
-      - run: pip install coverage
+        #- python/save-cache
+        #- run: pip install coverage
       - run:
           command: |
             coverage run --branch -m pytest -v
