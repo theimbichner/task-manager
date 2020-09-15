@@ -1,0 +1,28 @@
+version: 2.1
+
+orbs:
+  python: circleci/python@0.2.1
+
+jobs:
+  build-and-test:
+    docker:
+      - image: circleci/python:3.8
+    executor: python/default
+    steps:
+      - checkout
+      - python/install-deps
+      - run:
+          command: |
+            coverage run --branch --include=./* -m pytest -v --junitxml=./testresults/results.xml
+            coverage report
+            coverage html
+          name: Test
+      - store_artifacts:
+          path: htmlcov
+      - store_test_results:
+          path: testresults
+
+workflows:
+  main:
+    jobs:
+      - build-and-test
