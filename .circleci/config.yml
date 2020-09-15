@@ -13,10 +13,9 @@ jobs:
       - python/install-deps
       - run:
           command: |
-            coverage run --branch -m pytest -v
+            coverage run --branch --include=./* -m pytest -v --junitxml=./testresults/results.xml
             coverage report
             coverage html
-            coverage xml -o testresults/results.xml
           name: Test
       - store_artifacts:
           path: htmlcov
