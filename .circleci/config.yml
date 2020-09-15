@@ -10,14 +10,15 @@ jobs:
     executor: python/default
     steps:
       - checkout
-        #- python/load-cache
       - python/install-deps
-        #- python/save-cache
-        #- run: pip install coverage
       - run:
           command: |
             coverage run --branch -m pytest -v
+            coverage report
+            coverage html
           name: Test
+      - store_test_results:
+          path: htmlcov
 
 workflows:
   main:
