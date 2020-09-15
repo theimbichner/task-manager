@@ -16,9 +16,12 @@ jobs:
             coverage run --branch -m pytest -v
             coverage report
             coverage html
+            coverage xml -o testresults/results.xml
           name: Test
-      - store_test_results:
+      - store_artifacts:
           path: htmlcov
+      - store_test_results:
+          path: testresults
 
 workflows:
   main:
