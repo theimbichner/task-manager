@@ -1,8 +1,6 @@
 package io.github.theimbichner.task;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.stream.Stream;
 
@@ -22,7 +20,7 @@ public class TypeDescriptorTests {
          Arguments.of("Boolean", false),
          Arguments.of("DateTime", null),
          Arguments.of("Enum", null),
-         Arguments.of("EnumList", new ArrayList<String>()));
+         Arguments.of("EnumList", new LinkedHashSet<String>()));
    }
 
    @ParameterizedTest
@@ -55,43 +53,66 @@ public class TypeDescriptorTests {
    @MethodSource("provideEnumTypeNames")
    void testEnumToFromData(String typeName) {
       TypeDescriptor type = TypeDescriptor.fromTypeName(typeName);
-      TypeDescriptor.Enumeration enumeration = (TypeDescriptor.Enumeration) type;
+      TypeDescriptor.Enumeration enumType = (TypeDescriptor.Enumeration) type;
 
-      enumeration.withEnumValues(Arrays.asList("alpha", "beta", "gamma"))
-         .withoutEnumValues(Arrays.asList("beta", "delta"));
+      enumType = enumType
+         .withEnumValues("alpha", "beta", "gamma")
+         .withoutEnumValues("beta", "delta")
+         .withEnumValues("gamma");
 
-      List<String> enumValues = enumeration.getEnumValues();
-      Map<String, Object> data = enumeration.toData();
-
-      enumeration.withEnumValues(Arrays.asList("epsilon", "zeta"))
-         .withoutEnumValues(Arrays.asList("alpha", "gamma"));
-
+      Map<String, Object> data = enumType.toData();
       TypeDescriptor newType = TypeDescriptor.fromData(data);
       TypeDescriptor.Enumeration newEnum = (TypeDescriptor.Enumeration) newType;
 
-      assertThat(newEnum.getEnumValues()).isEqualTo(enumValues);
+      assertThat(newEnum.getEnumValues()).isEqualTo(enumType.getEnumValues());
    }
 
    @ParameterizedTest
    @MethodSource("provideEnumTypeNames")
    void testEnumValues(String typeName) {
       TypeDescriptor type = TypeDescriptor.fromTypeName(typeName);
-      TypeDescriptor.Enumeration enumeration = (TypeDescriptor.Enumeration) type;
+      TypeDescriptor.Enumeration enumType = (TypeDescriptor.Enumeration) type;
+      TypeDescriptor.Enumeration newEnum;
 
-      enumeration.withEnumValues(Arrays.asList("alpha", "beta", "gamma"));
-      assertThat(enumeration.getEnumValues())
-         .containsExactly("alpha", "beta", "gamma");
+      assertThat(enumType.getEnumValues()).isEmpty();
 
-      enumeration.withoutEnumValues(Arrays.asList("beta", "delta"));
-      assertThat(enumeration.getEnumValues()).containsExactly("alpha", "gamma");
+      newEnum = enumType.withEnumValues("alpha", "beta", "gamma");
 
-      enumeration.withEnumValues(Arrays.asList("epsilon", "zeta"));
-      assertThat(enumeration.getEnumValues())
-         .containsExactly("alpha", "gamma", "epsilon", "zeta");
+      assertThat(enumType.getEnumValues()).isEmpty();
+      assertThat(newEnum.getEnumValues())
+         .containsExactlyInAnyOrder("alpha", "beta", "gamma");
 
-      enumeration.withoutEnumValues(Arrays.asList("alpha", "gamma"));
-      assertThat(enumeration.getEnumValues())
-         .containsExactly("epsilon", "zeta");
+      enumType = newEnum;
+      newEnum = enumType.withoutEnumValues("beta", "delta");
+
+      assertThat(enumType.getEnumValues())
+         .containsExactlyInAnyOrder("alpha", "beta", "gamma");
+      assertThat(newEnum.getEnumValues())
+         .containsExactlyInAnyOrder("alpha", "gamma");
+
+      enumType = newEnum;
+      newEnum = enumType.withEnumValues("gamma");
+
+      assertThat(enumType.getEnumValues())
+         .containsExactlyInAnyOrder("alpha", "gamma");
+      assertThat(newEnum.getEnumValues())
+         .containsExactlyInAnyOrder("alpha", "gamma");
+
+      enumType = newEnum;
+      newEnum = enumType.withEnumValues("epsilon", "zeta");
+
+      assertThat(enumType.getEnumValues())
+         .containsExactlyInAnyOrder("alpha", "gamma");
+      assertThat(newEnum.getEnumValues())
+         .containsExactlyInAnyOrder("alpha", "gamma", "epsilon", "zeta");
+
+      enumType = newEnum;
+      newEnum = enumType.withoutEnumValues("alpha", "gamma");
+
+      assertThat(enumType.getEnumValues())
+         .containsExactlyInAnyOrder("alpha", "gamma", "epsilon", "zeta");
+      assertThat(newEnum.getEnumValues())
+         .containsExactlyInAnyOrder("epsilon", "zeta");
    }
 
    @Test

@@ -1,11 +1,11 @@
 package io.github.theimbichner.task;
 
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 
 /*
  * Notion data types not implemented:
@@ -28,9 +28,9 @@ public interface TypeDescriptor {
       case "DateTime":
          return new Simple(typeName);
       case "Enum":
-         return new Enumeration(false);
+         return new Enumeration(false, new HashSet<>());
       case "EnumList":
-         return new Enumeration(true);
+         return new Enumeration(true, new HashSet<>());
       default:
          throw new IllegalArgumentException();
       }
@@ -40,8 +40,9 @@ public interface TypeDescriptor {
       if (data.get("typeName") != null) {
          return new Simple((String) data.get("typeName"));
       }
-      return new Enumeration((Boolean) data.get("permitMultiple"))
-         .withEnumValues((List<String>) data.get("enumValues"));
+      Boolean permitMultiple = (Boolean) data.get("permitMultiple");
+      String[] enumValues = (String[]) data.get("enumValues");
+      return new Enumeration(permitMultiple, Set.of(enumValues));
    }
 
    String getTypeName();
@@ -82,25 +83,27 @@ public interface TypeDescriptor {
 
    public static class Enumeration implements TypeDescriptor {
       private final boolean permitMultiple;
-      private final List<String> enumValues;
+      private final Set<String> enumValues;
 
-      private Enumeration(boolean permitMultiple) {
+      private Enumeration(boolean permitMultiple, Set<String> enumValues) {
          this.permitMultiple = permitMultiple;
-         this.enumValues = new ArrayList<>();
+         this.enumValues = Collections.unmodifiableSet(enumValues);
       }
 
-      public List<String> getEnumValues() {
-         return new ArrayList<>(enumValues);
+      public Set<String> getEnumValues() {
+         return enumValues;
       }
 
-      public Enumeration withEnumValues(Collection<String> enumValues) {
-         this.enumValues.addAll(enumValues);
-         return this;
+      public Enumeration withEnumValues(String... toAdd) {
+         Set<String> newEnumValues = new HashSet<>(enumValues);
+         newEnumValues.addAll(Set.of(toAdd));
+         return new Enumeration(permitMultiple, newEnumValues);
       }
 
-      public Enumeration withoutEnumValues(Collection<String> enumValues) {
-         this.enumValues.removeAll(enumValues);
-         return this;
+      public Enumeration withoutEnumValues(String... toRemove) {
+         Set<String> newEnumValues = new HashSet<>(enumValues);
+         newEnumValues.removeAll(Set.of(toRemove));
+         return new Enumeration(permitMultiple, newEnumValues);
       }
 
       @Override
@@ -115,14 +118,14 @@ public interface TypeDescriptor {
       public Map<String, Object> toData() {
          Map<String, Object> result = new HashMap<>();
          result.put("permitMultiple", permitMultiple);
-         result.put("enumValues", getEnumValues());
+         result.put("enumValues", enumValues.toArray(new String[0]));
          return result;
       }
 
       @Override
       public Object getNewDefaultValueInstance() {
          if (permitMultiple) {
-            return new ArrayList<String>();
+            return new LinkedHashSet<String>();
          }
          return null;
       }
