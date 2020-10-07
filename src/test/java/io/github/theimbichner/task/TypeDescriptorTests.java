@@ -1,8 +1,9 @@
 package io.github.theimbichner.task;
 
 import java.util.LinkedHashSet;
-import java.util.Map;
 import java.util.stream.Stream;
+
+import org.json.JSONObject;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -34,10 +35,10 @@ public class TypeDescriptorTests {
 
    @ParameterizedTest
    @MethodSource("provideAllTypeNames")
-   void testToFromData(String typeName, Object expectedDefault) {
+   void testToFromJson(String typeName, Object expectedDefault) {
       TypeDescriptor type = TypeDescriptor.fromTypeName(typeName);
-      Map<String, Object> data = type.toData();
-      TypeDescriptor newType = TypeDescriptor.fromData(data);
+      JSONObject json = type.toJson();
+      TypeDescriptor newType = TypeDescriptor.fromJson(json);
 
       assertThat(newType.getTypeName()).isEqualTo(typeName);
       assertThat(newType.getNewDefaultValueInstance())
@@ -51,7 +52,7 @@ public class TypeDescriptorTests {
 
    @ParameterizedTest
    @MethodSource("provideEnumTypeNames")
-   void testEnumToFromData(String typeName) {
+   void testEnumToFromJson(String typeName) {
       TypeDescriptor type = TypeDescriptor.fromTypeName(typeName);
       TypeDescriptor.Enumeration enumType = (TypeDescriptor.Enumeration) type;
 
@@ -60,8 +61,8 @@ public class TypeDescriptorTests {
          .withoutEnumValues("beta", "delta")
          .withEnumValues("gamma");
 
-      Map<String, Object> data = enumType.toData();
-      TypeDescriptor newType = TypeDescriptor.fromData(data);
+      JSONObject json = enumType.toJson();
+      TypeDescriptor newType = TypeDescriptor.fromJson(json);
       TypeDescriptor.Enumeration newEnum = (TypeDescriptor.Enumeration) newType;
 
       assertThat(newEnum.getEnumValues()).isEqualTo(enumType.getEnumValues());

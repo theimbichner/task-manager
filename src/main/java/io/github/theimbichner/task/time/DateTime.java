@@ -1,8 +1,8 @@
 package io.github.theimbichner.task.time;
 
 import java.time.Instant;
-import java.util.HashMap;
-import java.util.Map;
+
+import org.json.JSONObject;
 
 public class DateTime {
    private final Instant start;
@@ -40,16 +40,16 @@ public class DateTime {
       return new DateTime(start, start.plusSeconds(duration));
    }
 
-   public Map<String, Object> toData() {
-      Map<String, Object> result = new HashMap<>();
+   public JSONObject toJson() {
+      JSONObject result = new JSONObject();
       result.put("start", start.toString());
       result.put("end", end.toString());
       return result;
    }
 
-   public static DateTime fromData(Map<String, Object> data) {
-      Instant start = Instant.parse((String) data.get("start"));
-      Instant end = Instant.parse((String) data.get("end"));
+   public static DateTime fromJson(JSONObject json) {
+      Instant start = Instant.parse(json.getString("start"));
+      Instant end = Instant.parse(json.getString("end"));
       return new DateTime(start, end);
    }
 }

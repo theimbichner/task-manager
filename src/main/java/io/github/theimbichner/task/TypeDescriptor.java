@@ -1,11 +1,12 @@
 package io.github.theimbichner.task;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
-import java.util.Map;
 import java.util.Set;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 /*
  * Notion data types not implemented:
@@ -36,17 +37,22 @@ public interface TypeDescriptor {
       }
    }
 
-   public static TypeDescriptor fromData(Map<String, Object> data) {
-      if (data.get("typeName") != null) {
-         return new Simple((String) data.get("typeName"));
+   public static TypeDescriptor fromJson(JSONObject json) {
+      if (json.opt("typeName") != null) {
+         return new Simple(json.getString("typeName"));
       }
-      Boolean permitMultiple = (Boolean) data.get("permitMultiple");
-      String[] enumValues = (String[]) data.get("enumValues");
-      return new Enumeration(permitMultiple, Set.of(enumValues));
+
+      boolean permitMultiple = json.getBoolean("permitMultiple");
+      JSONArray jsonArray = json.getJSONArray("enumValues");
+      Set<String> enumValues = new HashSet<>();
+      for (int i = 0; i < jsonArray.length(); i++) {
+         enumValues.add(jsonArray.getString(i));
+      }
+      return new Enumeration(permitMultiple, enumValues);
    }
 
    String getTypeName();
-   Map<String, Object> toData();
+   JSONObject toJson();
    Object getNewDefaultValueInstance();
 
    public static class Simple implements TypeDescriptor {
@@ -62,8 +68,8 @@ public interface TypeDescriptor {
       }
 
       @Override
-      public Map<String, Object> toData() {
-         Map<String, Object> result = new HashMap<>();
+      public JSONObject toJson() {
+         JSONObject result = new JSONObject();
          result.put("typeName", typeName);
          return result;
       }
@@ -115,10 +121,10 @@ public interface TypeDescriptor {
       }
 
       @Override
-      public Map<String, Object> toData() {
-         Map<String, Object> result = new HashMap<>();
+      public JSONObject toJson() {
+         JSONObject result = new JSONObject();
          result.put("permitMultiple", permitMultiple);
-         result.put("enumValues", enumValues.toArray(new String[0]));
+         result.put("enumValues", enumValues);
          return result;
       }
 

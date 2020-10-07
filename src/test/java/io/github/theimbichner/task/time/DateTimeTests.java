@@ -1,7 +1,8 @@
 package io.github.theimbichner.task.time;
 
 import java.time.Instant;
-import java.util.Map;
+
+import org.json.JSONObject;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -62,10 +63,10 @@ public class DateTimeTests {
    }
 
    @Test
-   void testToFromData() {
+   void testToFromJson() {
       DateTime time = new DateTime(startTime, endTime);
-      Map<String, Object> data = time.toData();
-      DateTime newTime = DateTime.fromData(data);
+      JSONObject json = time.toJson();
+      DateTime newTime = DateTime.fromJson(json);
 
       assertThat(newTime.getStart()).isEqualTo(time.getStart());
       assertThat(newTime.getEnd()).isEqualTo(time.getEnd());
