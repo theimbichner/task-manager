@@ -13,17 +13,12 @@ public class DateTime {
       end = start;
    }
 
-   public DateTime(long timestamp) {
-      start = Instant.ofEpochSecond(timestamp);
-      end = start;
+   public DateTime(Instant timestamp) {
+      start = timestamp;
+      end = timestamp;
    }
 
-   public DateTime(long start, long end) {
-      this.start = Instant.ofEpochSecond(start);
-      this.end = Instant.ofEpochSecond(end);
-   }
-
-   private DateTime(Instant start, Instant end) {
+   public DateTime(Instant start, Instant end) {
       this.start = start;
       this.end = end;
    }

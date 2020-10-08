@@ -10,19 +10,15 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.*;
 
 public class DateTimeTests {
-   static long startTime;
-   static long endTime;
    static long delta;
    static Instant startInstant;
    static Instant endInstant;
 
    @BeforeAll
    static void beforeAll() {
-      startTime = 123456;
-      endTime = 654321;
       delta = 1000;
-      startInstant = Instant.ofEpochSecond(startTime);
-      endInstant = Instant.ofEpochSecond(endTime);
+      startInstant = Instant.ofEpochSecond(123456, 987654);
+      endInstant = Instant.ofEpochSecond(654321, 456789);
    }
 
    @Test
@@ -38,25 +34,29 @@ public class DateTimeTests {
 
    @Test
    void testStartConstructor() {
-      DateTime time = new DateTime(startTime);
+      DateTime time = new DateTime(startInstant);
       assertThat(time.getStart()).isEqualTo(startInstant);
       assertThat(time.getEnd()).isEqualTo(startInstant);
    }
 
    @Test
    void testStartEndConstructor() {
-      DateTime time = new DateTime(startTime, endTime);
+      DateTime time = new DateTime(startInstant, endInstant);
       assertThat(time.getStart()).isEqualTo(startInstant);
       assertThat(time.getEnd()).isEqualTo(endInstant);
    }
 
    @Test
    void testWithDuration() {
-      DateTime time = new DateTime(startTime, endTime);
+      DateTime time = new DateTime(startInstant, endInstant);
       DateTime newTime = time.withDuration(delta);
 
+      long second = startInstant.getEpochSecond() + delta;
+      int nano = startInstant.getNano();
+      Instant expectedEnd = Instant.ofEpochSecond(second, nano);
+
       assertThat(newTime.getStart()).isEqualTo(startInstant);
-      assertThat(newTime.getEnd().getEpochSecond()).isEqualTo(startTime + delta);
+      assertThat(newTime.getEnd()).isEqualTo(expectedEnd);
 
       assertThat(time.getStart()).isEqualTo(startInstant);
       assertThat(time.getEnd()).isEqualTo(endInstant);
@@ -64,7 +64,7 @@ public class DateTimeTests {
 
    @Test
    void testToFromJson() {
-      DateTime time = new DateTime(startTime, endTime);
+      DateTime time = new DateTime(startInstant, endInstant);
       JSONObject json = time.toJson();
       DateTime newTime = DateTime.fromJson(json);
 
