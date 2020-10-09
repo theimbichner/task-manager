@@ -24,9 +24,9 @@ public interface DatePattern {
    }
 
    /**
-    * Returns a list of matching Instants that lie between start and end. Must
-    * be exclusive of start and inclusive of end. The resulting list will be
-    * sorted.
+    * Returns a list of matching Instants that lie between start (exclusive) and
+    * end (inclusive). Start must be strictly before end. The resulting list
+    * will be sorted.
     *
     * @param start The start of the time range, exclusive
     * @param end The end of the time range, inclusive

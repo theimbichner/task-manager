@@ -18,6 +18,10 @@ public class UniformDatePattern implements DatePattern {
 
    @Override
    public List<Instant> getDates(Instant start, Instant end) {
+      if (!start.isBefore(end)) {
+         throw new IllegalArgumentException();
+      }
+
       Instant time;
       if (initialTime.isAfter(start)) {
          time = initialTime;
