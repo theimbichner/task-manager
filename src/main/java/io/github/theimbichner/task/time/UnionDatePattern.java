@@ -52,9 +52,9 @@ public class UnionDatePattern implements DatePattern {
    public JSONObject toJson() {
       JSONObject result = new JSONObject();
       result.put("patternType", "union");
-      result.put("patterns", patterns.stream()
+      result.put("patterns", new JSONArray(patterns.stream()
          .map(DatePattern::toJson)
-         .toArray());
+         .toArray()));
       return result;
    }
 
