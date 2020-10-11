@@ -26,35 +26,35 @@ public class TaskDeltaTests {
    void testName() {
       TaskDelta delta = new TaskDelta(properties, name, null, null);
       assertThat(delta.getProperties()).isEqualTo(properties);
-      assertThat(delta.getName()).isEqualTo(Optional.of(name));
-      assertThat(delta.getMarkup()).isEqualTo(Optional.empty());
-      assertThat(delta.getDuration()).isEqualTo(Optional.empty());
+      assertThat(delta.getName()).hasValue(name);
+      assertThat(delta.getMarkup()).isEmpty();
+      assertThat(delta.getDuration()).isEmpty();
    }
 
    @Test
    void testMarkup() {
       TaskDelta delta = new TaskDelta(properties, null, Optional.of(markup), null);
       assertThat(delta.getProperties()).isEqualTo(properties);
-      assertThat(delta.getName()).isEqualTo(Optional.empty());
-      assertThat(delta.getMarkup()).isEqualTo(Optional.of(Optional.of(markup)));
-      assertThat(delta.getDuration()).isEqualTo(Optional.empty());
+      assertThat(delta.getName()).isEmpty();
+      assertThat(delta.getMarkup()).hasValue(Optional.of(markup));
+      assertThat(delta.getDuration()).isEmpty();
    }
 
    @Test
    void testMarkupEmpty() {
       TaskDelta delta = new TaskDelta(properties, null, Optional.empty(), null);
       assertThat(delta.getProperties()).isEqualTo(properties);
-      assertThat(delta.getName()).isEqualTo(Optional.empty());
-      assertThat(delta.getMarkup()).isEqualTo(Optional.of(Optional.empty()));
-      assertThat(delta.getDuration()).isEqualTo(Optional.empty());
+      assertThat(delta.getName()).isEmpty();
+      assertThat(delta.getMarkup()).hasValue(Optional.empty());
+      assertThat(delta.getDuration()).isEmpty();
    }
 
    @Test
    void testDuration() {
       TaskDelta delta = new TaskDelta(properties, null, null, duration);
       assertThat(delta.getProperties()).isEqualTo(properties);
-      assertThat(delta.getName()).isEqualTo(Optional.empty());
-      assertThat(delta.getMarkup()).isEqualTo(Optional.empty());
-      assertThat(delta.getDuration()).isEqualTo(Optional.of(duration));
+      assertThat(delta.getName()).isEmpty();
+      assertThat(delta.getMarkup()).isEmpty();
+      assertThat(delta.getDuration()).hasValue(duration);
    }
 }

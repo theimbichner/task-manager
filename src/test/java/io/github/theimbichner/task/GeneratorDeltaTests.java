@@ -28,49 +28,49 @@ public class GeneratorDeltaTests {
    void testName() {
       GeneratorDelta delta = new GeneratorDelta(properties, name, null, null, null);
       assertThat(delta.getProperties()).isEqualTo(properties);
-      assertThat(delta.getName()).isEqualTo(Optional.of(name));
-      assertThat(delta.getTemplateName()).isEqualTo(Optional.empty());
-      assertThat(delta.getTemplateMarkup()).isEqualTo(Optional.empty());
-      assertThat(delta.getTemplateDuration()).isEqualTo(Optional.empty());
+      assertThat(delta.getName()).hasValue(name);
+      assertThat(delta.getTemplateName()).isEmpty();
+      assertThat(delta.getTemplateMarkup()).isEmpty();
+      assertThat(delta.getTemplateDuration()).isEmpty();
    }
 
    @Test
    void testTemplateName() {
       GeneratorDelta delta = new GeneratorDelta(properties, null, templateName, null, null);
       assertThat(delta.getProperties()).isEqualTo(properties);
-      assertThat(delta.getName()).isEqualTo(Optional.empty());
-      assertThat(delta.getTemplateName()).isEqualTo(Optional.of(templateName));
-      assertThat(delta.getTemplateMarkup()).isEqualTo(Optional.empty());
-      assertThat(delta.getTemplateDuration()).isEqualTo(Optional.empty());
+      assertThat(delta.getName()).isEmpty();
+      assertThat(delta.getTemplateName()).hasValue(templateName);
+      assertThat(delta.getTemplateMarkup()).isEmpty();
+      assertThat(delta.getTemplateDuration()).isEmpty();
    }
 
    @Test
    void testTemplateMarkup() {
       GeneratorDelta delta = new GeneratorDelta(properties, null, null, Optional.of(templateMarkup), null);
       assertThat(delta.getProperties()).isEqualTo(properties);
-      assertThat(delta.getName()).isEqualTo(Optional.empty());
-      assertThat(delta.getTemplateName()).isEqualTo(Optional.empty());
-      assertThat(delta.getTemplateMarkup()).isEqualTo(Optional.of(Optional.of(templateMarkup)));
-      assertThat(delta.getTemplateDuration()).isEqualTo(Optional.empty());
+      assertThat(delta.getName()).isEmpty();
+      assertThat(delta.getTemplateName()).isEmpty();
+      assertThat(delta.getTemplateMarkup()).hasValue(Optional.of(templateMarkup));
+      assertThat(delta.getTemplateDuration()).isEmpty();
    }
 
    @Test
    void testTemplateMarkupEmpty() {
       GeneratorDelta delta = new GeneratorDelta(properties, null, null, Optional.empty(), null);
       assertThat(delta.getProperties()).isEqualTo(properties);
-      assertThat(delta.getName()).isEqualTo(Optional.empty());
-      assertThat(delta.getTemplateName()).isEqualTo(Optional.empty());
-      assertThat(delta.getTemplateMarkup()).isEqualTo(Optional.of(Optional.empty()));
-      assertThat(delta.getTemplateDuration()).isEqualTo(Optional.empty());
+      assertThat(delta.getName()).isEmpty();
+      assertThat(delta.getTemplateName()).isEmpty();
+      assertThat(delta.getTemplateMarkup()).hasValue(Optional.empty());
+      assertThat(delta.getTemplateDuration()).isEmpty();
    }
 
    @Test
    void testTemplateDuration() {
       GeneratorDelta delta = new GeneratorDelta(properties, null, null, null, templateDuration);
       assertThat(delta.getProperties()).isEqualTo(properties);
-      assertThat(delta.getName()).isEqualTo(Optional.empty());
-      assertThat(delta.getTemplateName()).isEqualTo(Optional.empty());
-      assertThat(delta.getTemplateMarkup()).isEqualTo(Optional.empty());
+      assertThat(delta.getName()).isEmpty();
+      assertThat(delta.getTemplateName()).isEmpty();
+      assertThat(delta.getTemplateMarkup()).isEmpty();
       assertThat(delta.getTemplateDuration()).isEqualTo(Optional.of(templateDuration));
    }
 
@@ -84,8 +84,8 @@ public class GeneratorDeltaTests {
          templateDuration);
       TaskDelta taskDelta = delta.asTaskDelta();
       assertThat(taskDelta.getProperties()).isEqualTo(properties);
-      assertThat(taskDelta.getName()).isEqualTo(Optional.of(templateName));
-      assertThat(taskDelta.getMarkup()).isEqualTo(Optional.of(Optional.of(templateMarkup)));
-      assertThat(taskDelta.getDuration()).isEqualTo(Optional.of(templateDuration));
+      assertThat(taskDelta.getName()).hasValue(templateName);
+      assertThat(taskDelta.getMarkup()).hasValue(Optional.of(templateMarkup));
+      assertThat(taskDelta.getDuration()).hasValue(templateDuration);
    }
 }
