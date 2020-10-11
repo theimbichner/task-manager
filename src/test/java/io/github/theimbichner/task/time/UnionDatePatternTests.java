@@ -94,7 +94,6 @@ public class UnionDatePatternTests {
    @Test
    void testToFromJson() {
       JSONObject json = pattern.toJson();
-      System.out.println(json);
       DatePattern newPattern = DatePattern.fromJson(json);
 
       assertThat(newPattern).isInstanceOf(UnionDatePattern.class);
