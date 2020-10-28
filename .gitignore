@@ -5,3 +5,5 @@ htmlcov
 
 # java prototype
 target
+*.iml
+.idea
