@@ -1,14 +1,16 @@
 package io.github.theimbichner.task;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import io.github.theimbichner.task.io.TaskAccessException;
+import io.github.theimbichner.task.io.TaskStore;
 import io.github.theimbichner.task.time.DateTime;
 
 public class Table {
@@ -16,18 +18,22 @@ public class Table {
    private String name;
    private DateTime dateCreated;
    private DateTime dateLastModified;
-   private final List<String> taskIds;
-   private final List<String> generatorIds;
+   private final Set<String> taskIds;
+   private final Set<String> generatorIds;
    private final Map<String, TypeDescriptor> schema;
+
+   private TaskStore taskStore;
 
    public Table() {
       id = UUID.randomUUID().toString();
       name = "";
       dateCreated = new DateTime();
       dateLastModified = dateCreated;
-      taskIds = new ArrayList<>();
-      generatorIds = new ArrayList<>();
+      taskIds = new LinkedHashSet<>();
+      generatorIds = new LinkedHashSet<>();
       schema = new HashMap<>();
+
+      taskStore = null;
    }
 
    public String getId() {
@@ -44,6 +50,42 @@ public class Table {
 
    public DateTime getDateLastModified() {
       return dateLastModified;
+   }
+
+   public Task getTaskById(String id) throws TaskAccessException {
+      return taskStore.getTasks().getById(id);
+   }
+
+   public Set<String> getAllTaskIds() {
+      return Set.copyOf(taskIds);
+   }
+
+   public void linkTask(String id) {
+      taskIds.add(id);
+   }
+
+   public void unlinkTask(String id) {
+      taskIds.remove(id);
+   }
+
+   public Generator getGeneratorById(String id) throws TaskAccessException {
+      return taskStore.getGenerators().getById(id);
+   }
+
+   public Set<String> getAllGeneratorIds() {
+      return Set.copyOf(generatorIds);
+   }
+
+   public void linkGenerator(String id) {
+      generatorIds.add(id);
+   }
+
+   public void unlinkGenerator(String id) {
+      generatorIds.remove(id);
+   }
+
+   public void registerTaskStore(TaskStore taskStore) {
+      this.taskStore = taskStore;
    }
 
    public JSONObject toJson() {

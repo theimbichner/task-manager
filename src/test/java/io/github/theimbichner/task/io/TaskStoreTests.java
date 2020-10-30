@@ -12,6 +12,7 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -70,29 +71,25 @@ public class TaskStoreTests {
       Table table = new Table();
       Table overwriteTable = Table.fromJson(table.toJson());
 
-      Supplier<Task> taskSupplier = Task::new;
-      Supplier<Generator> generatorSupplier = Generator::new;
-      Supplier<Table> tableSupplier = Table::new;
-
       return Stream.of(
          Arguments.of(
             task,
             overwriteTask,
             taskStore.getTasks(),
             TASK_COMPARE,
-            taskSupplier),
+            (Supplier<Task>) Task::new),
          Arguments.of(
             generator,
             overwriteGenerator,
             taskStore.getGenerators(),
             GENERATOR_COMPARE,
-            generatorSupplier),
+            (Supplier<Generator>) Generator::new),
          Arguments.of(
             table,
             overwriteTable,
             taskStore.getTables(),
             TABLE_COMPARE,
-            tableSupplier));
+            (Supplier<Table>) Table::new));
    }
 
    @ParameterizedTest
@@ -252,5 +249,33 @@ public class TaskStoreTests {
       for (int i = 0; i < count; i++) {
          dataStore.save(supplier.get());
       }
+   }
+
+   @Test
+   void testGetTaskFromTable() throws TaskAccessException {
+      TaskStore taskStore = TaskStore.getDefault(TEST_ROOT);
+      Table table = new Table();
+      taskStore.getTables().save(table);
+      table = taskStore.getTables().getById(table.getId());
+
+      Task task = new Task();
+      taskStore.getTasks().save(task);
+      Task newTask = table.getTaskById(task.getId());
+
+      assertThat(newTask).usingComparator(TASK_COMPARE).isEqualTo(task);
+   }
+
+   @Test
+   void testGetGeneratorFromTable() throws TaskAccessException {
+      TaskStore taskStore = TaskStore.getDefault(TEST_ROOT);
+      Table table = new Table();
+      taskStore.getTables().save(table);
+      table = taskStore.getTables().getById(table.getId());
+
+      Generator generator = new Generator();
+      taskStore.getGenerators().save(generator);
+      Generator newGenerator = table.getGeneratorById(generator.getId());
+
+      assertThat(newGenerator).usingComparator(GENERATOR_COMPARE).isEqualTo(generator);
    }
 }

@@ -10,6 +10,36 @@ import io.github.theimbichner.task.Table;
 import io.github.theimbichner.task.Task;
 
 public class TaskStore {
+   private class TableLoader implements DataStore<Table> {
+      private final DataStore<Table> delegate;
+
+      public TableLoader(DataStore<Table> delegate) {
+         this.delegate = delegate;
+      }
+
+      @Override
+      public String getId(Table t) {
+         return delegate.getId(t);
+      }
+
+      @Override
+      public Table getById(String id) throws TaskAccessException {
+         Table result = delegate.getById(id);
+         result.registerTaskStore(TaskStore.this);
+         return result;
+      }
+
+      @Override
+      public void save(Table t) throws TaskAccessException {
+         delegate.save(t);
+      }
+
+      @Override
+      public void deleteById(String id) throws TaskAccessException {
+         delegate.deleteById(id);
+      }
+   }
+
    public static final int MAXIMUM_TASKS_CACHED = 10_000;
    public static final int MAXIMUM_GENERATORS_CACHED = 1000;
    public static final int MAXIMUM_TABLES_CACHED = 1000;
@@ -29,7 +59,7 @@ public class TaskStore {
    ) {
       this.tasks = tasks;
       this.generators = generators;
-      this.tables = tables;
+      this.tables = new TableLoader(tables);
    }
 
    public DataStore<Task> getTasks() {
