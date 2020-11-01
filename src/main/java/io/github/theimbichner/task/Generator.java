@@ -5,14 +5,18 @@ import java.util.UUID;
 import org.json.JSONObject;
 
 public class Generator {
-   private String id;
+   private final String id;
 
-   public Generator() {
-      id = UUID.randomUUID().toString();
+   private Generator(String id) {
+      this.id = id;
    }
 
    public String getId() {
       return id;
+   }
+
+   public static Generator createGenerator() {
+      return new Generator(UUID.randomUUID().toString());
    }
 
    public JSONObject toJson() {
@@ -22,8 +26,8 @@ public class Generator {
    }
 
    public static Generator fromJson(JSONObject json) {
-      Generator result = new Generator();
-      result.id = json.getString("id");
+      String id = json.getString("id");
+      Generator result = new Generator(id);
       return result;
    }
 }

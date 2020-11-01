@@ -14,7 +14,7 @@ public class TableTests {
    @Test
    void testNewTable() {
       DateTime before = new DateTime();
-      Table table = new Table();
+      Table table = Table.createTable();
       DateTime after = new DateTime();
 
       assertThat(table.getName()).isEqualTo("");
@@ -28,7 +28,7 @@ public class TableTests {
 
    @Test
    void testLinkUnlinkTasks() {
-      Table table = new Table();
+      Table table = Table.createTable();
       assertThat(table.getAllTaskIds()).isEqualTo(Set.of());
 
       table.linkTask("alpha");
@@ -49,7 +49,7 @@ public class TableTests {
 
    @Test
    void testLinkUnlinkGenerators() {
-      Table table = new Table();
+      Table table = Table.createTable();
       assertThat(table.getAllGeneratorIds()).isEqualTo(Set.of());
 
       table.linkGenerator("alpha");
@@ -70,7 +70,7 @@ public class TableTests {
 
    @Test
    void testToFromJson() {
-      Table table = new Table();
+      Table table = Table.createTable();
       table.linkTask("alpha");
       table.linkTask("beta");
       table.linkGenerator("gamma");
@@ -96,7 +96,7 @@ public class TableTests {
 
    @Test
    void testToFromJsonNoTasks() {
-      Table table = new Table();
+      Table table = Table.createTable();
       JSONObject json = table.toJson();
       Table newTable = Table.fromJson(json);
 

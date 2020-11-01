@@ -5,14 +5,18 @@ import java.util.UUID;
 import org.json.JSONObject;
 
 public class Task {
-   private String id;
+   private final String id;
 
-   public Task() {
-      id = UUID.randomUUID().toString();
+   public Task(String id) {
+      this.id = id;
    }
 
    public String getId() {
       return id;
+   }
+
+   public static Task createTask() {
+      return new Task(UUID.randomUUID().toString());
    }
 
    public JSONObject toJson() {
@@ -22,8 +26,8 @@ public class Task {
    }
 
    public static Task fromJson(JSONObject json) {
-      Task result = new Task();
-      result.id = json.getString("id");
+      String id = json.getString("id");
+      Task result = new Task(id);
       return result;
    }
 }

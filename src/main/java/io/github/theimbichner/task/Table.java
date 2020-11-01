@@ -14,7 +14,7 @@ import io.github.theimbichner.task.io.TaskStore;
 import io.github.theimbichner.task.time.DateTime;
 
 public class Table {
-   private String id;
+   private final String id;
    private String name;
    private DateTime dateCreated;
    private DateTime dateLastModified;
@@ -24,8 +24,8 @@ public class Table {
 
    private TaskStore taskStore;
 
-   public Table() {
-      id = UUID.randomUUID().toString();
+   private Table(String id) {
+      this.id = id;
       name = "";
       dateCreated = new DateTime();
       dateLastModified = dateCreated;
@@ -88,6 +88,10 @@ public class Table {
       this.taskStore = taskStore;
    }
 
+   public static Table createTable() {
+      return new Table(UUID.randomUUID().toString());
+   }
+
    public JSONObject toJson() {
       JSONObject json = new JSONObject();
       json.put("id", id);
@@ -107,8 +111,9 @@ public class Table {
    }
 
    public static Table fromJson(JSONObject json) {
-      Table result = new Table();
-      result.id = json.getString("id");
+      String id = json.getString("id");
+      Table result = new Table(id);
+
       result.name = json.getString("name");
       result.dateCreated = DateTime.fromJson(json.getJSONObject("dateCreated"));
       result.dateLastModified = DateTime.fromJson(json.getJSONObject("dateLastModified"));

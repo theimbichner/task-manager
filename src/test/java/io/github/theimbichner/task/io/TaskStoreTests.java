@@ -64,11 +64,11 @@ public class TaskStoreTests {
    }
 
    static Stream<Arguments> provideTaskGeneratorTable() {
-      Task task = new Task();
+      Task task = Task.createTask();
       Task overwriteTask = Task.fromJson(task.toJson());
-      Generator generator = new Generator();
+      Generator generator = Generator.createGenerator();
       Generator overwriteGenerator = Generator.fromJson(generator.toJson());
-      Table table = new Table();
+      Table table = Table.createTable();
       Table overwriteTable = Table.fromJson(table.toJson());
 
       return Stream.of(
@@ -77,19 +77,19 @@ public class TaskStoreTests {
             overwriteTask,
             taskStore.getTasks(),
             TASK_COMPARE,
-            (Supplier<Task>) Task::new),
+            (Supplier<Task>) Task::createTask),
          Arguments.of(
             generator,
             overwriteGenerator,
             taskStore.getGenerators(),
             GENERATOR_COMPARE,
-            (Supplier<Generator>) Generator::new),
+            (Supplier<Generator>) Generator::createGenerator),
          Arguments.of(
             table,
             overwriteTable,
             taskStore.getTables(),
             TABLE_COMPARE,
-            (Supplier<Table>) Table::new));
+            (Supplier<Table>) Table::createTable));
    }
 
    @ParameterizedTest
@@ -254,11 +254,11 @@ public class TaskStoreTests {
    @Test
    void testGetTaskFromTable() throws TaskAccessException {
       TaskStore taskStore = TaskStore.getDefault(TEST_ROOT);
-      Table table = new Table();
+      Table table = Table.createTable();
       taskStore.getTables().save(table);
       table = taskStore.getTables().getById(table.getId());
 
-      Task task = new Task();
+      Task task = Task.createTask();
       taskStore.getTasks().save(task);
       Task newTask = table.getTaskById(task.getId());
 
@@ -268,11 +268,11 @@ public class TaskStoreTests {
    @Test
    void testGetGeneratorFromTable() throws TaskAccessException {
       TaskStore taskStore = TaskStore.getDefault(TEST_ROOT);
-      Table table = new Table();
+      Table table = Table.createTable();
       taskStore.getTables().save(table);
       table = taskStore.getTables().getById(table.getId());
 
-      Generator generator = new Generator();
+      Generator generator = Generator.createGenerator();
       taskStore.getGenerators().save(generator);
       Generator newGenerator = table.getGeneratorById(generator.getId());
 
