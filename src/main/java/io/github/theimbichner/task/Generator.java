@@ -4,15 +4,33 @@ import java.util.UUID;
 
 import org.json.JSONObject;
 
-public class Generator {
+import io.github.theimbichner.task.io.Storable;
+import io.github.theimbichner.task.io.TaskStore;
+
+public class Generator implements Storable {
    private final String id;
+
+   private TaskStore taskStore;
 
    private Generator(String id) {
       this.id = id;
+
+      taskStore = null;
    }
 
+   @Override
    public String getId() {
       return id;
+   }
+
+   @Override
+   public void registerTaskStore(TaskStore taskStore) {
+      this.taskStore = taskStore;
+   }
+
+   @Override
+   public TaskStore getTaskStore() {
+      return taskStore;
    }
 
    public static Generator createGenerator() {

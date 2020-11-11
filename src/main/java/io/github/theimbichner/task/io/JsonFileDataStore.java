@@ -11,33 +11,25 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 
-public class JsonFileDataStore<T> implements DataStore<T> {
+public class JsonFileDataStore<T extends Storable> implements DataStore<T> {
    private static final String EXTENSION = ".json";
 
    private final File root;
-   private final Function<T, String> getId;
    private final Function<T, JSONObject> toJson;
    private final Function<JSONObject, T> fromJson;
 
    public JsonFileDataStore(
       File root,
-      Function<T, String> getId,
       Function<T, JSONObject> toJson,
       Function<JSONObject, T> fromJson
    ) {
       this.root = root;
-      this.getId = getId;
       this.toJson = toJson;
       this.fromJson = fromJson;
    }
 
    private File getFile(String filename) {
       return new File(root, filename + EXTENSION);
-   }
-
-   @Override
-   public String getId(T t) {
-      return getId.apply(t);
    }
 
    @Override
@@ -54,7 +46,7 @@ public class JsonFileDataStore<T> implements DataStore<T> {
 
    @Override
    public void save(T t) throws TaskAccessException {
-      String id = getId(t);
+      String id = t.getId();
       root.mkdirs();
       try (PrintWriter writer = new PrintWriter(getFile(id))) {
          toJson.apply(t).write(writer);

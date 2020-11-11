@@ -10,27 +10,22 @@ import io.github.theimbichner.task.Table;
 import io.github.theimbichner.task.Task;
 
 public class TaskStore {
-   private class TableLoader implements DataStore<Table> {
-      private final DataStore<Table> delegate;
+   private class TaskStoreLoader<T extends Storable> implements DataStore<T> {
+      private final DataStore<T> delegate;
 
-      public TableLoader(DataStore<Table> delegate) {
+      public TaskStoreLoader(DataStore<T> delegate) {
          this.delegate = delegate;
       }
 
       @Override
-      public String getId(Table t) {
-         return delegate.getId(t);
-      }
-
-      @Override
-      public Table getById(String id) throws TaskAccessException {
-         Table result = delegate.getById(id);
+      public T getById(String id) throws TaskAccessException {
+         T result = delegate.getById(id);
          result.registerTaskStore(TaskStore.this);
          return result;
       }
 
       @Override
-      public void save(Table t) throws TaskAccessException {
+      public void save(T t) throws TaskAccessException {
          delegate.save(t);
       }
 
@@ -57,9 +52,9 @@ public class TaskStore {
       DataStore<Generator> generators,
       DataStore<Table> tables
    ) {
-      this.tasks = tasks;
-      this.generators = generators;
-      this.tables = new TableLoader(tables);
+      this.tasks = new TaskStoreLoader<>(tasks);
+      this.generators = new TaskStoreLoader<>(generators);
+      this.tables = new TaskStoreLoader<>(tables);
    }
 
    public DataStore<Task> getTasks() {
@@ -79,21 +74,18 @@ public class TaskStore {
          new CachedDataStore<>(
             new JsonFileDataStore<>(
                new File(root, TASKS_FOLDER_NAME),
-               Task::getId,
                Task::toJson,
                Task::fromJson),
             MAXIMUM_TASKS_CACHED),
          new CachedDataStore<>(
             new JsonFileDataStore<>(
                new File(root, GENERATORS_FOLDER_NAME),
-               Generator::getId,
                Generator::toJson,
                Generator::fromJson),
             MAXIMUM_GENERATORS_CACHED),
          new CachedDataStore<>(
             new JsonFileDataStore<>(
                new File(root, TABLES_FOLDER_NAME),
-               Table::getId,
                Table::toJson,
                Table::fromJson),
             MAXIMUM_TABLES_CACHED));

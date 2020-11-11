@@ -9,11 +9,12 @@ import java.util.UUID;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import io.github.theimbichner.task.io.TaskAccessException;
+import io.github.theimbichner.task.io.Storable;
 import io.github.theimbichner.task.io.TaskStore;
+import io.github.theimbichner.task.schema.Property;
 import io.github.theimbichner.task.time.DateTime;
 
-public class Table {
+public class Table implements Storable {
    private final String id;
    private String name;
    private DateTime dateCreated;
@@ -36,6 +37,7 @@ public class Table {
       taskStore = null;
    }
 
+   @Override
    public String getId() {
       return id;
    }
@@ -52,10 +54,6 @@ public class Table {
       return dateLastModified;
    }
 
-   public Task getTaskById(String id) throws TaskAccessException {
-      return taskStore.getTasks().getById(id);
-   }
-
    public Set<String> getAllTaskIds() {
       return Set.copyOf(taskIds);
    }
@@ -66,10 +64,6 @@ public class Table {
 
    public void unlinkTask(String id) {
       taskIds.remove(id);
-   }
-
-   public Generator getGeneratorById(String id) throws TaskAccessException {
-      return taskStore.getGenerators().getById(id);
    }
 
    public Set<String> getAllGeneratorIds() {
@@ -84,8 +78,18 @@ public class Table {
       generatorIds.remove(id);
    }
 
+   @Override
    public void registerTaskStore(TaskStore taskStore) {
       this.taskStore = taskStore;
+   }
+
+   @Override
+   public TaskStore getTaskStore() {
+      return taskStore;
+   }
+
+   public Map<String, Property> getDefaultProperties() {
+      return new HashMap<>();
    }
 
    public static Table createTable() {

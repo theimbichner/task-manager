@@ -3,7 +3,7 @@ package io.github.theimbichner.task.io;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 
-public class CachedDataStore<T> implements DataStore<T> {
+public class CachedDataStore<T extends Storable> implements DataStore<T> {
    private final Cache<String, T> cache;
    private final DataStore<T> delegate;
 
@@ -12,11 +12,6 @@ public class CachedDataStore<T> implements DataStore<T> {
       cache = Caffeine.newBuilder()
          .maximumSize(maxSize)
          .build();
-   }
-
-   @Override
-   public String getId(T t) {
-      return delegate.getId(t);
    }
 
    @Override
@@ -32,7 +27,7 @@ public class CachedDataStore<T> implements DataStore<T> {
    @Override
    public void save(T t) throws TaskAccessException {
       delegate.save(t);
-      cache.put(getId(t), t);
+      cache.put(t.getId(), t);
    }
 
    @Override

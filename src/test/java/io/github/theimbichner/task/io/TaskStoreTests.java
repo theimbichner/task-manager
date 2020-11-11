@@ -12,7 +12,6 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -64,12 +63,14 @@ public class TaskStoreTests {
    }
 
    static Stream<Arguments> provideTaskGeneratorTable() {
-      Task task = Task.createTask();
-      Task overwriteTask = Task.fromJson(task.toJson());
-      Generator generator = Generator.createGenerator();
-      Generator overwriteGenerator = Generator.fromJson(generator.toJson());
       Table table = Table.createTable();
       Table overwriteTable = Table.fromJson(table.toJson());
+
+      Task task = Task.createTask(table);
+      Task overwriteTask = Task.fromJson(task.toJson());
+
+      Generator generator = Generator.createGenerator();
+      Generator overwriteGenerator = Generator.fromJson(generator.toJson());
 
       return Stream.of(
          Arguments.of(
@@ -77,205 +78,182 @@ public class TaskStoreTests {
             overwriteTask,
             taskStore.getTasks(),
             TASK_COMPARE,
-            (Supplier<Task>) Task::createTask),
+            (Supplier<Task>) () -> Task.createTask(table),
+            TaskStore.MAXIMUM_TASKS_CACHED),
          Arguments.of(
             generator,
             overwriteGenerator,
             taskStore.getGenerators(),
             GENERATOR_COMPARE,
-            (Supplier<Generator>) Generator::createGenerator),
+            (Supplier<Generator>) Generator::createGenerator,
+            TaskStore.MAXIMUM_GENERATORS_CACHED),
          Arguments.of(
             table,
             overwriteTable,
             taskStore.getTables(),
             TABLE_COMPARE,
-            (Supplier<Table>) Table::createTable));
+            (Supplier<Table>) Table::createTable,
+            TaskStore.MAXIMUM_TABLES_CACHED));
    }
 
    @ParameterizedTest
    @MethodSource("provideTaskGeneratorTable")
-   <T> void testWriteRead(
+   <T extends Storable> void testWriteRead(
       T t,
       T overwrite,
       DataStore<T> dataStore,
-      Comparator<T> comparator,
-      Supplier<T> supplier
+      Comparator<T> comparator
    ) throws TaskAccessException {
       dataStore.save(t);
-      T result = dataStore.getById(dataStore.getId(t));
+      T result = dataStore.getById(t.getId());
       assertThat(result).usingComparator(comparator).isEqualTo(t);
+      assertThat(result.getTaskStore()).isEqualTo(taskStore);
    }
 
    @ParameterizedTest
    @MethodSource("provideTaskGeneratorTable")
-   <T> void testWriteOverwriteRead(
+   <T extends Storable> void testWriteOverwriteRead(
       T t,
       T overwrite,
       DataStore<T> dataStore,
-      Comparator<T> comparator,
-      Supplier<T> supplier
+      Comparator<T> comparator
    ) throws TaskAccessException {
       dataStore.save(t);
       dataStore.save(overwrite);
-      T result = dataStore.getById(dataStore.getId(t));
+      T result = dataStore.getById(t.getId());
       assertThat(result).usingComparator(comparator).isEqualTo(overwrite);
+      assertThat(result.getTaskStore()).isEqualTo(taskStore);
    }
 
    @ParameterizedTest
    @MethodSource("provideTaskGeneratorTable")
-   <T> void testWriteDeleteRead(
+   <T extends Storable> void testWriteDeleteRead(
       T t,
       T overwrite,
       DataStore<T> dataStore,
-      Comparator<T> comparator,
-      Supplier<T> supplier
+      Comparator<T> comparator
    ) throws TaskAccessException {
       dataStore.save(t);
-      dataStore.deleteById(dataStore.getId(t));
+      dataStore.deleteById(t.getId());
       assertThatExceptionOfType(TaskAccessException.class)
-         .isThrownBy(() -> dataStore.getById(dataStore.getId(t)));
+         .isThrownBy(() -> dataStore.getById(t.getId()));
    }
 
    @ParameterizedTest
    @MethodSource("provideTaskGeneratorTable")
-   <T> void testWriteDeleteDelete(
+   <T extends Storable> void testWriteDeleteDelete(
       T t,
       T overwrite,
       DataStore<T> dataStore,
-      Comparator<T> comparator,
-      Supplier<T> supplier
+      Comparator<T> comparator
    ) throws TaskAccessException {
       dataStore.save(t);
-      dataStore.deleteById(dataStore.getId(t));
+      dataStore.deleteById(t.getId());
       assertThatExceptionOfType(TaskAccessException.class)
-         .isThrownBy(() -> dataStore.deleteById(dataStore.getId(t)));
+         .isThrownBy(() -> dataStore.deleteById(t.getId()));
    }
 
    @ParameterizedTest
    @MethodSource("provideTaskGeneratorTable")
-   <T> void testWriteDeleteOverwriteRead(
+   <T extends Storable> void testWriteDeleteOverwriteRead(
       T t,
       T overwrite,
       DataStore<T> dataStore,
-      Comparator<T> comparator,
-      Supplier<T> supplier
+      Comparator<T> comparator
    ) throws TaskAccessException {
       dataStore.save(t);
-      dataStore.deleteById(dataStore.getId(t));
+      dataStore.deleteById(t.getId());
       dataStore.save(overwrite);
-      T result = dataStore.getById(dataStore.getId(t));
+      T result = dataStore.getById(t.getId());
       assertThat(result).usingComparator(comparator).isEqualTo(overwrite);
+      assertThat(result.getTaskStore()).isEqualTo(taskStore);
    }
 
    @ParameterizedTest
    @MethodSource("provideTaskGeneratorTable")
-   <T> void testReadInvalid(
+   <T extends Storable> void testReadInvalid(
       T t,
       T overwrite,
       DataStore<T> dataStore,
-      Comparator<T> comparator,
-      Supplier<T> supplier
+      Comparator<T> comparator
    ) throws TaskAccessException {
       assertThatExceptionOfType(TaskAccessException.class)
-         .isThrownBy(() -> dataStore.getById(dataStore.getId(t)));
+         .isThrownBy(() -> dataStore.getById(t.getId()));
    }
 
    @ParameterizedTest
    @MethodSource("provideTaskGeneratorTable")
-   <T> void testDeleteInvalid(
+   <T extends Storable> void testDeleteInvalid(
       T t,
       T overwrite,
       DataStore<T> dataStore,
-      Comparator<T> comparator,
-      Supplier<T> supplier
+      Comparator<T> comparator
    ) throws TaskAccessException {
       assertThatExceptionOfType(TaskAccessException.class)
-         .isThrownBy(() -> dataStore.deleteById(dataStore.getId(t)));
+         .isThrownBy(() -> dataStore.deleteById(t.getId()));
    }
 
    @ParameterizedTest
    @MethodSource("provideTaskGeneratorTable")
-   <T> void testWriteUncacheRead(
+   <T extends Storable> void testWriteUncacheRead(
       T t,
       T overwrite,
       DataStore<T> dataStore,
       Comparator<T> comparator,
-      Supplier<T> supplier
+      Supplier<T> supplier,
+      int cacheSize
    ) throws TaskAccessException {
       dataStore.save(t);
-      uncache(dataStore, supplier);
-      T result = dataStore.getById(dataStore.getId(t));
+      uncache(dataStore, supplier, cacheSize);
+      T result = dataStore.getById(t.getId());
       assertThat(result).usingComparator(comparator).isEqualTo(t);
+      assertThat(result.getTaskStore()).isEqualTo(taskStore);
    }
 
    @ParameterizedTest
    @MethodSource("provideTaskGeneratorTable")
-   <T> void testWriteOverwriteUncacheRead(
+   <T extends Storable> void testWriteOverwriteUncacheRead(
       T t,
       T overwrite,
       DataStore<T> dataStore,
       Comparator<T> comparator,
-      Supplier<T> supplier
+      Supplier<T> supplier,
+      int cacheSize
    ) throws TaskAccessException {
       dataStore.save(t);
       dataStore.save(overwrite);
-      uncache(dataStore, supplier);
-      T result = dataStore.getById(dataStore.getId(t));
+      uncache(dataStore, supplier, cacheSize);
+      T result = dataStore.getById(t.getId());
       assertThat(result).usingComparator(comparator).isEqualTo(overwrite);
+      assertThat(result.getTaskStore()).isEqualTo(taskStore);
    }
 
    @ParameterizedTest
    @MethodSource("provideTaskGeneratorTable")
-   <T> void testWriteUncacheOverwriteUncacheRead(
+   <T extends Storable> void testWriteUncacheOverwriteUncacheRead(
       T t,
       T overwrite,
       DataStore<T> dataStore,
       Comparator<T> comparator,
-      Supplier<T> supplier
+      Supplier<T> supplier,
+      int cacheSize
    ) throws TaskAccessException {
       dataStore.save(t);
-      uncache(dataStore, supplier);
+      uncache(dataStore, supplier, cacheSize);
       dataStore.save(overwrite);
-      uncache(dataStore, supplier);
-      T result = dataStore.getById(dataStore.getId(t));
+      uncache(dataStore, supplier, cacheSize);
+      T result = dataStore.getById(t.getId());
       assertThat(result).usingComparator(comparator).isEqualTo(overwrite);
+      assertThat(result.getTaskStore()).isEqualTo(taskStore);
    }
 
-   <T> void uncache(DataStore<T> dataStore, Supplier<T> supplier) throws TaskAccessException {
-      int count = IntStream.of(
-         TaskStore.MAXIMUM_TASKS_CACHED,
-         TaskStore.MAXIMUM_GENERATORS_CACHED,
-         TaskStore.MAXIMUM_TABLES_CACHED).max().getAsInt();
+   <T extends Storable> void uncache(
+      DataStore<T> dataStore,
+      Supplier<T> supplier,
+      int count
+   ) throws TaskAccessException {
       for (int i = 0; i < count; i++) {
          dataStore.save(supplier.get());
       }
-   }
-
-   @Test
-   void testGetTaskFromTable() throws TaskAccessException {
-      TaskStore taskStore = TaskStore.getDefault(TEST_ROOT);
-      Table table = Table.createTable();
-      taskStore.getTables().save(table);
-      table = taskStore.getTables().getById(table.getId());
-
-      Task task = Task.createTask();
-      taskStore.getTasks().save(task);
-      Task newTask = table.getTaskById(task.getId());
-
-      assertThat(newTask).usingComparator(TASK_COMPARE).isEqualTo(task);
-   }
-
-   @Test
-   void testGetGeneratorFromTable() throws TaskAccessException {
-      TaskStore taskStore = TaskStore.getDefault(TEST_ROOT);
-      Table table = Table.createTable();
-      taskStore.getTables().save(table);
-      table = taskStore.getTables().getById(table.getId());
-
-      Generator generator = Generator.createGenerator();
-      taskStore.getGenerators().save(generator);
-      Generator newGenerator = table.getGeneratorById(generator.getId());
-
-      assertThat(newGenerator).usingComparator(GENERATOR_COMPARE).isEqualTo(generator);
    }
 }
