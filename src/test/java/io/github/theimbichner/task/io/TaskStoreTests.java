@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
+import java.time.Duration;
 import java.util.Comparator;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
@@ -19,6 +21,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 import io.github.theimbichner.task.Generator;
 import io.github.theimbichner.task.Table;
 import io.github.theimbichner.task.Task;
+import io.github.theimbichner.task.time.DatePattern;
+import io.github.theimbichner.task.time.UniformDatePattern;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -69,7 +73,11 @@ public class TaskStoreTests {
       Task task = Task.createTask(table);
       Task overwriteTask = Task.fromJson(task.toJson());
 
-      Generator generator = Generator.createGenerator();
+      String field = "";
+      DatePattern datePattern = new UniformDatePattern(
+         Instant.ofEpochSecond(0),
+         Duration.ofSeconds(100));
+      Generator generator = Generator.createGenerator(table, field, datePattern);
       Generator overwriteGenerator = Generator.fromJson(generator.toJson());
 
       return Stream.of(
@@ -85,7 +93,7 @@ public class TaskStoreTests {
             overwriteGenerator,
             taskStore.getGenerators(),
             GENERATOR_COMPARE,
-            (Supplier<Generator>) Generator::createGenerator,
+            (Supplier<Generator>) () -> Generator.createGenerator(table, field, datePattern),
             TaskStore.MAXIMUM_GENERATORS_CACHED),
          Arguments.of(
             table,
