@@ -260,7 +260,7 @@ public class TaskStoreTests {
       Supplier<T> supplier,
       int count
    ) throws TaskAccessException {
-      for (int i = 0; i < count; i++) {
+      for (int i = 0; i <= count; i++) {
          dataStore.save(supplier.get());
       }
    }

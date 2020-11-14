@@ -1,5 +1,6 @@
 package io.github.theimbichner.task;
 
+import java.time.Instant;
 import java.util.Set;
 
 import org.json.JSONObject;
@@ -13,17 +14,19 @@ import static org.assertj.core.api.Assertions.*;
 public class TableTests {
    @Test
    void testNewTable() {
-      DateTime before = new DateTime();
+      Instant before = Instant.now();
       Table table = Table.createTable();
-      DateTime after = new DateTime();
+      Instant after = Instant.now();
 
       assertThat(table.getName()).isEqualTo("");
 
-      assertThat(before.getStart()).isBeforeOrEqualTo(table.getDateCreated().getStart());
-      assertThat(after.getStart()).isAfterOrEqualTo(table.getDateCreated().getEnd());
-
-      assertThat(before.getStart()).isBeforeOrEqualTo(table.getDateLastModified().getStart());
-      assertThat(after.getStart()).isAfterOrEqualTo(table.getDateLastModified().getEnd());
+      assertThat(table.getDateCreated().getStart())
+         .isAfterOrEqualTo(before)
+         .isBeforeOrEqualTo(after)
+         .isEqualTo(table.getDateCreated().getEnd());
+      assertThat(table.getDateLastModified().getStart())
+         .isEqualTo(table.getDateCreated().getStart())
+         .isEqualTo(table.getDateLastModified().getEnd());
    }
 
    @Test
