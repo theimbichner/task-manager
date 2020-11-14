@@ -70,7 +70,7 @@ public class Generator implements Storable {
       return dateCreated;
    }
 
-   public DateTime getLastModified() {
+   public DateTime getDateLastModified() {
       return dateLastModified;
    }
 
@@ -82,7 +82,7 @@ public class Generator implements Storable {
       return templateMarkup;
    }
 
-   public Property getProperty(String key) {
+   public Property getTemplateProperty(String key) {
       return templateProperties.get(key);
    }
 
