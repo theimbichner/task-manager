@@ -12,6 +12,7 @@ import org.json.JSONObject;
 import io.github.theimbichner.task.io.Storable;
 import io.github.theimbichner.task.io.TaskStore;
 import io.github.theimbichner.task.schema.Property;
+import io.github.theimbichner.task.schema.TypeDescriptor;
 import io.github.theimbichner.task.time.DateTime;
 
 public class Table implements Storable {

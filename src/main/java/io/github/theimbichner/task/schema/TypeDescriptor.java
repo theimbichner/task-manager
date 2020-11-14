@@ -1,4 +1,4 @@
-package io.github.theimbichner.task;
+package io.github.theimbichner.task.schema;
 
 import java.util.Collections;
 import java.util.HashSet;

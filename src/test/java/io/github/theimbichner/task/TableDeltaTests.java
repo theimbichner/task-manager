@@ -6,6 +6,8 @@ import java.util.Set;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import io.github.theimbichner.task.schema.TypeDescriptor;
+
 import static org.assertj.core.api.Assertions.*;
 
 public class TableDeltaTests {

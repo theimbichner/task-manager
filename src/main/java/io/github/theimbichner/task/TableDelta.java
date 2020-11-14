@@ -4,6 +4,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+import io.github.theimbichner.task.schema.TypeDescriptor;
+
 public class TableDelta {
    private final Map<String, TypeDescriptor> properties;
    private final Optional<String> name;

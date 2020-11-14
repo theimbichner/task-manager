@@ -1,4 +1,4 @@
-package io.github.theimbichner.task;
+package io.github.theimbichner.task.schema;
 
 import java.util.LinkedHashSet;
 import java.util.stream.Stream;
