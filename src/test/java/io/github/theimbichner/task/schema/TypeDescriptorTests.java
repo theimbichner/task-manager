@@ -30,7 +30,7 @@ public class TypeDescriptorTests {
       TypeDescriptor type = TypeDescriptor.fromTypeName(typeName);
 
       assertThat(type.getTypeName()).isEqualTo(typeName);
-      assertThat(type.getNewDefaultValueInstance()).isEqualTo(expectedDefault);
+      assertThat(type.getDefaultValue().get()).isEqualTo(expectedDefault);
    }
 
    @ParameterizedTest
@@ -41,8 +41,7 @@ public class TypeDescriptorTests {
       TypeDescriptor newType = TypeDescriptor.fromJson(json);
 
       assertThat(newType.getTypeName()).isEqualTo(typeName);
-      assertThat(newType.getNewDefaultValueInstance())
-         .isEqualTo(expectedDefault);
+      assertThat(newType.getDefaultValue().get()).isEqualTo(expectedDefault);
       assertThat(newType.getClass()).isEqualTo(type.getClass());
    }
 
@@ -54,7 +53,7 @@ public class TypeDescriptorTests {
    @MethodSource("provideEnumTypeNames")
    void testEnumToFromJson(String typeName) {
       TypeDescriptor type = TypeDescriptor.fromTypeName(typeName);
-      TypeDescriptor.Enumeration enumType = (TypeDescriptor.Enumeration) type;
+      EnumerationTypeDescriptor enumType = (EnumerationTypeDescriptor) type;
 
       enumType = enumType
          .withEnumValues("alpha", "beta", "gamma")
@@ -63,7 +62,7 @@ public class TypeDescriptorTests {
 
       JSONObject json = enumType.toJson();
       TypeDescriptor newType = TypeDescriptor.fromJson(json);
-      TypeDescriptor.Enumeration newEnum = (TypeDescriptor.Enumeration) newType;
+      EnumerationTypeDescriptor newEnum = (EnumerationTypeDescriptor) newType;
 
       assertThat(newEnum.getEnumValues()).isEqualTo(enumType.getEnumValues());
    }
@@ -72,8 +71,8 @@ public class TypeDescriptorTests {
    @MethodSource("provideEnumTypeNames")
    void testEnumValues(String typeName) {
       TypeDescriptor type = TypeDescriptor.fromTypeName(typeName);
-      TypeDescriptor.Enumeration enumType = (TypeDescriptor.Enumeration) type;
-      TypeDescriptor.Enumeration newEnum;
+      EnumerationTypeDescriptor enumType = (EnumerationTypeDescriptor) type;
+      EnumerationTypeDescriptor newEnum;
 
       assertThat(enumType.getEnumValues()).isEmpty();
 

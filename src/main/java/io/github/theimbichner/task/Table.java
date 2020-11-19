@@ -1,5 +1,6 @@
 package io.github.theimbichner.task;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -10,10 +11,18 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import io.github.theimbichner.task.io.Storable;
+import io.github.theimbichner.task.io.TaskAccessException;
 import io.github.theimbichner.task.io.TaskStore;
 import io.github.theimbichner.task.schema.Property;
 import io.github.theimbichner.task.schema.TypeDescriptor;
 import io.github.theimbichner.task.time.DateTime;
+
+/*
+ * TODO restrict user property names to avoid collision with system properties.
+ * Name
+ * Date Created
+ * Date Last Modified
+ */
 
 public class Table implements Storable {
    private final String id;
@@ -55,15 +64,19 @@ public class Table implements Storable {
       return dateLastModified;
    }
 
-   public Set<String> getAllTaskIds() {
+   public Set<String> getAllTaskIds(Instant timestamp) throws TaskAccessException {
+      for (String s : generatorIds) {
+         Generator generator = taskStore.getGenerators().getById(s);
+         taskIds.addAll(generator.generateTasks(timestamp));
+      }
       return Set.copyOf(taskIds);
    }
 
-   public void linkTask(String id) {
+   void linkTask(String id) {
       taskIds.add(id);
    }
 
-   public void unlinkTask(String id) {
+   void unlinkTask(String id) {
       taskIds.remove(id);
    }
 
@@ -71,11 +84,11 @@ public class Table implements Storable {
       return Set.copyOf(generatorIds);
    }
 
-   public void linkGenerator(String id) {
+   void linkGenerator(String id) {
       generatorIds.add(id);
    }
 
-   public void unlinkGenerator(String id) {
+   void unlinkGenerator(String id) {
       generatorIds.remove(id);
    }
 
@@ -90,7 +103,11 @@ public class Table implements Storable {
    }
 
    public Map<String, Property> getDefaultProperties() {
-      return new HashMap<>();
+      Map<String, Property> result = new HashMap<>();
+      for (String key : schema.keySet()) {
+         result.put(key, schema.get(key).getDefaultValue());
+      }
+      return result;
    }
 
    public static Table createTable() {

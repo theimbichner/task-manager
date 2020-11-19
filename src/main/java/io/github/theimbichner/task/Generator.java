@@ -1,16 +1,22 @@
 package io.github.theimbichner.task;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import io.github.theimbichner.task.io.Storable;
+import io.github.theimbichner.task.io.TaskAccessException;
 import io.github.theimbichner.task.io.TaskStore;
 import io.github.theimbichner.task.schema.Property;
 import io.github.theimbichner.task.time.DateTime;
@@ -22,7 +28,7 @@ public class Generator implements Storable {
    private DateTime dateCreated;
    private DateTime dateLastModified;
    private String templateName;
-   private String templateMarkup;
+   private Optional<String> templateMarkup;
    private final String templateTableId;
    private final Map<String, Property> templateProperties;
    private long templateDuration;
@@ -48,7 +54,7 @@ public class Generator implements Storable {
       dateCreated = new DateTime();
       dateLastModified = dateCreated;
       templateName = "";
-      templateMarkup = null;
+      templateMarkup = Optional.empty();
       templateProperties = new HashMap<>();
       templateDuration = 0;
       generationLastTimestamp = Instant.now();
@@ -79,7 +85,15 @@ public class Generator implements Storable {
    }
 
    public String getTemplateMarkup() {
-      return templateMarkup;
+      return templateMarkup.orElse(null);
+   }
+
+   public String getTemplateTableId() {
+      return templateTableId;
+   }
+
+   public Set<String> getTemplatePropertyNames() {
+      return Set.copyOf(templateProperties.keySet());
    }
 
    public Property getTemplateProperty(String key) {
@@ -96,6 +110,64 @@ public class Generator implements Storable {
 
    public DatePattern getGenerationDatePattern() {
       return generationDatePattern;
+   }
+
+   void unlinkTask(String id) {
+      taskIds.remove(id);
+   }
+
+   public void modify(GeneratorDelta delta) throws TaskAccessException {
+      if (delta.isEmpty()) {
+         return;
+      }
+
+      for (String key : delta.getProperties().keySet()) {
+         if (key.equals(generationField)) {
+            throw new IllegalArgumentException("Cannot modify generator generationField");
+         }
+         templateProperties.merge(key, delta.getProperties().get(key), (old, v) -> v);
+      }
+
+      name = delta.getName().orElse(name);
+      templateName = delta.getTemplateName().orElse(templateName);
+      templateMarkup = delta.getTemplateMarkup().orElse(templateMarkup);
+      templateDuration = delta.getTemplateDuration().orElse(templateDuration);
+
+      TaskDelta taskDelta = delta.asTaskDelta();
+      for (String id : taskIds) {
+         Task task = taskStore.getTasks().getById(id);
+         task.modify(taskDelta, false);
+      }
+
+      dateLastModified = new DateTime();
+   }
+
+   // TODO verify tasks are stored in taskIds in order
+   void unlinkTasksBefore(String taskId) throws TaskAccessException {
+      Iterator<String> iterator = taskIds.iterator();
+      while (iterator.hasNext()) {
+         String nextId = iterator.next();
+         if (nextId.equals(taskId)) {
+            return;
+         }
+         Task task = taskStore.getTasks().getById(nextId);
+         task.unlinkGenerator();
+         iterator.remove();
+      }
+   }
+
+   List<String> generateTasks(Instant timestamp) {
+      if (!timestamp.isAfter(generationLastTimestamp)) {
+         return new ArrayList<>();
+      }
+      List<String> result = generationDatePattern
+         .getDates(generationLastTimestamp, timestamp)
+         .stream()
+         .map(instant -> Task.newSeriesTask(this, instant).getId())
+         .peek(taskIds::add)
+         .collect(Collectors.toList());
+      generationLastTimestamp = timestamp;
+      return result;
    }
 
    @Override
@@ -123,7 +195,7 @@ public class Generator implements Storable {
       json.put("dateCreated", dateCreated.toJson());
       json.put("dateLastModified", dateLastModified.toJson());
       json.put("templateName", templateName);
-      json.put("templateMarkup", templateMarkup == null ? JSONObject.NULL : templateMarkup);
+      json.put("templateMarkup", templateMarkup.map(s -> (Object) s).orElse(JSONObject.NULL));
       json.put("templateTable", templateTableId);
       json.put("templateDuration", templateDuration);
       json.put("generationLastTimestamp", generationLastTimestamp.toString());
@@ -152,7 +224,7 @@ public class Generator implements Storable {
       result.dateCreated = DateTime.fromJson(json.getJSONObject("dateCreated"));
       result.dateLastModified = DateTime.fromJson(json.getJSONObject("dateLastModified"));
       result.templateName = json.getString("templateName");
-      result.templateMarkup = json.optString("templateMarkup", null);
+      result.templateMarkup = Optional.ofNullable(json.optString("templateMarkup", null));
       result.templateDuration = json.getLong("templateDuration");
       result.generationLastTimestamp = Instant.parse(json.getString("generationLastTimestamp"));
 

@@ -3,17 +3,19 @@ package io.github.theimbichner.task;
 import java.util.Map;
 import java.util.Optional;
 
+import io.github.theimbichner.task.schema.Property;
+
 public class TaskDelta {
-   private final Map<String, Object> properties;
+   private final Map<String, Property> properties;
    private final Optional<String> name;
    private final Optional<Optional<String>> markup;
-   private final Optional<Integer> duration;
+   private final Optional<Long> duration;
 
    public TaskDelta(
-      Map<String, Object> properties,
+      Map<String, Property> properties,
       String name,
       Optional<String> markup,
-      Integer duration
+      Long duration
    ) {
       this.properties = Map.copyOf(properties);
       this.name = Optional.ofNullable(name);
@@ -21,7 +23,7 @@ public class TaskDelta {
       this.duration = Optional.ofNullable(duration);
    }
 
-   public Map<String, Object> getProperties() {
+   public Map<String, Property> getProperties() {
       return properties;
    }
 
@@ -33,7 +35,11 @@ public class TaskDelta {
       return markup;
    }
 
-   public Optional<Integer> getDuration() {
+   public Optional<Long> getDuration() {
       return duration;
+   }
+
+   public boolean isEmpty() {
+      return name.isEmpty() && markup.isEmpty() && duration.isEmpty() && properties.isEmpty();
    }
 }

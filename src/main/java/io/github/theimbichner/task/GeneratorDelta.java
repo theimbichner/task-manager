@@ -3,19 +3,21 @@ package io.github.theimbichner.task;
 import java.util.Map;
 import java.util.Optional;
 
+import io.github.theimbichner.task.schema.Property;
+
 public class GeneratorDelta {
-   private final Map<String, Object> properties;
+   private final Map<String, Property> properties;
    private final Optional<String> name;
    private final Optional<String> templateName;
    private final Optional<Optional<String>> templateMarkup;
-   private final Optional<Integer> templateDuration;
+   private final Optional<Long> templateDuration;
 
    public GeneratorDelta(
-      Map<String, Object> properties,
+      Map<String, Property> properties,
       String name,
       String templateName,
       Optional<String> templateMarkup,
-      Integer templateDuration
+      Long templateDuration
    ) {
       this.properties = Map.copyOf(properties);
       this.name = Optional.ofNullable(name);
@@ -24,7 +26,7 @@ public class GeneratorDelta {
       this.templateDuration = Optional.ofNullable(templateDuration);
    }
 
-   public Map<String, Object> getProperties() {
+   public Map<String, Property> getProperties() {
       return properties;
    }
 
@@ -40,8 +42,16 @@ public class GeneratorDelta {
       return templateMarkup;
    }
 
-   public Optional<Integer> getTemplateDuration() {
+   public Optional<Long> getTemplateDuration() {
       return templateDuration;
+   }
+
+   public boolean isEmpty() {
+      return name.isEmpty()
+         && templateName.isEmpty()
+         && templateMarkup.isEmpty()
+         && templateDuration.isEmpty()
+         && properties.isEmpty();
    }
 
    public TaskDelta asTaskDelta() {

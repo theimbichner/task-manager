@@ -6,22 +6,28 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import io.github.theimbichner.task.schema.Property;
+
 import static org.assertj.core.api.Assertions.*;
 
 public class GeneratorDeltaTests {
-   static Map<String, Object> properties;
+   static Map<String, Property> properties;
    static String name;
    static String templateName;
    static String templateMarkup;
-   static Integer templateDuration;
+   static Long templateDuration;
 
    @BeforeAll
    static void beforeAll() {
-      properties = Map.of("alpha", 1, "beta", 2, "gamma", 3, "delta", 4);
+      properties = Map.of(
+         "alpha", Property.of(1),
+         "beta", Property.of(2),
+         "gamma", Property.of(3),
+         "delta", Property.of(4));
       name = "epsilon";
       templateName = "zeta";
       templateMarkup = "eta";
-      templateDuration = 123456;
+      templateDuration = 123456L;
    }
 
    @Test

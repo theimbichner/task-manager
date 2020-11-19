@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+import io.github.theimbichner.task.schema.Property;
 import io.github.theimbichner.task.schema.TypeDescriptor;
 
 public class TableDelta {
@@ -23,12 +24,10 @@ public class TableDelta {
       return name;
    }
 
-   private Map<String, Object> getTaskProperties() {
-      Map<String, Object> result = new HashMap<>();
+   private Map<String, Property> getTaskProperties() {
+      Map<String, Property> result = new HashMap<>();
       for (String s : properties.keySet()) {
-         result.put(s, Optional.ofNullable(properties.get(s))
-            .map(TypeDescriptor::getNewDefaultValueInstance)
-            .orElse(null));
+         result.put(s, properties.get(s) == null ? null : properties.get(s).getDefaultValue());
       }
 
       return result;

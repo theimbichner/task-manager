@@ -6,13 +6,14 @@ import java.util.Set;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import io.github.theimbichner.task.schema.Property;
 import io.github.theimbichner.task.schema.TypeDescriptor;
 
 import static org.assertj.core.api.Assertions.*;
 
 public class TableDeltaTests {
    static Map<String, TypeDescriptor> properties;
-   static Map<String, Object> taskProperties;
+   static Map<String, Property> taskProperties;
    static String name;
 
    @BeforeAll
@@ -22,9 +23,9 @@ public class TableDeltaTests {
          "beta", TypeDescriptor.fromTypeName("String"),
          "gamma", TypeDescriptor.fromTypeName("Boolean"));
       taskProperties = Map.of(
-         "alpha", Set.of(),
-         "beta", "",
-         "gamma", false);
+         "alpha", Property.of(Set.of()),
+         "beta", Property.of(""),
+         "gamma", Property.of(false));
       name = "delta";
    }
 

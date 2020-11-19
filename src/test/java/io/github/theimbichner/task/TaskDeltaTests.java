@@ -6,20 +6,26 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import io.github.theimbichner.task.schema.Property;
+
 import static org.assertj.core.api.Assertions.*;
 
 public class TaskDeltaTests {
-   static Map<String, Object> properties;
+   static Map<String, Property> properties;
    static String name;
    static String markup;
-   static Integer duration;
+   static Long duration;
 
    @BeforeAll
    static void beforeAll() {
-      properties = Map.of("alpha", 1, "beta", 2, "gamma", 3, "delta", 4);
+      properties = Map.of(
+         "alpha", Property.of(1),
+         "beta", Property.of(2),
+         "gamma", Property.of(3),
+         "delta", Property.of(4));
       name = "epsilon";
       markup = "zeta";
-      duration = 123456;
+      duration = 123456L;
    }
 
    @Test
