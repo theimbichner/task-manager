@@ -1,17 +1,37 @@
 package io.github.theimbichner.task;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Set;
 
 import org.json.JSONObject;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import io.github.theimbichner.task.io.InMemoryDataStore;
 import io.github.theimbichner.task.io.TaskAccessException;
+import io.github.theimbichner.task.io.TaskStore;
+import io.github.theimbichner.task.time.DatePattern;
+import io.github.theimbichner.task.time.UniformDatePattern;
 
 import static org.assertj.core.api.Assertions.*;
 
 public class TableTests {
+   static TaskStore inMemoryTaskStore;
+   static DatePattern datePattern;
+
+   @BeforeAll
+   static void beforeAll() {
+      inMemoryTaskStore = new TaskStore(
+         new InMemoryDataStore<>(),
+         new InMemoryDataStore<>(),
+         new InMemoryDataStore<>());
+      datePattern = new UniformDatePattern(
+         Instant.ofEpochSecond(5),
+         Duration.ofSeconds(7));
+   }
+
    @Test
    void testNewTable() {
       Instant before = Instant.now();
@@ -76,12 +96,19 @@ public class TableTests {
    @Test
    void testToFromJson() throws TaskAccessException {
       Table table = Table.createTable();
+      table.registerTaskStore(inMemoryTaskStore);
+
+      Generator generator = Generator.createGenerator(table, "", datePattern);
+      inMemoryTaskStore.getGenerators().save(generator);
+      String generatorId = generator.getId();
+
       table.linkTask("alpha");
       table.linkTask("beta");
-      table.linkGenerator("gamma");
+      table.linkGenerator(generatorId);
 
       JSONObject json = table.toJson();
       Table newTable = Table.fromJson(json);
+      newTable.registerTaskStore(inMemoryTaskStore);
 
       assertThat(newTable.getId()).isEqualTo(table.getId());
       assertThat(newTable.getName()).isEqualTo(table.getName());
@@ -96,7 +123,7 @@ public class TableTests {
          .isEqualTo(table.getDateLastModified().getEnd());
 
       assertThat(newTable.getAllTaskIds(Instant.now())).isEqualTo(Set.of("alpha", "beta"));
-      assertThat(newTable.getAllGeneratorIds()).isEqualTo(Set.of("gamma"));
+      assertThat(newTable.getAllGeneratorIds()).isEqualTo(Set.of(generatorId));
    }
 
    @Test
