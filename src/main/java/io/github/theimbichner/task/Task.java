@@ -61,6 +61,10 @@ public class Task implements Storable {
       return markup.orElse(null);
    }
 
+   public String getGeneratorId() {
+      return generatorId;
+   }
+
    public Property getProperty(String key) {
       return properties.get(key);
    }

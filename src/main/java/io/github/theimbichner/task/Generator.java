@@ -35,7 +35,7 @@ public class Generator implements Storable {
    private Instant generationLastTimestamp;
    private final String generationField;
    private final DatePattern generationDatePattern;
-   private final Set<String> taskIds;
+   private final LinkedHashSet<String> taskIds;
 
    private TaskStore taskStore;
 
@@ -57,7 +57,7 @@ public class Generator implements Storable {
       templateMarkup = Optional.empty();
       templateProperties = new HashMap<>();
       templateDuration = 0;
-      generationLastTimestamp = Instant.now();
+      generationLastTimestamp = dateCreated.getStart();
       taskIds = new LinkedHashSet<>();
 
       taskStore = null;
@@ -125,7 +125,13 @@ public class Generator implements Storable {
          if (key.equals(generationField)) {
             throw new IllegalArgumentException("Cannot modify generator generationField");
          }
-         templateProperties.merge(key, delta.getProperties().get(key), (old, v) -> v);
+         Property newProperty = delta.getProperties().get(key);
+         if (newProperty == Property.DELETE) {
+            templateProperties.remove(key);
+         }
+         else {
+            templateProperties.put(key, newProperty);
+         }
       }
 
       name = delta.getName().orElse(name);
@@ -142,8 +148,11 @@ public class Generator implements Storable {
       dateLastModified = new DateTime();
    }
 
-   // TODO verify tasks are stored in taskIds in order
    void unlinkTasksBefore(String taskId) throws TaskAccessException {
+      if (!taskIds.contains(taskId)) {
+         throw new IllegalArgumentException("Task not found in generator");
+      }
+
       Iterator<String> iterator = taskIds.iterator();
       while (iterator.hasNext()) {
          String nextId = iterator.next();
@@ -156,14 +165,17 @@ public class Generator implements Storable {
       }
    }
 
-   List<String> generateTasks(Instant timestamp) {
+   List<String> generateTasks(Instant timestamp) throws TaskAccessException {
       if (!timestamp.isAfter(generationLastTimestamp)) {
          return new ArrayList<>();
       }
       List<String> result = generationDatePattern
          .getDates(generationLastTimestamp, timestamp)
          .stream()
-         .map(instant -> Task.newSeriesTask(this, instant).getId())
+         .map(instant -> Task.newSeriesTask(this, instant))
+         // TODO fix when refactoring TaskAccessException
+         .peek(task -> { try { taskStore.getTasks().save(task); } catch (TaskAccessException e) {} })
+         .map(Task::getId)
          .peek(taskIds::add)
          .collect(Collectors.toList());
       generationLastTimestamp = timestamp;

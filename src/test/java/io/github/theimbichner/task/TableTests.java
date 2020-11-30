@@ -18,15 +18,12 @@ import io.github.theimbichner.task.time.UniformDatePattern;
 import static org.assertj.core.api.Assertions.*;
 
 public class TableTests {
-   static TaskStore inMemoryTaskStore;
+   static TaskStore taskStore;
    static DatePattern datePattern;
 
    @BeforeAll
    static void beforeAll() {
-      inMemoryTaskStore = new TaskStore(
-         new InMemoryDataStore<>(),
-         new InMemoryDataStore<>(),
-         new InMemoryDataStore<>());
+      taskStore = InMemoryDataStore.createTaskStore();
       datePattern = new UniformDatePattern(
          Instant.ofEpochSecond(5),
          Duration.ofSeconds(7));
@@ -96,10 +93,10 @@ public class TableTests {
    @Test
    void testToFromJson() throws TaskAccessException {
       Table table = Table.createTable();
-      table.registerTaskStore(inMemoryTaskStore);
+      table.registerTaskStore(taskStore);
 
       Generator generator = Generator.createGenerator(table, "", datePattern);
-      inMemoryTaskStore.getGenerators().save(generator);
+      taskStore.getGenerators().save(generator);
       String generatorId = generator.getId();
 
       table.linkTask("alpha");
@@ -108,7 +105,7 @@ public class TableTests {
 
       JSONObject json = table.toJson();
       Table newTable = Table.fromJson(json);
-      newTable.registerTaskStore(inMemoryTaskStore);
+      newTable.registerTaskStore(taskStore);
 
       assertThat(newTable.getId()).isEqualTo(table.getId());
       assertThat(newTable.getName()).isEqualTo(table.getName());

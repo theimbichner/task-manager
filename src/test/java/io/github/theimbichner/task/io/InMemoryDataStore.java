@@ -6,6 +6,13 @@ import java.util.Map;
 public class InMemoryDataStore<T extends Storable> implements DataStore<T> {
    private Map<String, T> data = new HashMap<>();
 
+   public static TaskStore createTaskStore() {
+      return new TaskStore(
+         new InMemoryDataStore<>(),
+         new InMemoryDataStore<>(),
+         new InMemoryDataStore<>());
+   }
+
    @Override
    public T getById(String id) throws TaskAccessException {
       if (!data.containsKey(id)) {

@@ -1,5 +1,7 @@
 package io.github.theimbichner.task.schema;
 
+import java.util.Objects;
+
 import org.json.JSONObject;
 
 public interface Property {
@@ -17,26 +19,38 @@ public interface Property {
 
       @Override
       public JSONObject toJson() {
-         return null;
+         return new JSONObject();
       }
 
       @Override
       public boolean equals(Object obj) {
          if (obj instanceof Property) {
-            return this.get().equals(((Property) obj).get());
+            return Objects.equals(get(), ((Property) obj).get());
          }
          return false;
       }
    }
 
+   Property DELETE = new Property() {
+      @Override
+      public Object get() {
+         return this;
+      }
+
+      @Override
+      public JSONObject toJson() {
+         return null;
+      }
+   };
+
    JSONObject toJson();
    Object get();
 
-   public static Property fromJson(JSONObject json) {
-      return null;
+   static Property fromJson(JSONObject json) {
+      return Property.of(null);
    }
 
-   public static Property of(Object obj) {
+   static Property of(Object obj) {
       return new SimpleExposingProperty(obj);
    }
 }
