@@ -31,53 +31,87 @@ public class GeneratorDeltaTests {
    }
 
    @Test
-   void testName() {
-      GeneratorDelta delta = new GeneratorDelta(properties, name, null, null, null);
+   void testEmpty() {
+      GeneratorDelta delta = new GeneratorDelta(Map.of(), null, null, null, null);
+      assertThat(delta.getProperties()).isEmpty();
+      assertThat(delta.getName()).isEmpty();
+      assertThat(delta.getTemplateName()).isEmpty();
+      assertThat(delta.getTemplateMarkup()).isEmpty();
+      assertThat(delta.getTemplateDuration()).isEmpty();
+
+      assertThat(delta.isEmpty()).isTrue();
+   }
+
+   @Test
+   void testProperties() {
+      GeneratorDelta delta = new GeneratorDelta(properties, null, null, null, null);
       assertThat(delta.getProperties()).isEqualTo(properties);
+      assertThat(delta.getName()).isEmpty();
+      assertThat(delta.getTemplateName()).isEmpty();
+      assertThat(delta.getTemplateMarkup()).isEmpty();
+      assertThat(delta.getTemplateDuration()).isEmpty();
+
+      assertThat(delta.isEmpty()).isFalse();
+   }
+
+   @Test
+   void testName() {
+      GeneratorDelta delta = new GeneratorDelta(Map.of(), name, null, null, null);
+      assertThat(delta.getProperties()).isEmpty();
       assertThat(delta.getName()).hasValue(name);
       assertThat(delta.getTemplateName()).isEmpty();
       assertThat(delta.getTemplateMarkup()).isEmpty();
       assertThat(delta.getTemplateDuration()).isEmpty();
+
+      assertThat(delta.isEmpty()).isFalse();
    }
 
    @Test
    void testTemplateName() {
-      GeneratorDelta delta = new GeneratorDelta(properties, null, templateName, null, null);
-      assertThat(delta.getProperties()).isEqualTo(properties);
+      GeneratorDelta delta = new GeneratorDelta(Map.of(), null, templateName, null, null);
+      assertThat(delta.getProperties()).isEmpty();
       assertThat(delta.getName()).isEmpty();
       assertThat(delta.getTemplateName()).hasValue(templateName);
       assertThat(delta.getTemplateMarkup()).isEmpty();
       assertThat(delta.getTemplateDuration()).isEmpty();
+
+      assertThat(delta.isEmpty()).isFalse();
    }
 
    @Test
    void testTemplateMarkup() {
-      GeneratorDelta delta = new GeneratorDelta(properties, null, null, Optional.of(templateMarkup), null);
-      assertThat(delta.getProperties()).isEqualTo(properties);
+      GeneratorDelta delta = new GeneratorDelta(Map.of(), null, null, Optional.of(templateMarkup), null);
+      assertThat(delta.getProperties()).isEmpty();
       assertThat(delta.getName()).isEmpty();
       assertThat(delta.getTemplateName()).isEmpty();
       assertThat(delta.getTemplateMarkup()).hasValue(Optional.of(templateMarkup));
       assertThat(delta.getTemplateDuration()).isEmpty();
+
+      assertThat(delta.isEmpty()).isFalse();
    }
 
    @Test
    void testTemplateMarkupEmpty() {
-      GeneratorDelta delta = new GeneratorDelta(properties, null, null, Optional.empty(), null);
-      assertThat(delta.getProperties()).isEqualTo(properties);
+      GeneratorDelta delta = new GeneratorDelta(Map.of(), null, null, Optional.empty(), null);
+      assertThat(delta.getProperties()).isEmpty();
       assertThat(delta.getName()).isEmpty();
       assertThat(delta.getTemplateName()).isEmpty();
       assertThat(delta.getTemplateMarkup()).hasValue(Optional.empty());
       assertThat(delta.getTemplateDuration()).isEmpty();
+
+      assertThat(delta.isEmpty()).isFalse();
    }
 
    @Test
    void testTemplateDuration() {
-      GeneratorDelta delta = new GeneratorDelta(properties, null, null, null, templateDuration);
-      assertThat(delta.getProperties()).isEqualTo(properties);
+      GeneratorDelta delta = new GeneratorDelta(Map.of(), null, null, null, templateDuration);
+      assertThat(delta.getProperties()).isEmpty();
       assertThat(delta.getName()).isEmpty();
       assertThat(delta.getTemplateName()).isEmpty();
       assertThat(delta.getTemplateMarkup()).isEmpty();
       assertThat(delta.getTemplateDuration()).isEqualTo(Optional.of(templateDuration));
+
+      assertThat(delta.isEmpty()).isFalse();
    }
 
    @Test
