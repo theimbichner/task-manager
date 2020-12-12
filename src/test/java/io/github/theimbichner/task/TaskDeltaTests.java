@@ -29,38 +29,68 @@ public class TaskDeltaTests {
    }
 
    @Test
-   void testName() {
-      TaskDelta delta = new TaskDelta(properties, name, null, null);
+   void testEmpty() {
+      TaskDelta delta = new TaskDelta(Map.of(), null, null, null);
+      assertThat(delta.getProperties()).isEmpty();
+      assertThat(delta.getName()).isEmpty();
+      assertThat(delta.getMarkup()).isEmpty();
+      assertThat(delta.getDuration()).isEmpty();
+
+      assertThat(delta.isEmpty()).isTrue();
+   }
+
+   @Test
+   void testProperties() {
+      TaskDelta delta = new TaskDelta(properties, null, null, null);
       assertThat(delta.getProperties()).isEqualTo(properties);
+      assertThat(delta.getName()).isEmpty();
+      assertThat(delta.getMarkup()).isEmpty();
+      assertThat(delta.getDuration()).isEmpty();
+
+      assertThat(delta.isEmpty()).isFalse();
+   }
+
+   @Test
+   void testName() {
+      TaskDelta delta = new TaskDelta(Map.of(), name, null, null);
+      assertThat(delta.getProperties()).isEmpty();
       assertThat(delta.getName()).hasValue(name);
       assertThat(delta.getMarkup()).isEmpty();
       assertThat(delta.getDuration()).isEmpty();
+
+      assertThat(delta.isEmpty()).isFalse();
    }
 
    @Test
    void testMarkup() {
-      TaskDelta delta = new TaskDelta(properties, null, Optional.of(markup), null);
-      assertThat(delta.getProperties()).isEqualTo(properties);
+      TaskDelta delta = new TaskDelta(Map.of(), null, Optional.of(markup), null);
+      assertThat(delta.getProperties()).isEmpty();
       assertThat(delta.getName()).isEmpty();
       assertThat(delta.getMarkup()).hasValue(Optional.of(markup));
       assertThat(delta.getDuration()).isEmpty();
+
+      assertThat(delta.isEmpty()).isFalse();
    }
 
    @Test
    void testMarkupEmpty() {
-      TaskDelta delta = new TaskDelta(properties, null, Optional.empty(), null);
-      assertThat(delta.getProperties()).isEqualTo(properties);
+      TaskDelta delta = new TaskDelta(Map.of(), null, Optional.empty(), null);
+      assertThat(delta.getProperties()).isEmpty();
       assertThat(delta.getName()).isEmpty();
       assertThat(delta.getMarkup()).hasValue(Optional.empty());
       assertThat(delta.getDuration()).isEmpty();
+
+      assertThat(delta.isEmpty()).isFalse();
    }
 
    @Test
    void testDuration() {
-      TaskDelta delta = new TaskDelta(properties, null, null, duration);
-      assertThat(delta.getProperties()).isEqualTo(properties);
+      TaskDelta delta = new TaskDelta(Map.of(), null, null, duration);
+      assertThat(delta.getProperties()).isEmpty();
       assertThat(delta.getName()).isEmpty();
       assertThat(delta.getMarkup()).isEmpty();
       assertThat(delta.getDuration()).hasValue(duration);
+
+      assertThat(delta.isEmpty()).isFalse();
    }
 }

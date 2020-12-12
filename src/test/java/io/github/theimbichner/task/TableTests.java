@@ -3,6 +3,7 @@ package io.github.theimbichner.task;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import org.json.JSONObject;
 
@@ -19,14 +20,14 @@ import static org.assertj.core.api.Assertions.*;
 
 public class TableTests {
    static TaskStore taskStore;
-   static DatePattern datePattern;
 
    @BeforeAll
    static void beforeAll() {
       taskStore = InMemoryDataStore.createTaskStore();
-      datePattern = new UniformDatePattern(
-         Instant.ofEpochSecond(5),
-         Duration.ofSeconds(7));
+   }
+
+   private static DatePattern getDatePattern(int step) {
+      return new UniformDatePattern(Instant.now().plusSeconds(1), Duration.ofSeconds(step));
    }
 
    @Test
@@ -91,11 +92,33 @@ public class TableTests {
    }
 
    @Test
+   void testGetAllTaskIdsWithGenerators() throws TaskAccessException {
+      Table table = Table.createTable();
+      table.registerTaskStore(taskStore);
+
+      Instant start = Instant.now();
+      Instant end = start.plusSeconds(600);
+
+      int numTasks = Stream.of(getDatePattern(7), getDatePattern(13))
+         .peek(pattern -> {
+            Generator generator = Generator.createGenerator(table, "", pattern);
+            // TODO fix when refactoring TaskAccessException
+            try { taskStore.getGenerators().save(generator); } catch (TaskAccessException e) {}
+            table.linkGenerator(generator.getId());
+         })
+         .mapToInt(pattern -> pattern.getDates(start, end).size())
+         .sum();
+
+      assertThat(table.getAllTaskIds(start)).isEmpty();
+      assertThat(table.getAllTaskIds(end).size()).isEqualTo(numTasks);
+   }
+
+   @Test
    void testToFromJson() throws TaskAccessException {
       Table table = Table.createTable();
       table.registerTaskStore(taskStore);
 
-      Generator generator = Generator.createGenerator(table, "", datePattern);
+      Generator generator = Generator.createGenerator(table, "", getDatePattern(7));
       taskStore.getGenerators().save(generator);
       String generatorId = generator.getId();
 
