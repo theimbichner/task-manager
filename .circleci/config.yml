@@ -12,7 +12,7 @@ jobs:
             - v1-dependencies-
       - run:
           name: Test
-          command: mvn test
+          command: mvn verify
       - run:
           name: Store test results
           command: |
