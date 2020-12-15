@@ -154,7 +154,6 @@ public class TaskTests {
       DateTime initialTime = (DateTime) task.getProperty(generationField).get();
       Instant expectedEnd = initialTime.getStart().plusSeconds(data.getDuration());
 
-      System.out.println(task.toJson().toString());
       task.modify(data.getFullTaskDelta(), false);
       DateTime dateTime = (DateTime) task.getProperty(generationField).get();
 
