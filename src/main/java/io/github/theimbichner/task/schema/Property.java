@@ -4,6 +4,8 @@ import java.util.Objects;
 
 import org.json.JSONObject;
 
+import io.github.theimbichner.task.time.DateTime;
+
 public interface Property {
    class SimpleExposingProperty implements Property {
       private final Object obj;
@@ -24,10 +26,23 @@ public interface Property {
 
       @Override
       public boolean equals(Object obj) {
-         if (obj instanceof Property) {
-            return Objects.equals(get(), ((Property) obj).get());
+         if (!(obj instanceof Property)) {
+            return false;
          }
-         return false;
+
+         Property other = (Property) obj;
+
+         if (get() instanceof DateTime) {
+            // TODO implement and test equals on DateTime
+            if (!(other.get() instanceof DateTime)) {
+               return false;
+            }
+            DateTime dateTime = (DateTime) get();
+            DateTime otherDateTime = (DateTime) other.get();
+            return dateTime.getStart().equals(otherDateTime.getStart())
+               && dateTime.getEnd().equals(otherDateTime.getEnd());
+         }
+         return Objects.equals(get(), other.get());
       }
    }
 

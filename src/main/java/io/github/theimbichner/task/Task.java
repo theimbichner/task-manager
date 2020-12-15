@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.json.JSONObject;
@@ -65,6 +66,10 @@ public class Task implements Storable {
       return generatorId;
    }
 
+   public Set<String> getPropertyNames() {
+      return Set.copyOf(properties.keySet());
+   }
+
    public Property getProperty(String key) {
       return properties.get(key);
    }
@@ -84,7 +89,13 @@ public class Task implements Storable {
       }
 
       for (String key : delta.getProperties().keySet()) {
-         properties.merge(key, delta.getProperties().get(key), (old, v) -> v);
+         Property newProperty = delta.getProperties().get(key);
+         if (newProperty == Property.DELETE) {
+            properties.remove(key);
+         }
+         else {
+            properties.put(key, newProperty);
+         }
       }
 
       name = delta.getName().orElse(name);
@@ -116,7 +127,7 @@ public class Task implements Storable {
     */
    public void modifySeries(GeneratorDelta delta) throws TaskAccessException {
       if (generatorId == null) {
-         return;
+         throw new IllegalStateException("Cannot modify series on non series task");
       }
 
       Generator generator = taskStore.getGenerators().getById(generatorId);
