@@ -101,7 +101,7 @@ public class Task implements Storable {
       name = delta.getName().orElse(name);
       markup = delta.getMarkup().orElse(markup);
       if (delta.getDuration().isPresent()) {
-         if (generator == null) {
+         if (generator == null || shouldUnlinkGenerator) {
             throw new IllegalArgumentException("Cannot set duration without generator");
          }
          String generationField = generator.getGenerationField();

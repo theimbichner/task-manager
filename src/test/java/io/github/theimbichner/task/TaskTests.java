@@ -137,6 +137,13 @@ public class TaskTests {
    void testModifyInvalid() throws TaskAccessException {
       Task task = data.createModifiedTask();
       assertThatExceptionOfType(IllegalArgumentException.class)
+         .isThrownBy(() -> task.modify(data.getFullTaskDelta(), false));
+   }
+
+   @ParameterizedTest
+   @MethodSource("provideTasks")
+   void testModifyAndSeverInvalid(Task task) {
+      assertThatExceptionOfType(IllegalArgumentException.class)
          .isThrownBy(() -> task.modify(data.getFullTaskDelta()));
    }
 
@@ -148,11 +155,30 @@ public class TaskTests {
       Instant expectedEnd = initialTime.getStart().plusSeconds(data.getDuration());
 
       System.out.println(task.toJson().toString());
-      task.modify(data.getFullTaskDelta());
+      task.modify(data.getFullTaskDelta(), false);
       DateTime dateTime = (DateTime) task.getProperty(generationField).get();
 
       assertThat(dateTime.getStart()).isEqualTo(initialTime.getStart());
       assertThat(dateTime.getEnd()).isEqualTo(expectedEnd);
+   }
+
+   @ParameterizedTest
+   @MethodSource("provideGeneratorTasks")
+   void testModifySeverGenerator(Task task) throws TaskAccessException {
+      Instant beforeModify = Instant.now();
+      task.modify(data.getTaskDelta());
+
+      assertThat(task.getGeneratorId()).isNull();
+
+      assertThat(task.getDateLastModified().getStart())
+         .isAfterOrEqualTo(beforeModify)
+         .isEqualTo(task.getDateLastModified().getEnd());
+
+      assertThat(task.getName()).isEqualTo(data.getTemplateName());
+      assertThat(task.getMarkup()).isEqualTo(data.getMarkup());
+      for (String s : data.getProperties().keySet()) {
+         assertThat(task.getProperty(s)).isEqualTo(data.getProperties().get(s));
+      }
    }
 
    @ParameterizedTest
@@ -243,6 +269,4 @@ public class TaskTests {
       assertThat(dateTime.getEnd())
          .isEqualTo(instant.plusSeconds(generator.getTemplateDuration()));
    }
-
-   // TODO add test for modify and sever generator
 }
