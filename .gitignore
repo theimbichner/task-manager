@@ -1,3 +1,9 @@
+# python prototype
 __pycache__
 .coverage
 htmlcov
+
+# java prototype
+target
+*.iml
+.idea

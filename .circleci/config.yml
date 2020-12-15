@@ -1,26 +1,31 @@
 version: 2.1
 
-orbs:
-  python: circleci/python@0.2.1
-
 jobs:
   build-and-test:
     docker:
-      - image: circleci/python:3.8
-    executor: python/default
+      - image: circleci/openjdk:11
     steps:
       - checkout
-      - python/install-deps
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "pom.xml" }}
+            - v1-dependencies-
       - run:
-          command: |
-            coverage run --branch --include=./* -m pytest -v --junitxml=./testresults/results.xml
-            coverage report
-            coverage html
           name: Test
-      - store_artifacts:
-          path: htmlcov
+          command: mvn test
+      - run:
+          name: Store test results
+          command: |
+            mkdir test-results
+            cp target/surefire-reports/*.xml test-results
       - store_test_results:
-          path: testresults
+          path: test-results
+      - store_artifacts:
+          path: target/site/jacoco
+      - save_cache:
+          paths:
+            - ~/.m2
+          key: v1-dependencies-{{ checksum "pom.xml" }}
 
 workflows:
   main:
