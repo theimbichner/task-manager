@@ -9,11 +9,11 @@ import io.github.theimbichner.task.schema.TypeDescriptor;
 
 public class TableDelta {
    private final Map<String, TypeDescriptor> properties;
-   private final Optional<String> name;
+   private final String name;
 
    public TableDelta(Map<String, TypeDescriptor> properties, String name) {
       this.properties = Map.copyOf(properties);
-      this.name = Optional.ofNullable(name);
+      this.name = name;
    }
 
    public Map<String, TypeDescriptor> getProperties() {
@@ -21,7 +21,7 @@ public class TableDelta {
    }
 
    public Optional<String> getName() {
-      return name;
+      return Optional.ofNullable(name);
    }
 
    private Map<String, Property> getTaskProperties() {
