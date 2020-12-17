@@ -7,7 +7,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 public interface DatePattern {
-   public static DatePattern fromJson(JSONObject json) {
+   static DatePattern fromJson(JSONObject json) {
       String patternType = json.getString("patternType");
       switch(json.getString("patternType")) {
       case "union":

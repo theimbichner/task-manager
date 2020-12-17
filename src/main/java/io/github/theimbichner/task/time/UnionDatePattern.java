@@ -9,7 +9,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 public class UnionDatePattern implements DatePattern {
-   private List<DatePattern> patterns;
+   private final List<DatePattern> patterns;
 
    public UnionDatePattern() {
       this.patterns = new ArrayList<>();

@@ -47,6 +47,7 @@ public class JsonFileDataStore<T extends Storable> implements DataStore<T> {
    @Override
    public void save(T t) throws TaskAccessException {
       String id = t.getId();
+      // TODO refactor for better error handling
       root.mkdirs();
       try (PrintWriter writer = new PrintWriter(getFile(id))) {
          toJson.apply(t).write(writer);

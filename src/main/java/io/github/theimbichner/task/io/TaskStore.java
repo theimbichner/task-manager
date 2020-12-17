@@ -1,9 +1,6 @@
 package io.github.theimbichner.task.io;
 
 import java.io.File;
-import java.util.function.Function;
-
-import org.json.JSONObject;
 
 import io.github.theimbichner.task.Generator;
 import io.github.theimbichner.task.Table;

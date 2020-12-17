@@ -18,7 +18,7 @@ import org.json.JSONObject;
  * LastModifier
  */
 public interface TypeDescriptor {
-   public static TypeDescriptor fromTypeName(String typeName) {
+   static TypeDescriptor fromTypeName(String typeName) {
       switch (typeName) {
       case "Number":
       case "Integer":
@@ -35,7 +35,7 @@ public interface TypeDescriptor {
       }
    }
 
-   public static TypeDescriptor fromJson(JSONObject json) {
+   static TypeDescriptor fromJson(JSONObject json) {
       if (json.opt("typeName") != null) {
          return new SimpleTypeDescriptor(json.getString("typeName"));
       }
