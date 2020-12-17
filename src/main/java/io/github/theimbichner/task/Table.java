@@ -16,6 +16,7 @@ import io.github.theimbichner.task.io.TaskStore;
 import io.github.theimbichner.task.schema.Property;
 import io.github.theimbichner.task.schema.TypeDescriptor;
 import io.github.theimbichner.task.time.DateTime;
+import io.github.theimbichner.task.time.ModifyRecord;
 
 /*
  * TODO restrict user property names to avoid collision with system properties.
@@ -27,8 +28,7 @@ import io.github.theimbichner.task.time.DateTime;
 public class Table implements Storable {
    private final String id;
    private String name;
-   private DateTime dateCreated;
-   private DateTime dateLastModified;
+   private ModifyRecord modifyRecord;
    private final Set<String> taskIds;
    private final Set<String> generatorIds;
    private final Map<String, TypeDescriptor> schema;
@@ -38,8 +38,7 @@ public class Table implements Storable {
    private Table(String id) {
       this.id = id;
       name = "";
-      dateCreated = new DateTime();
-      dateLastModified = dateCreated;
+      modifyRecord = ModifyRecord.createdNow();
       taskIds = new LinkedHashSet<>();
       generatorIds = new LinkedHashSet<>();
       schema = new HashMap<>();
@@ -57,11 +56,11 @@ public class Table implements Storable {
    }
 
    public DateTime getDateCreated() {
-      return dateCreated;
+      return new DateTime(modifyRecord.getDateCreated());
    }
 
    public DateTime getDateLastModified() {
-      return dateLastModified;
+      return new DateTime(modifyRecord.getDateLastModified());
    }
 
    public Set<String> getAllTaskIds(Instant timestamp) throws TaskAccessException {
@@ -118,8 +117,7 @@ public class Table implements Storable {
       JSONObject json = new JSONObject();
       json.put("id", id);
       json.put("name", name);
-      json.put("dateCreated", dateCreated.toJson());
-      json.put("dateLastModified", dateLastModified.toJson());
+      modifyRecord.writeIntoJson(json);
       json.put("tasks", taskIds);
       json.put("generators", generatorIds);
 
@@ -137,8 +135,7 @@ public class Table implements Storable {
       Table result = new Table(id);
 
       result.name = json.getString("name");
-      result.dateCreated = DateTime.fromJson(json.getJSONObject("dateCreated"));
-      result.dateLastModified = DateTime.fromJson(json.getJSONObject("dateLastModified"));
+      result.modifyRecord = ModifyRecord.readFromJson(json);
 
       JSONArray tasksJson = json.getJSONArray("tasks");
       for (int i = 0; i < tasksJson.length(); i++) {

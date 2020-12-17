@@ -14,13 +14,13 @@ import io.github.theimbichner.task.io.TaskAccessException;
 import io.github.theimbichner.task.io.TaskStore;
 import io.github.theimbichner.task.schema.Property;
 import io.github.theimbichner.task.time.DateTime;
+import io.github.theimbichner.task.time.ModifyRecord;
 
 public class Task implements Storable {
    private final String id;
    private final String tableId;
    private String name;
-   private DateTime dateCreated;
-   private DateTime dateLastModified;
+   private ModifyRecord modifyRecord;
    private Optional<String> markup;
    private String generatorId;
    private final Map<String, Property> properties;
@@ -32,8 +32,7 @@ public class Task implements Storable {
       this.tableId = tableId;
 
       name = "";
-      dateCreated = new DateTime();
-      dateLastModified = dateCreated;
+      modifyRecord = ModifyRecord.createdNow();
       markup = Optional.empty();
       properties = new HashMap<>();
       generatorId = null;
@@ -51,11 +50,11 @@ public class Task implements Storable {
    }
 
    public DateTime getDateCreated() {
-      return dateCreated;
+      return new DateTime(modifyRecord.getDateCreated());
    }
 
    public DateTime getDateLastModified() {
-      return dateLastModified;
+      return new DateTime(modifyRecord.getDateLastModified());
    }
 
    public String getMarkup() {
@@ -114,7 +113,7 @@ public class Task implements Storable {
          generator.unlinkTask(id);
          generatorId = null;
       }
-      dateLastModified = new DateTime();
+      modifyRecord = modifyRecord.updatedNow();
    }
 
    void unlinkGenerator() {
@@ -172,8 +171,7 @@ public class Task implements Storable {
       json.put("id", id);
       json.put("table", tableId);
       json.put("name", name);
-      json.put("dateCreated", dateCreated.toJson());
-      json.put("dateLastModified", dateLastModified.toJson());
+      modifyRecord.writeIntoJson(json);
       json.put("markup", markup.map(s -> (Object) s).orElse(JSONObject.NULL));
       json.put("generator", generatorId == null ? JSONObject.NULL : generatorId);
 
@@ -191,8 +189,7 @@ public class Task implements Storable {
       Task result = new Task(id, tableId);
 
       result.name = json.getString("name");
-      result.dateCreated = DateTime.fromJson(json.getJSONObject("dateCreated"));
-      result.dateLastModified = DateTime.fromJson(json.getJSONObject("dateLastModified"));
+      result.modifyRecord = ModifyRecord.readFromJson(json);
       result.markup = Optional.ofNullable(json.optString("markup", null));
       result.generatorId = json.isNull("generator") ? null : json.getString("generator");
 

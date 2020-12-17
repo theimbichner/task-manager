@@ -21,12 +21,12 @@ import io.github.theimbichner.task.io.TaskStore;
 import io.github.theimbichner.task.schema.Property;
 import io.github.theimbichner.task.time.DateTime;
 import io.github.theimbichner.task.time.DatePattern;
+import io.github.theimbichner.task.time.ModifyRecord;
 
 public class Generator implements Storable {
    private final String id;
    private String name;
-   private DateTime dateCreated;
-   private DateTime dateLastModified;
+   private ModifyRecord modifyRecord;
    private String templateName;
    private Optional<String> templateMarkup;
    private final String templateTableId;
@@ -51,13 +51,12 @@ public class Generator implements Storable {
       this.generationDatePattern = generationDatePattern;
 
       name = "";
-      dateCreated = new DateTime();
-      dateLastModified = dateCreated;
+      modifyRecord = ModifyRecord.createdNow();
       templateName = "";
       templateMarkup = Optional.empty();
       templateProperties = new HashMap<>();
       templateDuration = 0;
-      generationLastTimestamp = dateCreated.getStart();
+      generationLastTimestamp = modifyRecord.getDateCreated();
       taskIds = new LinkedHashSet<>();
 
       taskStore = null;
@@ -73,11 +72,11 @@ public class Generator implements Storable {
    }
 
    public DateTime getDateCreated() {
-      return dateCreated;
+      return new DateTime(modifyRecord.getDateCreated());
    }
 
    public DateTime getDateLastModified() {
-      return dateLastModified;
+      return new DateTime(modifyRecord.getDateLastModified());
    }
 
    public String getTemplateName() {
@@ -145,7 +144,7 @@ public class Generator implements Storable {
          task.modify(taskDelta, false);
       }
 
-      dateLastModified = new DateTime();
+      modifyRecord = modifyRecord.updatedNow();
    }
 
    void unlinkTasksBefore(String taskId) throws TaskAccessException {
@@ -204,8 +203,7 @@ public class Generator implements Storable {
       JSONObject json = new JSONObject();
       json.put("id", id);
       json.put("name", name);
-      json.put("dateCreated", dateCreated.toJson());
-      json.put("dateLastModified", dateLastModified.toJson());
+      modifyRecord.writeIntoJson(json);
       json.put("templateName", templateName);
       json.put("templateMarkup", templateMarkup.map(s -> (Object) s).orElse(JSONObject.NULL));
       json.put("templateTable", templateTableId);
@@ -233,8 +231,7 @@ public class Generator implements Storable {
 
       Generator result = new Generator(id, templateTableId, generationField, generationDatePattern);
       result.name = json.getString("name");
-      result.dateCreated = DateTime.fromJson(json.getJSONObject("dateCreated"));
-      result.dateLastModified = DateTime.fromJson(json.getJSONObject("dateLastModified"));
+      result.modifyRecord = ModifyRecord.readFromJson(json);
       result.templateName = json.getString("templateName");
       result.templateMarkup = Optional.ofNullable(json.optString("templateMarkup", null));
       result.templateDuration = json.getLong("templateDuration");
