@@ -42,7 +42,7 @@ public class TaskTests {
          .isEqualTo(task.getDateCreated().getStart())
          .isEqualTo(task.getDateLastModified().getEnd());
 
-      assertThat(task.getMarkup()).isNull();
+      assertThat(task.getMarkup()).isEqualTo("");
       assertThat(task.getGeneratorId()).isNull();
       assertThat(task.getPropertyNames()).isEqualTo(Set.of());
    }

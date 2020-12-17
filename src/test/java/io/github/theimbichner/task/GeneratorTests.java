@@ -3,7 +3,6 @@ package io.github.theimbichner.task;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 
@@ -38,7 +37,7 @@ public class GeneratorTests {
 
       assertThat(generator.getName()).isEqualTo("");
       assertThat(generator.getTemplateName()).isEqualTo("");
-      assertThat(generator.getTemplateMarkup()).isNull();
+      assertThat(generator.getTemplateMarkup()).isEqualTo("");
       assertThat(generator.getTemplateDuration()).isEqualTo(0);
       assertThat(generator.getTemplateTableId()).isEqualTo(data.getTable().getId());
       assertThat(generator.getTemplatePropertyNames()).isEqualTo(Set.of());
@@ -194,13 +193,6 @@ public class GeneratorTests {
       assertThat(generator.getTemplateName()).isEqualTo(oldTemplateName);
       assertThat(generator.getTemplateMarkup()).isEqualTo(oldTemplateMarkup);
       assertThat(generator.getTemplateDuration()).isEqualTo(oldTemplateDuration);
-   }
-
-   @ParameterizedTest
-   @MethodSource("provideGenerators")
-   void testModifyDeleteMarkup(Generator generator) throws TaskAccessException {
-      generator.modify(new GeneratorDelta(Map.of(), null, null, Optional.empty(), null));
-      assertThat(generator.getTemplateMarkup()).isNull();
    }
 
    @Test

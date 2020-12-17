@@ -3,7 +3,6 @@ package io.github.theimbichner.task;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -21,7 +20,7 @@ public class Task implements Storable {
    private final String tableId;
    private String name;
    private ModifyRecord modifyRecord;
-   private Optional<String> markup;
+   private String markup;
    private String generatorId;
    private final Map<String, Property> properties;
 
@@ -33,7 +32,7 @@ public class Task implements Storable {
 
       name = "";
       modifyRecord = ModifyRecord.createdNow();
-      markup = Optional.empty();
+      markup = "";
       properties = new HashMap<>();
       generatorId = null;
 
@@ -58,7 +57,7 @@ public class Task implements Storable {
    }
 
    public String getMarkup() {
-      return markup.orElse(null);
+      return markup;
    }
 
    public String getGeneratorId() {
@@ -155,7 +154,7 @@ public class Task implements Storable {
    static Task newSeriesTask(Generator generator, Instant startTime) {
       Task result = new Task(UUID.randomUUID().toString(), generator.getTemplateTableId());
       result.name = generator.getTemplateName();
-      result.markup = Optional.ofNullable(generator.getTemplateMarkup());
+      result.markup = generator.getTemplateMarkup();
       result.generatorId = generator.getId();
       for (String s : generator.getTemplatePropertyNames()) {
          result.properties.put(s, generator.getTemplateProperty(s));
@@ -172,7 +171,7 @@ public class Task implements Storable {
       json.put("table", tableId);
       json.put("name", name);
       modifyRecord.writeIntoJson(json);
-      json.put("markup", markup.map(s -> (Object) s).orElse(JSONObject.NULL));
+      json.put("markup", markup);
       json.put("generator", generatorId == null ? JSONObject.NULL : generatorId);
 
       JSONObject propertiesJson = new JSONObject();
@@ -190,7 +189,7 @@ public class Task implements Storable {
 
       result.name = json.getString("name");
       result.modifyRecord = ModifyRecord.readFromJson(json);
-      result.markup = Optional.ofNullable(json.optString("markup", null));
+      result.markup = json.getString("markup");
       result.generatorId = json.isNull("generator") ? null : json.getString("generator");
 
       JSONObject propertiesJson = json.getJSONObject("properties");

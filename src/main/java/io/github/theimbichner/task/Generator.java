@@ -7,7 +7,6 @@ import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -28,7 +27,7 @@ public class Generator implements Storable {
    private String name;
    private ModifyRecord modifyRecord;
    private String templateName;
-   private Optional<String> templateMarkup;
+   private String templateMarkup;
    private final String templateTableId;
    private final Map<String, Property> templateProperties;
    private long templateDuration;
@@ -53,7 +52,7 @@ public class Generator implements Storable {
       name = "";
       modifyRecord = ModifyRecord.createdNow();
       templateName = "";
-      templateMarkup = Optional.empty();
+      templateMarkup = "";
       templateProperties = new HashMap<>();
       templateDuration = 0;
       generationLastTimestamp = modifyRecord.getDateCreated();
@@ -84,7 +83,7 @@ public class Generator implements Storable {
    }
 
    public String getTemplateMarkup() {
-      return templateMarkup.orElse(null);
+      return templateMarkup;
    }
 
    public String getTemplateTableId() {
@@ -205,7 +204,7 @@ public class Generator implements Storable {
       json.put("name", name);
       modifyRecord.writeIntoJson(json);
       json.put("templateName", templateName);
-      json.put("templateMarkup", templateMarkup.map(s -> (Object) s).orElse(JSONObject.NULL));
+      json.put("templateMarkup", templateMarkup);
       json.put("templateTable", templateTableId);
       json.put("templateDuration", templateDuration);
       json.put("generationLastTimestamp", generationLastTimestamp.toString());
@@ -233,7 +232,7 @@ public class Generator implements Storable {
       result.name = json.getString("name");
       result.modifyRecord = ModifyRecord.readFromJson(json);
       result.templateName = json.getString("templateName");
-      result.templateMarkup = Optional.ofNullable(json.optString("templateMarkup", null));
+      result.templateMarkup = json.getString("templateMarkup");
       result.templateDuration = json.getLong("templateDuration");
       result.generationLastTimestamp = Instant.parse(json.getString("generationLastTimestamp"));
 

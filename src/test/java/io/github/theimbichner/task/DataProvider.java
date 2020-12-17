@@ -3,7 +3,6 @@ package io.github.theimbichner.task;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
-import java.util.Optional;
 
 import io.github.theimbichner.task.io.InMemoryDataStore;
 import io.github.theimbichner.task.io.TaskAccessException;
@@ -116,7 +115,7 @@ public class DataProvider {
       return new TaskDelta(
          getProperties(),
          deltaTemplateName,
-         Optional.of(deltaTemplateMarkup),
+         deltaTemplateMarkup,
          null);
    }
 
@@ -124,7 +123,7 @@ public class DataProvider {
       return new TaskDelta(
          getProperties(),
          deltaTemplateName,
-         Optional.of(deltaTemplateMarkup),
+         deltaTemplateMarkup,
          deltaTemplateDuration);
    }
 
@@ -146,7 +145,7 @@ public class DataProvider {
          getProperties(),
          deltaName,
          deltaTemplateName,
-         Optional.of(deltaTemplateMarkup),
+         deltaTemplateMarkup,
          deltaTemplateDuration);
    }
 }

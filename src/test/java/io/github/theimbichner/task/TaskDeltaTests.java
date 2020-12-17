@@ -1,7 +1,6 @@
 package io.github.theimbichner.task;
 
 import java.util.Map;
-import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -63,21 +62,10 @@ public class TaskDeltaTests {
 
    @Test
    void testMarkup() {
-      TaskDelta delta = new TaskDelta(Map.of(), null, Optional.of(markup), null);
+      TaskDelta delta = new TaskDelta(Map.of(), null, markup, null);
       assertThat(delta.getProperties()).isEmpty();
       assertThat(delta.getName()).isEmpty();
-      assertThat(delta.getMarkup()).hasValue(Optional.of(markup));
-      assertThat(delta.getDuration()).isEmpty();
-
-      assertThat(delta.isEmpty()).isFalse();
-   }
-
-   @Test
-   void testMarkupEmpty() {
-      TaskDelta delta = new TaskDelta(Map.of(), null, Optional.empty(), null);
-      assertThat(delta.getProperties()).isEmpty();
-      assertThat(delta.getName()).isEmpty();
-      assertThat(delta.getMarkup()).hasValue(Optional.empty());
+      assertThat(delta.getMarkup()).hasValue(markup);
       assertThat(delta.getDuration()).isEmpty();
 
       assertThat(delta.isEmpty()).isFalse();
