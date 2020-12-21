@@ -12,7 +12,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import io.github.theimbichner.task.io.TaskAccessException;
 import io.github.theimbichner.task.schema.Property;
 import io.github.theimbichner.task.time.DateTime;
 
@@ -47,7 +46,7 @@ public class TaskTests {
       assertThat(task.getPropertyNames()).isEqualTo(Set.of());
    }
 
-   private static Stream<Task> provideTasks() throws TaskAccessException {
+   private static Stream<Task> provideTasks() {
       return Stream.of(
          data.createDefaultTask(),
          data.createModifiedTask(),
@@ -55,13 +54,13 @@ public class TaskTests {
          data.createModifiedTaskWithGenerator());
    }
 
-   private static Stream<Task> provideGeneratorTasks() throws TaskAccessException {
+   private static Stream<Task> provideGeneratorTasks() {
       return Stream.of(
          data.createDefaultTaskWithGenerator(),
          data.createModifiedTaskWithGenerator());
    }
 
-   private static Stream<Generator> provideGenerators() throws TaskAccessException {
+   private static Stream<Generator> provideGenerators() {
       return Stream.of(
          data.createDefaultGenerator(),
          data.createModifiedGenerator());
@@ -69,9 +68,9 @@ public class TaskTests {
 
    @ParameterizedTest
    @MethodSource("provideTasks")
-   void testModify(Task task) throws TaskAccessException {
+   void testModify(Task task) {
       Instant beforeModify = Instant.now();
-      task.modify(data.getTaskDelta(), false);
+      task.modify(data.getTaskDelta(), false).get();
 
       assertThat(task.getDateLastModified().getStart())
          .isAfterOrEqualTo(beforeModify)
@@ -86,13 +85,13 @@ public class TaskTests {
 
    @ParameterizedTest
    @MethodSource("provideTasks")
-   void testModifyEmpty(Task task) throws TaskAccessException {
+   void testModifyEmpty(Task task) {
       DateTime oldDateLastModified = task.getDateLastModified();
       String oldName = task.getName();
       String oldMarkup = task.getMarkup();
       Set<String> oldPropertyNames = task.getPropertyNames();
 
-      task.modify(new TaskDelta(Map.of(), null, null, null), false);
+      task.modify(new TaskDelta(Map.of(), null, null, null), false).get();
 
       assertThat(task.getDateLastModified().getStart())
          .isEqualTo(oldDateLastModified.getStart());
@@ -106,12 +105,12 @@ public class TaskTests {
 
    @ParameterizedTest
    @MethodSource("provideTasks")
-   void testModifyPartial(Task task) throws TaskAccessException {
+   void testModifyPartial(Task task) {
       String oldName = task.getName();
       String oldMarkup = task.getMarkup();
 
       Instant beforeModify = Instant.now();
-      task.modify(new TaskDelta(data.getProperties(), null, null, null));
+      task.modify(new TaskDelta(data.getProperties(), null, null, null)).get();
 
       assertThat(task.getDateLastModified().getStart())
          .isAfterOrEqualTo(beforeModify)
@@ -122,11 +121,11 @@ public class TaskTests {
    }
 
    @Test
-   void testModifyUpdateProperties() throws TaskAccessException {
+   void testModifyUpdateProperties() {
       Task task = data.createModifiedTask();
       Set<String> expectedPropertyNames = Set.of("alpha", "gamma");
 
-      task.modify(new TaskDelta(data.getUpdateProperties(), null, null, null));
+      task.modify(new TaskDelta(data.getUpdateProperties(), null, null, null)).get();
       assertThat(task.getPropertyNames()).isEqualTo(expectedPropertyNames);
       assertThat(task.getProperty("alpha")).isEqualTo(Property.of(null));
       assertThat(task.getProperty("beta")).isNull();
@@ -134,7 +133,7 @@ public class TaskTests {
    }
 
    @Test
-   void testModifyInvalid() throws TaskAccessException {
+   void testModifyInvalid() {
       Task task = data.createModifiedTask();
       assertThatExceptionOfType(IllegalArgumentException.class)
          .isThrownBy(() -> task.modify(data.getFullTaskDelta(), false));
@@ -149,12 +148,12 @@ public class TaskTests {
 
    @ParameterizedTest
    @MethodSource("provideGeneratorTasks")
-   void testModifyUpdateDuration(Task task) throws TaskAccessException {
+   void testModifyUpdateDuration(Task task) {
       String generationField = data.getGenerationField();
       DateTime initialTime = (DateTime) task.getProperty(generationField).get();
       Instant expectedEnd = initialTime.getStart().plusSeconds(data.getDuration());
 
-      task.modify(data.getFullTaskDelta(), false);
+      task.modify(data.getFullTaskDelta(), false).get();
       DateTime dateTime = (DateTime) task.getProperty(generationField).get();
 
       assertThat(dateTime.getStart()).isEqualTo(initialTime.getStart());
@@ -163,9 +162,9 @@ public class TaskTests {
 
    @ParameterizedTest
    @MethodSource("provideGeneratorTasks")
-   void testModifySeverGenerator(Task task) throws TaskAccessException {
+   void testModifySeverGenerator(Task task) {
       Instant beforeModify = Instant.now();
-      task.modify(data.getTaskDelta());
+      task.modify(data.getTaskDelta()).get();
 
       assertThat(task.getGeneratorId()).isNull();
 
@@ -182,18 +181,18 @@ public class TaskTests {
 
    @ParameterizedTest
    @MethodSource("provideGenerators")
-   void testModifySeries(Generator generator) throws TaskAccessException {
-      List<String> tasks = generator.generateTasks(Instant.now().plusSeconds(600));
+   void testModifySeries(Generator generator) {
+      List<String> tasks = generator.generateTasks(Instant.now().plusSeconds(600)).get();
       int index = tasks.size() / 2;
-      Task targetTask = data.getTaskStore().getTasks().getById(tasks.get(index));
-      targetTask.modifySeries(data.getFullGeneratorDelta());
+      Task targetTask = data.getTaskStore().getTasks().getById(tasks.get(index)).get();
+      targetTask.modifySeries(data.getFullGeneratorDelta()).get();
 
       Set<String> expectedProperties = new HashSet<>();
       expectedProperties.add(data.getGenerationField());
       expectedProperties.addAll(data.getProperties().keySet());
 
       for (int i = 0; i < tasks.size(); i++) {
-         Task task = data.getTaskStore().getTasks().getById(tasks.get(i));
+         Task task = data.getTaskStore().getTasks().getById(tasks.get(i)).get();
          if (i < index) {
             assertThat(task.getGeneratorId()).isNull();
          }
@@ -209,7 +208,7 @@ public class TaskTests {
    }
 
    @Test
-   void testModifySeriesInvalid() throws TaskAccessException {
+   void testModifySeriesInvalid() {
       Task task = data.createModifiedTask();
       assertThatExceptionOfType(IllegalStateException.class)
          .isThrownBy(() -> task.modifySeries(data.getFullGeneratorDelta()));

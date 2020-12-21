@@ -5,7 +5,6 @@ import java.time.Instant;
 import java.util.Map;
 
 import io.github.theimbichner.task.io.InMemoryDataStore;
-import io.github.theimbichner.task.io.TaskAccessException;
 import io.github.theimbichner.task.io.TaskStore;
 import io.github.theimbichner.task.schema.Property;
 import io.github.theimbichner.task.time.DatePattern;
@@ -93,21 +92,21 @@ public class DataProvider {
       return Task.createTask(table);
    }
 
-   public Task createModifiedTask() throws TaskAccessException {
+   public Task createModifiedTask() {
       Task task = createDefaultTask();
-      task.modify(getTaskDelta());
+      task.modify(getTaskDelta()).get();
       return task;
    }
 
-   public Task createDefaultTaskWithGenerator() throws TaskAccessException {
+   public Task createDefaultTaskWithGenerator() {
       Generator generator = createModifiedGenerator();
       return Task.newSeriesTask(generator, Instant.now());
    }
 
-   public Task createModifiedTaskWithGenerator() throws TaskAccessException {
+   public Task createModifiedTaskWithGenerator() {
       Generator generator = createDefaultGenerator();
       Task task = Task.newSeriesTask(generator, Instant.now());
-      task.modify(getFullTaskDelta(), false);
+      task.modify(getFullTaskDelta(), false).get();
       return task;
    }
 
@@ -127,16 +126,16 @@ public class DataProvider {
          deltaTemplateDuration);
    }
 
-   public Generator createDefaultGenerator() throws TaskAccessException {
+   public Generator createDefaultGenerator() {
       Generator generator = Generator.createGenerator(table, generationField, datePattern);
-      taskStore.getGenerators().save(generator);
+      taskStore.getGenerators().save(generator).get();
       return generator;
    }
 
-   public Generator createModifiedGenerator() throws TaskAccessException {
+   public Generator createModifiedGenerator() {
       Generator generator = createDefaultGenerator();
-      generator.modify(getFullGeneratorDelta());
-      taskStore.getGenerators().save(generator);
+      generator.modify(getFullGeneratorDelta()).get();
+      taskStore.getGenerators().save(generator).get();
       return generator;
    }
 

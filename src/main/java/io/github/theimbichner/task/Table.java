@@ -6,6 +6,9 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+
+import io.vavr.control.Either;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -63,12 +66,14 @@ public class Table implements Storable {
       return new DateTime(modifyRecord.getDateLastModified());
    }
 
-   public Set<String> getAllTaskIds(Instant timestamp) throws TaskAccessException {
-      for (String s : generatorIds) {
-         Generator generator = taskStore.getGenerators().getById(s);
-         taskIds.addAll(generator.generateTasks(timestamp));
-      }
-      return Set.copyOf(taskIds);
+   public Either<TaskAccessException, Set<String>> getAllTaskIds(Instant timestamp) {
+      return Either
+         .sequenceRight(generatorIds.stream()
+            .map(s -> taskStore
+               .getGenerators().getById(s)
+               .flatMap(g -> g.generateTasks(timestamp).peek(taskIds::addAll)))
+            .collect(Collectors.toList()))
+         .map(x -> Set.copyOf(taskIds));
    }
 
    void linkTask(String id) {

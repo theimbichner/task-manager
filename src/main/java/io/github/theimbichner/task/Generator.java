@@ -1,7 +1,6 @@
 package io.github.theimbichner.task;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -10,6 +9,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
+import io.vavr.control.Either;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -114,9 +115,9 @@ public class Generator implements Storable {
       taskIds.remove(id);
    }
 
-   public void modify(GeneratorDelta delta) throws TaskAccessException {
+   public Either<TaskAccessException, Generator> modify(GeneratorDelta delta) {
       if (delta.isEmpty()) {
-         return;
+         return Either.right(this);
       }
 
       for (String key : delta.getProperties().keySet()) {
@@ -138,46 +139,59 @@ public class Generator implements Storable {
       templateDuration = delta.getTemplateDuration().orElse(templateDuration);
 
       TaskDelta taskDelta = delta.asTaskDelta();
-      for (String id : taskIds) {
-         Task task = taskStore.getTasks().getById(id);
-         task.modify(taskDelta, false);
-      }
-
-      modifyRecord = modifyRecord.updatedNow();
+      return Either
+         .sequenceRight(taskIds.stream()
+            .map(id -> taskStore
+               .getTasks().getById(id)
+               .flatMap(t -> t.modify(taskDelta, false)))
+            .collect(Collectors.toList()))
+         .map(x -> {
+            modifyRecord = modifyRecord.updatedNow();
+            return this;
+         });
    }
 
-   void unlinkTasksBefore(String taskId) throws TaskAccessException {
+   Either<TaskAccessException, Generator> unlinkTasksBefore(String taskId) {
       if (!taskIds.contains(taskId)) {
          throw new IllegalArgumentException("Task not found in generator");
       }
 
+      Either<TaskAccessException, Task> result = Either.right(null);
       Iterator<String> iterator = taskIds.iterator();
       while (iterator.hasNext()) {
          String nextId = iterator.next();
          if (nextId.equals(taskId)) {
-            return;
+            break;
          }
-         Task task = taskStore.getTasks().getById(nextId);
-         task.unlinkGenerator();
-         iterator.remove();
+         result = result
+            .flatMap(x -> taskStore.getTasks().getById(nextId))
+            .peek(task -> {
+               task.unlinkGenerator();
+               iterator.remove();
+            });
       }
+
+      return result.map(x -> this);
    }
 
-   List<String> generateTasks(Instant timestamp) throws TaskAccessException {
+   Either<TaskAccessException, List<String>> generateTasks(Instant timestamp) {
       if (!timestamp.isAfter(generationLastTimestamp)) {
-         return new ArrayList<>();
+         return Either.right(List.of());
       }
-      List<String> result = generationDatePattern
-         .getDates(generationLastTimestamp, timestamp)
-         .stream()
-         .map(instant -> Task.newSeriesTask(this, instant))
-         // TODO fix when refactoring TaskAccessException
-         .peek(task -> { try { taskStore.getTasks().save(task); } catch (TaskAccessException e) {} })
-         .map(Task::getId)
-         .peek(taskIds::add)
-         .collect(Collectors.toList());
-      generationLastTimestamp = timestamp;
-      return result;
+      return Either
+         .sequenceRight(generationDatePattern
+            .getDates(generationLastTimestamp, timestamp)
+            .stream()
+            .map(instant -> Task.newSeriesTask(this, instant))
+            .map(task -> taskStore.getTasks().save(task))
+            .collect(Collectors.toList()))
+         .map(tasks -> tasks
+            .map(task -> {
+               taskIds.add(task.getId());
+               return task.getId();
+            })
+            .asJava())
+         .peek(x -> generationLastTimestamp = timestamp);
    }
 
    @Override

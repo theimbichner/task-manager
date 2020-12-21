@@ -6,6 +6,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import io.vavr.control.Either;
+import io.vavr.control.Option;
+
 import org.json.JSONObject;
 
 import io.github.theimbichner.task.io.Storable;
@@ -72,47 +75,55 @@ public class Task implements Storable {
       return properties.get(key);
    }
 
-   public void modify(TaskDelta delta) throws TaskAccessException {
-      modify(delta, true);
+   private Either<TaskAccessException, Option<Generator>> getGenerator() {
+      if (generatorId == null) {
+         return Either.right(Option.none());
+      }
+      return taskStore.getGenerators().getById(generatorId).map(Option::some);
    }
 
-   void modify(TaskDelta delta, boolean shouldUnlinkGenerator) throws TaskAccessException {
+   public Either<TaskAccessException, Task> modify(TaskDelta delta) {
+      return modify(delta, true);
+   }
+
+   Either<TaskAccessException, Task> modify(TaskDelta delta, boolean shouldUnlinkGenerator) {
       if (delta.isEmpty()) {
-         return;
+         return Either.right(this);
       }
 
-      Generator generator = null;
-      if (generatorId != null) {
-         generator = taskStore.getGenerators().getById(generatorId);
-      }
-
-      for (String key : delta.getProperties().keySet()) {
-         Property newProperty = delta.getProperties().get(key);
-         if (newProperty == Property.DELETE) {
-            properties.remove(key);
+      return getGenerator().map(generator -> {
+         for (String key : delta.getProperties().keySet()) {
+            Property newProperty = delta.getProperties().get(key);
+            if (newProperty == Property.DELETE) {
+               properties.remove(key);
+            }
+            else {
+               properties.put(key, newProperty);
+            }
          }
-         else {
-            properties.put(key, newProperty);
-         }
-      }
 
-      name = delta.getName().orElse(name);
-      markup = delta.getMarkup().orElse(markup);
-      if (delta.getDuration().isPresent()) {
-         if (generator == null || shouldUnlinkGenerator) {
-            throw new IllegalArgumentException("Cannot set duration without generator");
+         name = delta.getName().orElse(name);
+         markup = delta.getMarkup().orElse(markup);
+         if (delta.getDuration().isPresent()) {
+            if (generator.isEmpty() || shouldUnlinkGenerator) {
+               throw new IllegalArgumentException("Cannot set duration without generator");
+            }
+            String generationField = generator.get().getGenerationField();
+            DateTime date = (DateTime) properties.get(generationField).get();
+            long duration = delta.getDuration().get();
+            properties.put(generationField, Property.of(date.withDuration(duration)));
          }
-         String generationField = generator.getGenerationField();
-         DateTime date = (DateTime) properties.get(generationField).get();
-         long duration = delta.getDuration().get();
-         properties.put(generationField, Property.of(date.withDuration(duration)));
-      }
 
-      if (shouldUnlinkGenerator && generator != null) {
-         generator.unlinkTask(id);
-         generatorId = null;
-      }
-      modifyRecord = modifyRecord.updatedNow();
+         generator.peek(g -> {
+            if (shouldUnlinkGenerator) {
+               g.unlinkTask(id);
+               generatorId = null;
+            }
+         });
+         modifyRecord = modifyRecord.updatedNow();
+
+         return this;
+      });
    }
 
    void unlinkGenerator() {
@@ -123,14 +134,15 @@ public class Task implements Storable {
     * TODO Should the call to unlinkGenerator on earlier tasks in the series
     * cause the modification timestamp to update?
     */
-   public void modifySeries(GeneratorDelta delta) throws TaskAccessException {
-      if (generatorId == null) {
-         throw new IllegalStateException("Cannot modify series on non series task");
-      }
-
-      Generator generator = taskStore.getGenerators().getById(generatorId);
-      generator.unlinkTasksBefore(id);
-      generator.modify(delta);
+   public Either<TaskAccessException, Task> modifySeries(GeneratorDelta delta) {
+      return getGenerator()
+         .map(g -> g.getOrElse(() -> {
+            String msg = "Cannot modify series on non series task";
+            throw new IllegalStateException(msg);
+         }))
+         .flatMap(g -> g.unlinkTasksBefore(id))
+         .flatMap(g -> g.modify(delta))
+         .map(g -> this);
    }
 
    @Override

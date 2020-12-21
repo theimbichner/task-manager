@@ -14,7 +14,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import io.github.theimbichner.task.io.TaskAccessException;
 import io.github.theimbichner.task.schema.Property;
 import io.github.theimbichner.task.time.DatePattern;
 import io.github.theimbichner.task.time.DateTime;
@@ -30,7 +29,7 @@ public class GeneratorTests {
    }
 
    @Test
-   void testNewGenerator() throws TaskAccessException {
+   void testNewGenerator() {
       Instant before = Instant.now();
       Generator generator = data.createDefaultGenerator();
       Instant after = Instant.now();
@@ -55,7 +54,7 @@ public class GeneratorTests {
          .isEqualTo(data.getGenerationDatePattern());
    }
 
-   private static Stream<Generator> provideGenerators() throws TaskAccessException {
+   private static Stream<Generator> provideGenerators() {
       return Stream.of(
          data.createDefaultGenerator(),
          data.createModifiedGenerator());
@@ -106,10 +105,11 @@ public class GeneratorTests {
    }
 
    @Test
-   void testToFromJsonWithTasks() throws TaskAccessException {
+   void testToFromJsonWithTasks() {
       Generator generator = data.createModifiedGenerator();
+
       Instant timestamp = Instant.now().plusSeconds(600);
-      List<String> tasks = generator.generateTasks(timestamp);
+      List<String> tasks = generator.generateTasks(timestamp).get();
 
       JSONObject json = generator.toJson();
       JSONArray jsonTasks = json.getJSONArray("tasks");
@@ -127,9 +127,9 @@ public class GeneratorTests {
 
    @ParameterizedTest
    @MethodSource("provideGenerators")
-   void testModifyFull(Generator generator) throws TaskAccessException {
+   void testModifyFull(Generator generator) {
       Instant beforeModify = Instant.now();
-      generator.modify(data.getFullGeneratorDelta());
+      generator.modify(data.getFullGeneratorDelta()).get();
 
       assertThat(generator.getDateLastModified().getStart())
          .isAfterOrEqualTo(beforeModify)
@@ -148,7 +148,7 @@ public class GeneratorTests {
 
    @ParameterizedTest
    @MethodSource("provideGenerators")
-   void testModifyEmpty(Generator generator) throws TaskAccessException {
+   void testModifyEmpty(Generator generator) {
       DateTime oldDateLastModified = generator.getDateLastModified();
       String oldName = generator.getName();
       String oldTemplateName = generator.getTemplateName();
@@ -157,7 +157,7 @@ public class GeneratorTests {
       Set<String> oldTemplatePropertyNames = generator.getTemplatePropertyNames();
 
       GeneratorDelta delta = new GeneratorDelta(Map.of(), null, null, null, null);
-      generator.modify(delta);
+      generator.modify(delta).get();
 
       assertThat(generator.getDateLastModified().getStart())
          .isEqualTo(oldDateLastModified.getStart());
@@ -175,7 +175,7 @@ public class GeneratorTests {
 
    @ParameterizedTest
    @MethodSource("provideGenerators")
-   void testModifyPartial(Generator generator) throws TaskAccessException {
+   void testModifyPartial(Generator generator) {
       String oldName = generator.getName();
       String oldTemplateName = generator.getTemplateName();
       String oldTemplateMarkup = generator.getTemplateMarkup();
@@ -183,7 +183,7 @@ public class GeneratorTests {
 
       GeneratorDelta delta = new GeneratorDelta(data.getProperties(), null, null, null, null);
       Instant beforeModify = Instant.now();
-      generator.modify(delta);
+      generator.modify(delta).get();
 
       assertThat(generator.getDateLastModified().getStart())
          .isAfterOrEqualTo(beforeModify)
@@ -196,11 +196,13 @@ public class GeneratorTests {
    }
 
    @Test
-   void testModifyUpdateProperties() throws TaskAccessException {
+   void testModifyUpdateProperties() {
       Generator generator = data.createModifiedGenerator();
       Set<String> expectedNames = Set.of("alpha", "gamma");
 
-      generator.modify(new GeneratorDelta(data.getUpdateProperties(), null, null, null, null));
+      generator
+         .modify(new GeneratorDelta(data.getUpdateProperties(), null, null, null, null))
+         .get();
       assertThat(generator.getTemplatePropertyNames()).isEqualTo(expectedNames);
       assertThat(generator.getTemplateProperty("alpha")).isEqualTo(Property.of(null));
       assertThat(generator.getTemplateProperty("beta")).isNull();
@@ -208,16 +210,16 @@ public class GeneratorTests {
    }
 
    @Test
-   void testModifyWithTasks() throws TaskAccessException {
+   void testModifyWithTasks() {
       Generator generator = data.createDefaultGenerator();
       Instant timestamp = Instant.now().plusSeconds(600);
-      List<String> tasks = generator.generateTasks(timestamp);
-      data.getTaskStore().getGenerators().save(generator);
+      List<String> tasks = generator.generateTasks(timestamp).get();
+      data.getTaskStore().getGenerators().save(generator).get();
 
-      generator.modify(data.getFullGeneratorDelta());
+      generator.modify(data.getFullGeneratorDelta()).get();
 
       for (String s : tasks) {
-         Task task = data.getTaskStore().getTasks().getById(s);
+         Task task = data.getTaskStore().getTasks().getById(s).get();
          assertThat(task.getName()).isEqualTo(data.getTemplateName());
          assertThat(task.getMarkup()).isEqualTo(data.getMarkup());
          for (String key : data.getProperties().keySet()) {
@@ -230,7 +232,7 @@ public class GeneratorTests {
    }
 
    @Test
-   void testModifyInvalid() throws TaskAccessException {
+   void testModifyInvalid() {
       Generator generator = data.createModifiedGenerator();
       Map<String, Property> newProperties = Map.of(
          data.getGenerationField(), Property.of(new DateTime()));
@@ -241,7 +243,7 @@ public class GeneratorTests {
 
    // TODO add tests where generateTasks timestamp lies exactly on timestamp returned by getDates
    @Test
-   void testGenerateTasks() throws TaskAccessException {
+   void testGenerateTasks() {
       Generator generator = data.createDefaultGenerator();
       DatePattern datePattern = data.getGenerationDatePattern();
       Instant start = generator.getDateCreated().getStart();
@@ -249,43 +251,43 @@ public class GeneratorTests {
       Instant secondInstant = Instant.now().plusSeconds(350);
 
       List<Instant> dates = datePattern.getDates(start, firstInstant);
-      List<String> firstResult = generator.generateTasks(firstInstant);
+      List<String> firstResult = generator.generateTasks(firstInstant).get();
       assertThat(firstResult).hasSameSizeAs(dates);
       for (String s : firstResult) {
-         Task task = data.getTaskStore().getTasks().getById(s);
+         Task task = data.getTaskStore().getTasks().getById(s).get();
          assertThat(task.getGeneratorId()).isEqualTo(generator.getId());
       }
 
       dates = datePattern.getDates(firstInstant, secondInstant);
-      List<String> secondResult = generator.generateTasks(secondInstant);
+      List<String> secondResult = generator.generateTasks(secondInstant).get();
       assertThat(secondResult).hasSameSizeAs(dates);
       for (String s : secondResult) {
-         Task task = data.getTaskStore().getTasks().getById(s);
+         Task task = data.getTaskStore().getTasks().getById(s).get();
          assertThat(task.getGeneratorId()).isEqualTo(generator.getId());
       }
 
-      List<String> thirdResult = generator.generateTasks(firstInstant);
+      List<String> thirdResult = generator.generateTasks(firstInstant).get();
       assertThat(thirdResult).isEmpty();
    }
 
    @Test
-   void testUnlinkTasksBefore() throws TaskAccessException {
+   void testUnlinkTasksBefore() {
       Generator generator = data.createDefaultGenerator();
       Instant firstInstant = Instant.now().plusSeconds(100);
       Instant secondInstant = Instant.now().plusSeconds(350);
 
-      List<String> firstResult = generator.generateTasks(firstInstant);
-      List<String> secondResult = generator.generateTasks(secondInstant);
+      List<String> firstResult = generator.generateTasks(firstInstant).get();
+      List<String> secondResult = generator.generateTasks(secondInstant).get();
 
-      generator.unlinkTasksBefore(secondResult.get(0));
+      generator.unlinkTasksBefore(secondResult.get(0)).get();
       for (String s : firstResult) {
-         Task task = data.getTaskStore().getTasks().getById(s);
+         Task task = data.getTaskStore().getTasks().getById(s).get();
          assertThat(task.getGeneratorId()).isNull();
       }
    }
 
    @Test
-   void testUnlinkTasksBeforeInvalid() throws TaskAccessException {
+   void testUnlinkTasksBeforeInvalid() {
       Generator generator = data.createDefaultGenerator();
       assertThatExceptionOfType(IllegalArgumentException.class)
          .isThrownBy(() -> generator.unlinkTasksBefore("alpha"));
