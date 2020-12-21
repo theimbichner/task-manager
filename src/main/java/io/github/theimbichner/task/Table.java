@@ -97,7 +97,7 @@ public class Table implements Storable {
    }
 
    @Override
-   public void registerTaskStore(TaskStore taskStore) {
+   public void setTaskStore(TaskStore taskStore) {
       this.taskStore = taskStore;
    }
 

@@ -18,7 +18,7 @@ public class TaskStore {
 
       @Override
       public Either<TaskAccessException, T> getById(String id) {
-         return delegate.getById(id).peek(t -> t.registerTaskStore(TaskStore.this));
+         return delegate.getById(id).peek(t -> t.setTaskStore(TaskStore.this));
       }
 
       @Override

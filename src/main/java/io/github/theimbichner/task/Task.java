@@ -146,7 +146,7 @@ public class Task implements Storable {
    }
 
    @Override
-   public void registerTaskStore(TaskStore taskStore) {
+   public void setTaskStore(TaskStore taskStore) {
       this.taskStore = taskStore;
    }
 
@@ -159,7 +159,7 @@ public class Task implements Storable {
       Task result = new Task(UUID.randomUUID().toString(), table.getId());
       result.properties.putAll(table.getDefaultProperties());
       table.linkTask(result.id);
-      result.registerTaskStore(table.getTaskStore());
+      result.setTaskStore(table.getTaskStore());
       return result;
    }
 
@@ -173,7 +173,7 @@ public class Task implements Storable {
       }
       DateTime date = new DateTime(startTime).withDuration(generator.getTemplateDuration());
       result.properties.put(generator.getGenerationField(), Property.of(date));
-      result.registerTaskStore(generator.getTaskStore());
+      result.setTaskStore(generator.getTaskStore());
       return result;
    }
 

@@ -93,7 +93,7 @@ public class TableTests {
    @Test
    void testGetAllTaskIdsWithGenerators() {
       Table table = Table.createTable();
-      table.registerTaskStore(taskStore);
+      table.setTaskStore(taskStore);
 
       Instant start = Instant.now();
       Instant end = start.plusSeconds(600);
@@ -114,7 +114,7 @@ public class TableTests {
    @Test
    void testToFromJson() {
       Table table = Table.createTable();
-      table.registerTaskStore(taskStore);
+      table.setTaskStore(taskStore);
 
       Generator generator = Generator.createGenerator(table, "", getDatePattern(7));
       taskStore.getGenerators().save(generator).get();
@@ -126,7 +126,7 @@ public class TableTests {
 
       JSONObject json = table.toJson();
       Table newTable = Table.fromJson(json);
-      newTable.registerTaskStore(taskStore);
+      newTable.setTaskStore(taskStore);
 
       assertThat(newTable.getId()).isEqualTo(table.getId());
       assertThat(newTable.getName()).isEqualTo(table.getName());

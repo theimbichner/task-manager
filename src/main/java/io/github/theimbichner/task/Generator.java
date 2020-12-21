@@ -195,7 +195,7 @@ public class Generator implements Storable {
    }
 
    @Override
-   public void registerTaskStore(TaskStore taskStore) {
+   public void setTaskStore(TaskStore taskStore) {
       this.taskStore = taskStore;
    }
 
@@ -207,7 +207,7 @@ public class Generator implements Storable {
    public static Generator createGenerator(Table table, String field, DatePattern pattern) {
       Generator result = new Generator(UUID.randomUUID().toString(), table.getId(), field, pattern);
       result.templateProperties.putAll(table.getDefaultProperties());
-      result.registerTaskStore(table.getTaskStore());
+      result.setTaskStore(table.getTaskStore());
 
       return result;
    }

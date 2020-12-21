@@ -26,7 +26,7 @@ public class DataProvider {
       taskStore = InMemoryDataStore.createTaskStore();
 
       table = Table.createTable();
-      table.registerTaskStore(taskStore);
+      table.setTaskStore(taskStore);
 
       generationField = "";
       datePattern = new UniformDatePattern(
