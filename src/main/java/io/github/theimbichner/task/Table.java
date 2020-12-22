@@ -2,9 +2,7 @@ package io.github.theimbichner.task;
 
 import java.time.Instant;
 import java.util.HashMap;
-import java.util.LinkedHashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -13,6 +11,7 @@ import io.vavr.control.Either;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import io.github.theimbichner.task.collection.SetList;
 import io.github.theimbichner.task.io.Storable;
 import io.github.theimbichner.task.io.TaskAccessException;
 import io.github.theimbichner.task.io.TaskStore;
@@ -32,8 +31,8 @@ public class Table implements Storable {
    private final String id;
    private String name;
    private ModifyRecord modifyRecord;
-   private final Set<String> taskIds;
-   private final Set<String> generatorIds;
+   private SetList<String> taskIds;
+   private SetList<String> generatorIds;
    private final Map<String, TypeDescriptor> schema;
 
    private TaskStore taskStore;
@@ -42,8 +41,8 @@ public class Table implements Storable {
       this.id = id;
       name = "";
       modifyRecord = ModifyRecord.createdNow();
-      taskIds = new LinkedHashSet<>();
-      generatorIds = new LinkedHashSet<>();
+      taskIds = SetList.empty();
+      generatorIds = SetList.empty();
       schema = new HashMap<>();
 
       taskStore = null;
@@ -66,34 +65,36 @@ public class Table implements Storable {
       return new DateTime(modifyRecord.getDateLastModified());
    }
 
-   public Either<TaskAccessException, Set<String>> getAllTaskIds(Instant timestamp) {
+   public Either<TaskAccessException, SetList<String>> getAllTaskIds(Instant timestamp) {
       return Either
-         .sequenceRight(generatorIds.stream()
+         .sequenceRight(generatorIds.asList().stream()
             .map(s -> taskStore
                .getGenerators().getById(s)
-               .flatMap(g -> g.generateTasks(timestamp).peek(taskIds::addAll)))
+               .flatMap(g -> g
+                  .generateTasks(timestamp)
+                  .peek(tasks -> taskIds = taskIds.addAll(tasks))))
             .collect(Collectors.toList()))
-         .map(x -> Set.copyOf(taskIds));
+         .map(x -> taskIds);
    }
 
    void linkTask(String id) {
-      taskIds.add(id);
+      taskIds = taskIds.add(id);
    }
 
    void unlinkTask(String id) {
-      taskIds.remove(id);
+      taskIds = taskIds.remove(id);
    }
 
-   public Set<String> getAllGeneratorIds() {
-      return Set.copyOf(generatorIds);
+   public SetList<String> getAllGeneratorIds() {
+      return generatorIds;
    }
 
    void linkGenerator(String id) {
-      generatorIds.add(id);
+      generatorIds = generatorIds.add(id);
    }
 
    void unlinkGenerator(String id) {
-      generatorIds.remove(id);
+      generatorIds = generatorIds.remove(id);
    }
 
    @Override
@@ -123,8 +124,8 @@ public class Table implements Storable {
       json.put("id", id);
       json.put("name", name);
       modifyRecord.writeIntoJson(json);
-      json.put("tasks", taskIds);
-      json.put("generators", generatorIds);
+      json.put("tasks", taskIds.asList());
+      json.put("generators", generatorIds.asList());
 
       JSONObject schemaJson = new JSONObject();
       for (String s : schema.keySet()) {
@@ -144,12 +145,12 @@ public class Table implements Storable {
 
       JSONArray tasksJson = json.getJSONArray("tasks");
       for (int i = 0; i < tasksJson.length(); i++) {
-         result.taskIds.add(tasksJson.getString(i));
+         result.taskIds = result.taskIds.add(tasksJson.getString(i));
       }
 
       JSONArray generatorsJson = json.getJSONArray("generators");
       for (int i = 0; i < generatorsJson.length(); i++) {
-         result.generatorIds.add(generatorsJson.getString(i));
+         result.generatorIds = result.generatorIds.add(generatorsJson.getString(i));
       }
 
       JSONObject schemaJson = json.getJSONObject("schema");

@@ -61,4 +61,19 @@ public class SetListTests {
       setList = setList.add("alpha").add("beta").remove("gamma");
       assertThat(setList.asList()).isEqualTo(List.of("alpha", "beta"));
    }
+
+   @Test
+   void testAddAll() {
+      setList = setList.addAll(List.of("alpha", "beta", "gamma", "beta"));
+      assertThat(setList.asList()).isEqualTo(List.of("alpha", "beta", "gamma"));
+   }
+
+   @Test
+   void testAddRemoveAddAll() {
+      setList = setList
+         .addAll(List.of("alpha", "beta", "gamma"))
+         .remove("beta")
+         .addAll(List.of("beta", "gamma"));
+      assertThat(setList.asList()).isEqualTo(List.of("alpha", "gamma", "beta"));
+   }
 }

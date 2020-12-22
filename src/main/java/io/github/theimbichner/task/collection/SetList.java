@@ -36,6 +36,14 @@ public class SetList<T> {
       return new SetList<>(set.add(t), removed, list.append(t));
    }
 
+   public SetList<T> addAll(Iterable<T> ts) {
+      SetList<T> result = this;
+      for (T t : ts) {
+         result = result.add(t);
+      }
+      return result;
+   }
+
    public SetList<T> remove(T t) {
       if (!set.contains(t)) {
          return this;
