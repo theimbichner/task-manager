@@ -1,7 +1,10 @@
 package io.github.theimbichner.task.collection;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 
+import io.vavr.Tuple;
+import io.vavr.Tuple2;
 import io.vavr.collection.HashSet;
 import io.vavr.collection.Vector;
 
@@ -50,6 +53,24 @@ public class SetList<T> {
       }
 
       return new SetList<>(set.remove(t), removed.add(t), list);
+   }
+
+   public boolean contains(T t) {
+      return set.contains(t);
+   }
+
+   public Tuple2<List<T>, List<T>> split(T t) {
+      clean();
+      int index = list.indexOf(t, 0);
+      if (index == -1) {
+         throw new NoSuchElementException();
+      }
+
+      // t should fall into the right Vector
+      Vector<T> left = list.dropRight(list.size() - index);
+      Vector<T> right = list.drop(index);
+
+      return Tuple.of(left.asJava(), right.asJava());
    }
 
    public List<T> asList() {

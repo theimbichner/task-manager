@@ -2,19 +2,19 @@ package io.github.theimbichner.task;
 
 import java.time.Instant;
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import io.vavr.Tuple2;
 import io.vavr.control.Either;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import io.github.theimbichner.task.collection.SetList;
 import io.github.theimbichner.task.io.Storable;
 import io.github.theimbichner.task.io.TaskAccessException;
 import io.github.theimbichner.task.io.TaskStore;
@@ -35,7 +35,7 @@ public class Generator implements Storable {
    private Instant generationLastTimestamp;
    private final String generationField;
    private final DatePattern generationDatePattern;
-   private final LinkedHashSet<String> taskIds;
+   private SetList<String> taskIds;
 
    private TaskStore taskStore;
 
@@ -57,7 +57,7 @@ public class Generator implements Storable {
       templateProperties = new HashMap<>();
       templateDuration = 0;
       generationLastTimestamp = modifyRecord.getDateCreated();
-      taskIds = new LinkedHashSet<>();
+      taskIds = SetList.empty();
 
       taskStore = null;
    }
@@ -112,7 +112,7 @@ public class Generator implements Storable {
    }
 
    void unlinkTask(String id) {
-      taskIds.remove(id);
+      taskIds = taskIds.remove(id);
    }
 
    public Either<TaskAccessException, Generator> modify(GeneratorDelta delta) {
@@ -140,7 +140,7 @@ public class Generator implements Storable {
 
       TaskDelta taskDelta = delta.asTaskDelta();
       return Either
-         .sequenceRight(taskIds.stream()
+         .sequenceRight(taskIds.asList().stream()
             .map(id -> taskStore
                .getTasks().getById(id)
                .flatMap(t -> t.modify(taskDelta, false)))
@@ -157,19 +157,15 @@ public class Generator implements Storable {
       }
 
       Either<TaskAccessException, Task> result = Either.right(null);
-      Iterator<String> iterator = taskIds.iterator();
-      while (iterator.hasNext()) {
-         String nextId = iterator.next();
-         if (nextId.equals(taskId)) {
-            break;
-         }
+
+      Tuple2<List<String>, List<String>> split = taskIds.split(taskId);
+      for (String s : split._1) {
          result = result
-            .flatMap(x -> taskStore.getTasks().getById(nextId))
-            .peek(task -> {
-               task.unlinkGenerator();
-               iterator.remove();
-            });
+            .flatMap(x -> taskStore.getTasks().getById(s))
+            .peek(task -> task.unlinkGenerator());
       }
+      taskIds = SetList.empty();
+      taskIds = taskIds.addAll(split._2);
 
       return result.map(x -> this);
    }
@@ -187,7 +183,7 @@ public class Generator implements Storable {
             .collect(Collectors.toList()))
          .map(tasks -> tasks
             .map(task -> {
-               taskIds.add(task.getId());
+               taskIds = taskIds.add(task.getId());
                return task.getId();
             })
             .asJava())
@@ -224,7 +220,7 @@ public class Generator implements Storable {
       json.put("generationLastTimestamp", generationLastTimestamp.toString());
       json.put("generationField", generationField);
       json.put("generationDatePattern", generationDatePattern.toJson());
-      json.put("tasks", taskIds);
+      json.put("tasks", taskIds.asList());
 
       JSONObject propertiesJson = new JSONObject();
       for (String s : templateProperties.keySet()) {
@@ -252,7 +248,7 @@ public class Generator implements Storable {
 
       JSONArray tasksJson = json.getJSONArray("tasks");
       for (int i = 0; i < tasksJson.length(); i++) {
-         result.taskIds.add(tasksJson.getString(i));
+         result.taskIds = result.taskIds.add(tasksJson.getString(i));
       }
 
       JSONObject propertiesJson = json.getJSONObject("templateProperties");
