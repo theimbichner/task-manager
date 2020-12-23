@@ -16,6 +16,7 @@ import io.github.theimbichner.task.io.Storable;
 import io.github.theimbichner.task.io.TaskAccessException;
 import io.github.theimbichner.task.io.TaskStore;
 import io.github.theimbichner.task.schema.Property;
+import io.github.theimbichner.task.schema.PropertyMap;
 import io.github.theimbichner.task.schema.TypeDescriptor;
 import io.github.theimbichner.task.time.DateTime;
 import io.github.theimbichner.task.time.ModifyRecord;
@@ -107,12 +108,12 @@ public class Table implements Storable {
       return taskStore;
    }
 
-   public Map<String, Property> getDefaultProperties() {
+   public PropertyMap getDefaultProperties() {
       Map<String, Property> result = new HashMap<>();
       for (String key : schema.keySet()) {
          result.put(key, schema.get(key).getDefaultValue());
       }
-      return result;
+      return PropertyMap.fromJava(result);
    }
 
    public static Table createTable() {

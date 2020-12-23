@@ -4,29 +4,30 @@ import java.util.Map;
 import java.util.Optional;
 
 import io.github.theimbichner.task.schema.Property;
+import io.github.theimbichner.task.schema.PropertyMap;
 
 public class GeneratorDelta {
-   private final Map<String, Property> properties;
+   private final PropertyMap properties;
    private final String name;
    private final String templateName;
    private final String templateMarkup;
    private final Long templateDuration;
 
    public GeneratorDelta(
-      Map<String, Property> properties,
+      PropertyMap properties,
       String name,
       String templateName,
       String templateMarkup,
       Long templateDuration
    ) {
-      this.properties = Map.copyOf(properties);
+      this.properties = properties;
       this.name = name;
       this.templateName = templateName;
       this.templateMarkup = templateMarkup;
       this.templateDuration = templateDuration;
    }
 
-   public Map<String, Property> getProperties() {
+   public PropertyMap getProperties() {
       return properties;
    }
 
@@ -51,7 +52,7 @@ public class GeneratorDelta {
          && templateName == null
          && templateMarkup == null
          && templateDuration == null
-         && properties.isEmpty();
+         && properties.asMap().isEmpty();
    }
 
    public TaskDelta asTaskDelta() {

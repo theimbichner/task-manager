@@ -1,11 +1,11 @@
 package io.github.theimbichner.task;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.stream.Stream;
 import java.time.Instant;
+
+import io.vavr.collection.HashMap;
+import io.vavr.collection.HashSet;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -13,6 +13,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import io.github.theimbichner.task.schema.Property;
+import io.github.theimbichner.task.schema.PropertyMap;
 import io.github.theimbichner.task.time.DateTime;
 
 import static org.assertj.core.api.Assertions.*;
@@ -43,7 +44,7 @@ public class TaskTests {
 
       assertThat(task.getMarkup()).isEqualTo("");
       assertThat(task.getGeneratorId()).isNull();
-      assertThat(task.getPropertyNames()).isEqualTo(Set.of());
+      assertThat(task.getProperties().asMap()).isEmpty();
    }
 
    private static Stream<Task> provideTasks() {
@@ -78,9 +79,7 @@ public class TaskTests {
 
       assertThat(task.getName()).isEqualTo(data.getTemplateName());
       assertThat(task.getMarkup()).isEqualTo(data.getMarkup());
-      for (String s : data.getProperties().keySet()) {
-         assertThat(task.getProperty(s)).isEqualTo(data.getProperties().get(s));
-      }
+      assertThat(task.getProperties().asMap()).containsAll(data.getProperties().asMap());
    }
 
    @ParameterizedTest
@@ -89,9 +88,9 @@ public class TaskTests {
       DateTime oldDateLastModified = task.getDateLastModified();
       String oldName = task.getName();
       String oldMarkup = task.getMarkup();
-      Set<String> oldPropertyNames = task.getPropertyNames();
+      PropertyMap oldProperties = task.getProperties();
 
-      task.modify(new TaskDelta(Map.of(), null, null, null), false).get();
+      task.modify(new TaskDelta(PropertyMap.empty(), null, null, null), false).get();
 
       assertThat(task.getDateLastModified().getStart())
          .isEqualTo(oldDateLastModified.getStart());
@@ -100,7 +99,7 @@ public class TaskTests {
 
       assertThat(task.getName()).isEqualTo(oldName);
       assertThat(task.getMarkup()).isEqualTo(oldMarkup);
-      assertThat(task.getPropertyNames()).isEqualTo(oldPropertyNames);
+      assertThat(task.getProperties().asMap()).isEqualTo(oldProperties.asMap());
    }
 
    @ParameterizedTest
@@ -123,13 +122,10 @@ public class TaskTests {
    @Test
    void testModifyUpdateProperties() {
       Task task = data.createModifiedTask();
-      Set<String> expectedPropertyNames = Set.of("alpha", "gamma");
 
       task.modify(new TaskDelta(data.getUpdateProperties(), null, null, null)).get();
-      assertThat(task.getPropertyNames()).isEqualTo(expectedPropertyNames);
-      assertThat(task.getProperty("alpha")).isEqualTo(Property.of(null));
-      assertThat(task.getProperty("beta")).isNull();
-      assertThat(task.getProperty("delta")).isNull();
+      assertThat(task.getProperties().asMap().keySet()).isEqualTo(HashSet.of("alpha", "gamma"));
+      assertThat(task.getProperties().asMap().get("alpha")).contains(Property.of(null));
    }
 
    @Test
@@ -150,13 +146,13 @@ public class TaskTests {
    @MethodSource("provideGeneratorTasks")
    void testModifyUpdateDuration(Task task) {
       String generationField = data.getGenerationField();
-      DateTime initialTime = (DateTime) task.getProperty(generationField).get();
-      Instant expectedEnd = initialTime.getStart().plusSeconds(data.getDuration());
+      DateTime initial = (DateTime) task.getProperties().asMap().get(generationField).get().get();
+      Instant expectedEnd = initial.getStart().plusSeconds(data.getDuration());
 
       task.modify(data.getFullTaskDelta(), false).get();
-      DateTime dateTime = (DateTime) task.getProperty(generationField).get();
+      DateTime dateTime = (DateTime) task.getProperties().asMap().get(generationField).get().get();
 
-      assertThat(dateTime.getStart()).isEqualTo(initialTime.getStart());
+      assertThat(dateTime.getStart()).isEqualTo(initial.getStart());
       assertThat(dateTime.getEnd()).isEqualTo(expectedEnd);
    }
 
@@ -174,9 +170,7 @@ public class TaskTests {
 
       assertThat(task.getName()).isEqualTo(data.getTemplateName());
       assertThat(task.getMarkup()).isEqualTo(data.getMarkup());
-      for (String s : data.getProperties().keySet()) {
-         assertThat(task.getProperty(s)).isEqualTo(data.getProperties().get(s));
-      }
+      assertThat(task.getProperties().asMap()).containsAll(data.getProperties().asMap());
    }
 
    @ParameterizedTest
@@ -187,9 +181,7 @@ public class TaskTests {
       Task targetTask = data.getTaskStore().getTasks().getById(tasks.get(index)).get();
       targetTask.modifySeries(data.getFullGeneratorDelta()).get();
 
-      Set<String> expectedProperties = new HashSet<>();
-      expectedProperties.add(data.getGenerationField());
-      expectedProperties.addAll(data.getProperties().keySet());
+      String generationField = data.getGenerationField();
 
       for (int i = 0; i < tasks.size(); i++) {
          Task task = data.getTaskStore().getTasks().getById(tasks.get(i)).get();
@@ -199,10 +191,9 @@ public class TaskTests {
          else {
             assertThat(task.getName()).isEqualTo(data.getTemplateName());
             assertThat(task.getMarkup()).isEqualTo(data.getMarkup());
-            assertThat(task.getPropertyNames()).isEqualTo(expectedProperties);
-            for (String s : data.getProperties().keySet()) {
-               assertThat(task.getProperty(s)).isEqualTo(data.getProperties().get(s));
-            }
+            assertThat(task.getProperties().asMap().remove(generationField))
+               .isEqualTo(data.getProperties().asMap());
+            assertThat(task.getProperties().asMap().containsKey(generationField)).isTrue();
          }
       }
    }
@@ -233,8 +224,6 @@ public class TaskTests {
 
       assertThat(newTask.getMarkup()).isEqualTo(task.getMarkup());
       assertThat(newTask.getGeneratorId()).isEqualTo(task.getGeneratorId());
-
-      assertThat(newTask.getPropertyNames()).isEqualTo(task.getPropertyNames());
       // TODO reenable tests after implementing properties
       // for (String s : newTask.getPropertyNames()) {
       //    assertThat(newTask.getProperty(s)).isEqualTo(task.getProperty(s));
@@ -252,19 +241,10 @@ public class TaskTests {
       assertThat(task.getMarkup()).isEqualTo(generator.getTemplateMarkup());
       assertThat(task.getGeneratorId()).isEqualTo(generator.getId());
 
-      Set<String> expectedPropertyNames = new HashSet<>();
-      expectedPropertyNames.add(generationField);
-      expectedPropertyNames.addAll(generator.getTemplatePropertyNames());
-      assertThat(task.getPropertyNames()).isEqualTo(expectedPropertyNames);
+      DateTime date = new DateTime(instant).withDuration(generator.getTemplateDuration());
+      HashMap<String, Property> expectedProperties = generator.getTemplateProperties().asMap();
+      expectedProperties = expectedProperties.put(generationField, Property.of(date));
 
-      for (String s : generator.getTemplatePropertyNames()) {
-         assertThat(task.getProperty(s)).isEqualTo(generator.getTemplateProperty(s));
-      }
-
-      DateTime dateTime = (DateTime) task.getProperty(generationField).get();
-      assertThat(dateTime.getStart())
-         .isEqualTo(instant);
-      assertThat(dateTime.getEnd())
-         .isEqualTo(instant.plusSeconds(generator.getTemplateDuration()));
+      assertThat(task.getProperties().asMap()).isEqualTo(expectedProperties);
    }
 }

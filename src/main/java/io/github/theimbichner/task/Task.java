@@ -1,9 +1,6 @@
 package io.github.theimbichner.task;
 
 import java.time.Instant;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 import io.vavr.control.Either;
@@ -15,6 +12,7 @@ import io.github.theimbichner.task.io.Storable;
 import io.github.theimbichner.task.io.TaskAccessException;
 import io.github.theimbichner.task.io.TaskStore;
 import io.github.theimbichner.task.schema.Property;
+import io.github.theimbichner.task.schema.PropertyMap;
 import io.github.theimbichner.task.time.DateTime;
 import io.github.theimbichner.task.time.ModifyRecord;
 
@@ -25,7 +23,7 @@ public class Task implements Storable {
    private ModifyRecord modifyRecord;
    private String markup;
    private String generatorId;
-   private final Map<String, Property> properties;
+   private PropertyMap properties;
 
    private TaskStore taskStore;
 
@@ -36,7 +34,7 @@ public class Task implements Storable {
       name = "";
       modifyRecord = ModifyRecord.createdNow();
       markup = "";
-      properties = new HashMap<>();
+      properties = PropertyMap.empty();
       generatorId = null;
 
       taskStore = null;
@@ -67,12 +65,8 @@ public class Task implements Storable {
       return generatorId;
    }
 
-   public Set<String> getPropertyNames() {
-      return Set.copyOf(properties.keySet());
-   }
-
-   public Property getProperty(String key) {
-      return properties.get(key);
+   public PropertyMap getProperties() {
+      return properties;
    }
 
    private Either<TaskAccessException, Option<Generator>> getGenerator() {
@@ -92,26 +86,18 @@ public class Task implements Storable {
       }
 
       return getGenerator().map(generator -> {
-         for (String key : delta.getProperties().keySet()) {
-            Property newProperty = delta.getProperties().get(key);
-            if (newProperty == Property.DELETE) {
-               properties.remove(key);
-            }
-            else {
-               properties.put(key, newProperty);
-            }
-         }
-
+         properties = properties.merge(delta.getProperties());
          name = delta.getName().orElse(name);
          markup = delta.getMarkup().orElse(markup);
+
          if (delta.getDuration().isPresent()) {
             if (generator.isEmpty() || shouldUnlinkGenerator) {
                throw new IllegalArgumentException("Cannot set duration without generator");
             }
             String generationField = generator.get().getGenerationField();
-            DateTime date = (DateTime) properties.get(generationField).get();
+            DateTime date = (DateTime) properties.asMap().get(generationField).get().get();
             long duration = delta.getDuration().get();
-            properties.put(generationField, Property.of(date.withDuration(duration)));
+            properties = properties.put(generationField, Property.of(date.withDuration(duration)));
          }
 
          generator.peek(g -> {
@@ -157,7 +143,7 @@ public class Task implements Storable {
 
    public static Task createTask(Table table) {
       Task result = new Task(UUID.randomUUID().toString(), table.getId());
-      result.properties.putAll(table.getDefaultProperties());
+      result.properties = table.getDefaultProperties();
       table.linkTask(result.id);
       result.setTaskStore(table.getTaskStore());
       return result;
@@ -168,11 +154,11 @@ public class Task implements Storable {
       result.name = generator.getTemplateName();
       result.markup = generator.getTemplateMarkup();
       result.generatorId = generator.getId();
-      for (String s : generator.getTemplatePropertyNames()) {
-         result.properties.put(s, generator.getTemplateProperty(s));
-      }
-      DateTime date = new DateTime(startTime).withDuration(generator.getTemplateDuration());
-      result.properties.put(generator.getGenerationField(), Property.of(date));
+      DateTime date = new DateTime(startTime)
+         .withDuration(generator.getTemplateDuration());
+      result.properties = generator
+         .getTemplateProperties()
+         .put(generator.getGenerationField(), Property.of(date));
       result.setTaskStore(generator.getTaskStore());
       return result;
    }
@@ -185,12 +171,8 @@ public class Task implements Storable {
       modifyRecord.writeIntoJson(json);
       json.put("markup", markup);
       json.put("generator", generatorId == null ? JSONObject.NULL : generatorId);
+      json.put("properties", properties.toJson());
 
-      JSONObject propertiesJson = new JSONObject();
-      for (String s : properties.keySet()) {
-         propertiesJson.put(s, properties.get(s).toJson());
-      }
-      json.put("properties", propertiesJson);
       return json;
    }
 
@@ -203,11 +185,7 @@ public class Task implements Storable {
       result.modifyRecord = ModifyRecord.readFromJson(json);
       result.markup = json.getString("markup");
       result.generatorId = json.isNull("generator") ? null : json.getString("generator");
-
-      JSONObject propertiesJson = json.getJSONObject("properties");
-      for (String s : propertiesJson.keySet()) {
-         result.properties.put(s, Property.fromJson(propertiesJson.getJSONObject(s)));
-      }
+      result.properties = PropertyMap.fromJson(json.getJSONObject("properties"));
 
       return result;
    }

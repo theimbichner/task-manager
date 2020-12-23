@@ -2,9 +2,9 @@ package io.github.theimbichner.task;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.stream.Stream;
+
+import io.vavr.collection.HashSet;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -15,6 +15,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import io.github.theimbichner.task.schema.Property;
+import io.github.theimbichner.task.schema.PropertyMap;
 import io.github.theimbichner.task.time.DatePattern;
 import io.github.theimbichner.task.time.DateTime;
 
@@ -39,7 +40,7 @@ public class GeneratorTests {
       assertThat(generator.getTemplateMarkup()).isEqualTo("");
       assertThat(generator.getTemplateDuration()).isEqualTo(0);
       assertThat(generator.getTemplateTableId()).isEqualTo(data.getTable().getId());
-      assertThat(generator.getTemplatePropertyNames()).isEqualTo(Set.of());
+      assertThat(generator.getTemplateProperties().asMap()).isEmpty();
       assertThat(generator.getGenerationField()).isEqualTo(data.getGenerationField());
 
       assertThat(generator.getDateCreated().getStart())
@@ -77,8 +78,6 @@ public class GeneratorTests {
          .isEqualTo(generator.getTemplateDuration());
       assertThat(newGenerator.getTemplateTableId())
          .isEqualTo(generator.getTemplateTableId());
-      assertThat(newGenerator.getTemplatePropertyNames())
-         .isEqualTo(generator.getTemplatePropertyNames());
       assertThat(newGenerator.getGenerationField())
          .isEqualTo(generator.getGenerationField());
 
@@ -139,11 +138,7 @@ public class GeneratorTests {
       assertThat(generator.getTemplateName()).isEqualTo(data.getTemplateName());
       assertThat(generator.getTemplateMarkup()).isEqualTo(data.getMarkup());
       assertThat(generator.getTemplateDuration()).isEqualTo(data.getDuration());
-
-      assertThat(generator.getTemplatePropertyNames()).isEqualTo(data.getProperties().keySet());
-      for (String s : generator.getTemplatePropertyNames()) {
-         assertThat(generator.getTemplateProperty(s)).isEqualTo(data.getProperties().get(s));
-      }
+      assertThat(generator.getTemplateProperties().asMap()).isEqualTo(data.getProperties().asMap());
    }
 
    @ParameterizedTest
@@ -154,9 +149,9 @@ public class GeneratorTests {
       String oldTemplateName = generator.getTemplateName();
       String oldTemplateMarkup = generator.getTemplateMarkup();
       long oldTemplateDuration = generator.getTemplateDuration();
-      Set<String> oldTemplatePropertyNames = generator.getTemplatePropertyNames();
+      PropertyMap oldTemplateProperties = generator.getTemplateProperties();
 
-      GeneratorDelta delta = new GeneratorDelta(Map.of(), null, null, null, null);
+      GeneratorDelta delta = new GeneratorDelta(PropertyMap.empty(), null, null, null, null);
       generator.modify(delta).get();
 
       assertThat(generator.getDateLastModified().getStart())
@@ -169,8 +164,8 @@ public class GeneratorTests {
       assertThat(generator.getTemplateMarkup()).isEqualTo(oldTemplateMarkup);
       assertThat(generator.getTemplateDuration()).isEqualTo(oldTemplateDuration);
 
-      assertThat(generator.getTemplatePropertyNames())
-         .isEqualTo(oldTemplatePropertyNames);
+      assertThat(generator.getTemplateProperties().asMap())
+         .isEqualTo(oldTemplateProperties.asMap());
    }
 
    @ParameterizedTest
@@ -197,16 +192,13 @@ public class GeneratorTests {
 
    @Test
    void testModifyUpdateProperties() {
-      Generator generator = data.createModifiedGenerator();
-      Set<String> expectedNames = Set.of("alpha", "gamma");
-
-      generator
+      Generator generator = data.createModifiedGenerator()
          .modify(new GeneratorDelta(data.getUpdateProperties(), null, null, null, null))
          .get();
-      assertThat(generator.getTemplatePropertyNames()).isEqualTo(expectedNames);
-      assertThat(generator.getTemplateProperty("alpha")).isEqualTo(Property.of(null));
-      assertThat(generator.getTemplateProperty("beta")).isNull();
-      assertThat(generator.getTemplateProperty("delta")).isNull();
+      assertThat(generator.getTemplateProperties().asMap().keySet())
+         .isEqualTo(HashSet.of("alpha", "gamma"));
+      assertThat(generator.getTemplateProperties().asMap().get("alpha"))
+         .contains(Property.of(null));
    }
 
    @Test
@@ -218,14 +210,14 @@ public class GeneratorTests {
 
       generator.modify(data.getFullGeneratorDelta()).get();
 
+      String generationField = data.getGenerationField();
+
       for (String s : tasks) {
          Task task = data.getTaskStore().getTasks().getById(s).get();
          assertThat(task.getName()).isEqualTo(data.getTemplateName());
          assertThat(task.getMarkup()).isEqualTo(data.getMarkup());
-         for (String key : data.getProperties().keySet()) {
-            assertThat(task.getProperty(key)).isEqualTo(data.getProperties().get(key));
-         }
-         DateTime date = (DateTime) task.getProperty(data.getGenerationField()).get();
+         assertThat(task.getProperties().asMap()).containsAll(data.getProperties().asMap());
+         DateTime date = (DateTime) task.getProperties().asMap().get(generationField).get().get();
          assertThat(date.getEnd())
             .isEqualTo(date.getStart().plusSeconds(data.getDuration()));
       }
@@ -234,7 +226,7 @@ public class GeneratorTests {
    @Test
    void testModifyInvalid() {
       Generator generator = data.createModifiedGenerator();
-      Map<String, Property> newProperties = Map.of(
+      PropertyMap newProperties = PropertyMap.empty().put(
          data.getGenerationField(), Property.of(new DateTime()));
       GeneratorDelta delta = new GeneratorDelta(newProperties, null, null, null, null);
       assertThatExceptionOfType(IllegalArgumentException.class)

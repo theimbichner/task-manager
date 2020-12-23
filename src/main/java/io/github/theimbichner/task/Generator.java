@@ -1,10 +1,7 @@
 package io.github.theimbichner.task;
 
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -18,7 +15,7 @@ import io.github.theimbichner.task.collection.SetList;
 import io.github.theimbichner.task.io.Storable;
 import io.github.theimbichner.task.io.TaskAccessException;
 import io.github.theimbichner.task.io.TaskStore;
-import io.github.theimbichner.task.schema.Property;
+import io.github.theimbichner.task.schema.PropertyMap;
 import io.github.theimbichner.task.time.DateTime;
 import io.github.theimbichner.task.time.DatePattern;
 import io.github.theimbichner.task.time.ModifyRecord;
@@ -30,7 +27,7 @@ public class Generator implements Storable {
    private String templateName;
    private String templateMarkup;
    private final String templateTableId;
-   private final Map<String, Property> templateProperties;
+   private PropertyMap templateProperties;
    private long templateDuration;
    private Instant generationLastTimestamp;
    private final String generationField;
@@ -54,7 +51,7 @@ public class Generator implements Storable {
       modifyRecord = ModifyRecord.createdNow();
       templateName = "";
       templateMarkup = "";
-      templateProperties = new HashMap<>();
+      templateProperties = PropertyMap.empty();
       templateDuration = 0;
       generationLastTimestamp = modifyRecord.getDateCreated();
       taskIds = SetList.empty();
@@ -91,12 +88,8 @@ public class Generator implements Storable {
       return templateTableId;
    }
 
-   public Set<String> getTemplatePropertyNames() {
-      return Set.copyOf(templateProperties.keySet());
-   }
-
-   public Property getTemplateProperty(String key) {
-      return templateProperties.get(key);
+   public PropertyMap getTemplateProperties() {
+      return templateProperties;
    }
 
    public long getTemplateDuration() {
@@ -120,19 +113,11 @@ public class Generator implements Storable {
          return Either.right(this);
       }
 
-      for (String key : delta.getProperties().keySet()) {
-         if (key.equals(generationField)) {
-            throw new IllegalArgumentException("Cannot modify generator generationField");
-         }
-         Property newProperty = delta.getProperties().get(key);
-         if (newProperty == Property.DELETE) {
-            templateProperties.remove(key);
-         }
-         else {
-            templateProperties.put(key, newProperty);
-         }
+      if (delta.getProperties().asMap().containsKey(generationField)) {
+         throw new IllegalArgumentException("Cannot modify generator generationField");
       }
 
+      templateProperties = templateProperties.merge(delta.getProperties());
       name = delta.getName().orElse(name);
       templateName = delta.getTemplateName().orElse(templateName);
       templateMarkup = delta.getTemplateMarkup().orElse(templateMarkup);
@@ -202,7 +187,7 @@ public class Generator implements Storable {
 
    public static Generator createGenerator(Table table, String field, DatePattern pattern) {
       Generator result = new Generator(UUID.randomUUID().toString(), table.getId(), field, pattern);
-      result.templateProperties.putAll(table.getDefaultProperties());
+      result.templateProperties = table.getDefaultProperties();
       result.setTaskStore(table.getTaskStore());
 
       return result;
@@ -221,12 +206,7 @@ public class Generator implements Storable {
       json.put("generationField", generationField);
       json.put("generationDatePattern", generationDatePattern.toJson());
       json.put("tasks", taskIds.asList());
-
-      JSONObject propertiesJson = new JSONObject();
-      for (String s : templateProperties.keySet()) {
-         propertiesJson.put(s, templateProperties.get(s).toJson());
-      }
-      json.put("templateProperties", propertiesJson);
+      json.put("templateProperties", templateProperties.toJson());
 
       return json;
    }
@@ -245,15 +225,11 @@ public class Generator implements Storable {
       result.templateMarkup = json.getString("templateMarkup");
       result.templateDuration = json.getLong("templateDuration");
       result.generationLastTimestamp = Instant.parse(json.getString("generationLastTimestamp"));
+      result.templateProperties = PropertyMap.fromJson(json.getJSONObject("templateProperties"));
 
       JSONArray tasksJson = json.getJSONArray("tasks");
       for (int i = 0; i < tasksJson.length(); i++) {
          result.taskIds = result.taskIds.add(tasksJson.getString(i));
-      }
-
-      JSONObject propertiesJson = json.getJSONObject("templateProperties");
-      for (String s : propertiesJson.keySet()) {
-         result.templateProperties.put(s, Property.fromJson(propertiesJson.getJSONObject(s)));
       }
 
       return result;

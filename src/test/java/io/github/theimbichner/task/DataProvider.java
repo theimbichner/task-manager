@@ -7,6 +7,7 @@ import java.util.Map;
 import io.github.theimbichner.task.io.InMemoryDataStore;
 import io.github.theimbichner.task.io.TaskStore;
 import io.github.theimbichner.task.schema.Property;
+import io.github.theimbichner.task.schema.PropertyMap;
 import io.github.theimbichner.task.time.DatePattern;
 import io.github.theimbichner.task.time.DateTime;
 import io.github.theimbichner.task.time.UniformDatePattern;
@@ -55,21 +56,21 @@ public class DataProvider {
       return datePattern;
    }
 
-   public Map<String, Property> getProperties() {
-      return Map.of(
+   public PropertyMap getProperties() {
+      return PropertyMap.fromJava(Map.of(
          "alpha", Property.of(1),
          "beta", Property.of(""),
-         "gamma", Property.of(new DateTime(Instant.ofEpochSecond(12345))));
+         "gamma", Property.of(new DateTime(Instant.ofEpochSecond(12345)))));
    }
 
-   public Map<String, Property> getUpdateProperties() {
-      return Map.of(
+   public PropertyMap getUpdateProperties() {
+      return PropertyMap.fromJava(Map.of(
          // modify
          "alpha", Property.of(null),
          // delete
          "beta", Property.DELETE,
          // delete nonexistent
-         "delta", Property.DELETE);
+         "delta", Property.DELETE));
    }
 
    public String getName() {

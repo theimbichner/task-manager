@@ -4,26 +4,27 @@ import java.util.Map;
 import java.util.Optional;
 
 import io.github.theimbichner.task.schema.Property;
+import io.github.theimbichner.task.schema.PropertyMap;
 
 public class TaskDelta {
-   private final Map<String, Property> properties;
+   private final PropertyMap properties;
    private final String name;
    private final String markup;
    private final Long duration;
 
    public TaskDelta(
-      Map<String, Property> properties,
+      PropertyMap properties,
       String name,
       String markup,
       Long duration
    ) {
-      this.properties = Map.copyOf(properties);
+      this.properties = properties;
       this.name = name;
       this.markup = markup;
       this.duration = duration;
    }
 
-   public Map<String, Property> getProperties() {
+   public PropertyMap getProperties() {
       return properties;
    }
 
@@ -40,6 +41,6 @@ public class TaskDelta {
    }
 
    public boolean isEmpty() {
-      return name == null && markup == null && duration == null && properties.isEmpty();
+      return name == null && markup == null && duration == null && properties.asMap().isEmpty();
    }
 }
