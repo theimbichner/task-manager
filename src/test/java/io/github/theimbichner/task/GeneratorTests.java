@@ -3,7 +3,9 @@ package io.github.theimbichner.task;
 import java.time.Instant;
 import java.util.List;
 import java.util.stream.Stream;
+import java.util.stream.Collectors;
 
+import io.vavr.Tuple2;
 import io.vavr.collection.HashSet;
 
 import org.json.JSONArray;
@@ -112,19 +114,21 @@ public class GeneratorTests {
       Generator generator = data.createModifiedGenerator();
 
       Instant timestamp = Instant.now().plusSeconds(600);
-      List<String> tasks = generator.generateTasks(timestamp).get();
+      Tuple2<Generator, List<Task>> tuple = generator.withTasksUntil(timestamp);
+      generator = tuple._1;
+      List<Task> tasks = tuple._2;
 
       JSONObject json = generator.toJson();
       JSONArray jsonTasks = json.getJSONArray("tasks");
       for (int i = 0; i < tasks.size(); i++) {
-         assertThat(jsonTasks.getString(i)).isEqualTo(tasks.get(i));
+         assertThat(jsonTasks.getString(i)).isEqualTo(tasks.get(i).getId());
       }
 
       generator = Generator.fromJson(json);
       json = generator.toJson();
       jsonTasks = json.getJSONArray("tasks");
       for (int i = 0; i < tasks.size(); i++) {
-         assertThat(jsonTasks.getString(i)).isEqualTo(tasks.get(i));
+         assertThat(jsonTasks.getString(i)).isEqualTo(tasks.get(i).getId());
       }
    }
 
@@ -209,33 +213,41 @@ public class GeneratorTests {
    void testGenerateTasks() {
       Generator generator = data.createDefaultGenerator();
       DatePattern datePattern = data.getGenerationDatePattern();
+      String generationField = data.getGenerationField();
       Instant start = generator.getDateCreated().getStart();
       Instant firstInstant = Instant.now().plusSeconds(100);
       Instant secondInstant = Instant.now().plusSeconds(350);
 
       List<Instant> dates = datePattern.getDates(start, firstInstant);
-      List<String> firstResult = generator.generateTasks(firstInstant).get();
-      assertThat(firstResult).hasSameSizeAs(dates);
-      for (String s : firstResult) {
-         Task task = data.getTaskStore().getTasks().getById(s).get();
+      Tuple2<Generator, List<Task>> firstResult = generator.withTasksUntil(firstInstant);
+      generator = firstResult._1;
+      assertThat(firstResult._2).hasSameSizeAs(dates);
+      for (Task task : firstResult._2) {
+         Property dateProperty = task.getProperties().asMap().get(generationField).get();
+         Instant date = ((DateTime) dateProperty.get()).getStart();
          assertThat(task.getGeneratorId()).isEqualTo(generator.getId());
+         assertThat(dates.contains(date));
       }
-      assertThat(generator.getTaskIds().asList()).containsAll(firstResult);
+      List<String> firstIds = firstResult._2.stream().map(Task::getId).collect(Collectors.toList());
+      assertThat(generator.getTaskIds().asList()).containsAll(firstIds);
 
       dates = datePattern.getDates(firstInstant, secondInstant);
-      List<String> secondResult = generator.generateTasks(secondInstant).get();
-      assertThat(secondResult).hasSameSizeAs(dates);
-      for (String s : secondResult) {
-         Task task = data.getTaskStore().getTasks().getById(s).get();
+      Tuple2<Generator, List<Task>> secondResult = generator.withTasksUntil(secondInstant);
+      generator = secondResult._1;
+      assertThat(secondResult._2).hasSameSizeAs(dates);
+      for (Task task : secondResult._2) {
+         Property dateProperty = task.getProperties().asMap().get(generationField).get();
+         Instant date = ((DateTime) dateProperty.get()).getStart();
          assertThat(task.getGeneratorId()).isEqualTo(generator.getId());
+         assertThat(dates.contains(date));
       }
-      assertThat(generator.getTaskIds().asList()).containsAll(firstResult);
-      assertThat(generator.getTaskIds().asList()).containsAll(secondResult);
+      List<String> secondIds = secondResult._2.stream().map(Task::getId).collect(Collectors.toList());
+      assertThat(generator.getTaskIds().asList()).containsAll(firstIds);
+      assertThat(generator.getTaskIds().asList()).containsAll(secondIds);
 
-      List<String> tasks = generator.getTaskIds().asList();
-      List<String> thirdResult = generator.generateTasks(firstInstant).get();
-      assertThat(thirdResult).isEmpty();
-      assertThat(generator.getTaskIds().asList()).isEqualTo(tasks);
+      Tuple2<Generator, List<Task>> thirdResult = generator.withTasksUntil(firstInstant);
+      assertThat(thirdResult._1).isSameAs(generator);
+      assertThat(thirdResult._2).isEmpty();
    }
 
    @Test
@@ -244,11 +256,17 @@ public class GeneratorTests {
       Instant firstInstant = Instant.now().plusSeconds(100);
       Instant secondInstant = Instant.now().plusSeconds(350);
 
-      generator.generateTasks(firstInstant).get();
-      List<String> secondResult = generator.generateTasks(secondInstant).get();
+      Tuple2<Generator, List<Task>> tuple = generator.withTasksUntil(firstInstant);
+      generator = tuple._1;
+      List<String> firstIds = tuple._2.stream().map(Task::getId).collect(Collectors.toList());
+      tuple = generator.withTasksUntil(secondInstant);
+      generator = tuple._1;
+      List<String> secondIds = tuple._2.stream().map(Task::getId).collect(Collectors.toList());
 
-      generator = generator.withoutTasksBefore(secondResult.get(0))._1;
-      assertThat(generator.getTaskIds().asList()).isEqualTo(secondResult);
+      String id = secondIds.get(0);
+      Tuple2<Generator, List<String>> result = generator.withoutTasksBefore(id);
+      assertThat(result._1.getTaskIds().asList()).isEqualTo(secondIds);
+      assertThat(result._2).isEqualTo(firstIds);
    }
 
    @Test

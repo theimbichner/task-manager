@@ -1,5 +1,6 @@
 package io.github.theimbichner.task;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -48,5 +49,21 @@ public class Orchestration {
       }
 
       return result.map(x -> split._1);
+   }
+
+   public static Either<TaskAccessException, List<String>> runGenerator(
+      Generator generator,
+      Instant timestamp
+   ) {
+      TaskStore taskStore = generator.getTaskStore();
+      Tuple2<Generator, List<Task>> split = generator.withTasksUntil(timestamp);
+
+      return taskStore.getGenerators()
+         .save(split._1)
+         .flatMap(x -> Either.sequenceRight(split._2
+            .stream()
+            .map(taskStore.getTasks()::save)
+            .collect(Collectors.toList())))
+         .map(tasks -> tasks.map(Task::getId).asJava());
    }
 }

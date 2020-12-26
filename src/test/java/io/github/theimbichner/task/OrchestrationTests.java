@@ -13,6 +13,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import io.github.theimbichner.task.schema.Property;
 import io.github.theimbichner.task.schema.PropertyMap;
+import io.github.theimbichner.task.time.DatePattern;
 import io.github.theimbichner.task.time.DateTime;
 
 import static org.assertj.core.api.Assertions.*;
@@ -122,8 +123,8 @@ public class OrchestrationTests {
    void testModifyWithTasks() {
       Generator generator = data.createDefaultGenerator();
       Instant timestamp = Instant.now().plusSeconds(600);
-      List<String> tasks = generator.generateTasks(timestamp).get();
-      data.getTaskStore().getGenerators().save(generator).get();
+      List<String> tasks = Orchestration.runGenerator(generator, timestamp).get();
+      generator = data.getTaskStore().getGenerators().getById(generator.getId()).get();
 
       Orchestration.modifyGenerator(generator, data.getFullGeneratorDelta()).get();
       generator = data.getTaskStore().getGenerators().getById(generator.getId()).get();
@@ -141,14 +142,60 @@ public class OrchestrationTests {
       }
    }
 
+   // TODO add tests where generateTasks timestamp lies exactly on timestamp returned by getDates
+   @Test
+   void testRunGenerator() {
+      Generator generator = data.createDefaultGenerator();
+      DatePattern datePattern = data.getGenerationDatePattern();
+      String generationField = data.getGenerationField();
+      Instant start = generator.getDateCreated().getStart();
+      Instant firstInstant = Instant.now().plusSeconds(100);
+      Instant secondInstant = Instant.now().plusSeconds(350);
+
+      List<Instant> dates = datePattern.getDates(start, firstInstant);
+      List<String> firstResult = Orchestration.runGenerator(generator, firstInstant).get();
+      generator = data.getTaskStore().getGenerators().getById(generator.getId()).get();
+      assertThat(firstResult).hasSameSizeAs(dates);
+      for (String s : firstResult) {
+         Task task = data.getTaskStore().getTasks().getById(s).get();
+         Property dateProperty = task.getProperties().asMap().get(generationField).get();
+         Instant date = ((DateTime) dateProperty.get()).getStart();
+         assertThat(task.getGeneratorId()).isEqualTo(generator.getId());
+         assertThat(dates.contains(date));
+      }
+      assertThat(generator.getTaskIds().asList()).containsAll(firstResult);
+
+      dates = datePattern.getDates(firstInstant, secondInstant);
+      List<String> secondResult = Orchestration.runGenerator(generator, secondInstant).get();
+      generator = data.getTaskStore().getGenerators().getById(generator.getId()).get();
+      assertThat(secondResult).hasSameSizeAs(dates);
+      for (String s : secondResult) {
+         Task task = data.getTaskStore().getTasks().getById(s).get();
+         Property dateProperty = task.getProperties().asMap().get(generationField).get();
+         Instant date = ((DateTime) dateProperty.get()).getStart();
+         assertThat(task.getGeneratorId()).isEqualTo(generator.getId());
+         assertThat(dates.contains(date));
+      }
+      assertThat(generator.getTaskIds().asList()).containsAll(firstResult);
+      assertThat(generator.getTaskIds().asList()).containsAll(secondResult);
+
+      List<String> prevTasks = generator.getTaskIds().asList();
+      List<String> thirdResult = Orchestration.runGenerator(generator, firstInstant).get();
+      generator = data.getTaskStore().getGenerators().getById(generator.getId()).get();
+      assertThat(thirdResult).isEmpty();
+      assertThat(generator.getTaskIds().asList()).isEqualTo(prevTasks);
+   }
+
    @Test
    void testRemoveTasksFromGeneratorBefore() {
       Generator generator = data.createDefaultGenerator();
       Instant firstInstant = Instant.now().plusSeconds(100);
       Instant secondInstant = Instant.now().plusSeconds(350);
 
-      List<String> firstResult = generator.generateTasks(firstInstant).get();
-      List<String> secondResult = generator.generateTasks(secondInstant).get();
+      List<String> firstResult = Orchestration.runGenerator(generator, firstInstant).get();
+      generator = data.getTaskStore().getGenerators().getById(generator.getId()).get();
+      List<String> secondResult = Orchestration.runGenerator(generator, secondInstant).get();
+      generator = data.getTaskStore().getGenerators().getById(generator.getId()).get();
 
       Orchestration.removeTasksFromGeneratorBefore(generator, secondResult.get(0)).get();
       generator = generator.getTaskStore().getGenerators().getById(generator.getId()).get();

@@ -7,14 +7,12 @@ import java.util.stream.Collectors;
 
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
-import io.vavr.control.Either;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import io.github.theimbichner.task.collection.SetList;
 import io.github.theimbichner.task.io.Storable;
-import io.github.theimbichner.task.io.TaskAccessException;
 import io.github.theimbichner.task.io.TaskStore;
 import io.github.theimbichner.task.schema.PropertyMap;
 import io.github.theimbichner.task.time.DateTime;
@@ -162,24 +160,24 @@ public class Generator implements Storable {
       return Tuple.of(result, split._1);
    }
 
-   Either<TaskAccessException, List<String>> generateTasks(Instant timestamp) {
+   // TODO update the modification timestamp?
+   Tuple2<Generator, List<Task>> withTasksUntil(Instant timestamp) {
       if (!timestamp.isAfter(generationLastTimestamp)) {
-         return Either.right(List.of());
+         return Tuple.of(this, List.of());
       }
-      return Either
-         .sequenceRight(generationDatePattern
-            .getDates(generationLastTimestamp, timestamp)
-            .stream()
-            .map(instant -> Task.newSeriesTask(this, instant))
-            .map(task -> taskStore.getTasks().save(task))
-            .collect(Collectors.toList()))
-         .map(tasks -> tasks
-            .map(task -> {
-               taskIds = taskIds.add(task.getId());
-               return task.getId();
-            })
-            .asJava())
-         .peek(x -> generationLastTimestamp = timestamp);
+
+      List<Task> tasks = generationDatePattern
+         .getDates(generationLastTimestamp, timestamp)
+         .stream()
+         .map(instant -> Task.newSeriesTask(this, instant))
+         .collect(Collectors.toList());
+      List<String> ids = tasks.stream().map(Task::getId).collect(Collectors.toList());
+
+      Generator result = new Generator(this);
+      result.generationLastTimestamp = timestamp;
+      result.taskIds = result.taskIds.addAll(ids);
+
+      return Tuple.of(result, tasks);
    }
 
    @Override

@@ -176,7 +176,8 @@ public class TaskTests {
    @ParameterizedTest
    @MethodSource("provideGenerators")
    void testModifySeries(Generator generator) {
-      List<String> tasks = generator.generateTasks(Instant.now().plusSeconds(600)).get();
+      Instant instant = Instant.now().plusSeconds(600);
+      List<String> tasks = Orchestration.runGenerator(generator, instant).get();
       int index = tasks.size() / 2;
       Task targetTask = data.getTaskStore().getTasks().getById(tasks.get(index)).get();
       targetTask.modifySeries(data.getFullGeneratorDelta()).get();

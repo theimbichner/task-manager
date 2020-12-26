@@ -71,8 +71,8 @@ public class Table implements Storable {
          .sequenceRight(generatorIds.asList().stream()
             .map(s -> taskStore
                .getGenerators().getById(s)
-               .flatMap(g -> g
-                  .generateTasks(timestamp)
+               .flatMap(g ->
+                  Orchestration.runGenerator(g, timestamp)
                   .peek(tasks -> taskIds = taskIds.addAll(tasks))))
             .collect(Collectors.toList()))
          .map(x -> taskIds);
