@@ -59,6 +59,22 @@ public class Generator implements Storable {
       taskStore = null;
    }
 
+   private Generator(Generator other) {
+      id = other.id;
+      name = other.name;
+      modifyRecord = other.modifyRecord;
+      templateName = other.templateName;
+      templateMarkup = other.templateMarkup;
+      templateTableId = other.templateTableId;
+      templateProperties = other.templateProperties;
+      templateDuration = other.templateDuration;
+      generationLastTimestamp = other.generationLastTimestamp;
+      generationField = other.generationField;
+      generationDatePattern = other.generationDatePattern;
+      taskIds = other.taskIds;
+      taskStore = other.taskStore;
+   }
+
    @Override
    public String getId() {
       return id;
@@ -104,36 +120,32 @@ public class Generator implements Storable {
       return generationDatePattern;
    }
 
+   SetList<String> getTaskIds() {
+      return taskIds;
+   }
+
    void unlinkTask(String id) {
       taskIds = taskIds.remove(id);
    }
 
-   public Either<TaskAccessException, Generator> modify(GeneratorDelta delta) {
+   Generator withModification(GeneratorDelta delta) {
       if (delta.isEmpty()) {
-         return Either.right(this);
+         return this;
       }
 
       if (delta.getProperties().asMap().containsKey(generationField)) {
          throw new IllegalArgumentException("Cannot modify generator generationField");
       }
 
-      templateProperties = templateProperties.merge(delta.getProperties());
-      name = delta.getName().orElse(name);
-      templateName = delta.getTemplateName().orElse(templateName);
-      templateMarkup = delta.getTemplateMarkup().orElse(templateMarkup);
-      templateDuration = delta.getTemplateDuration().orElse(templateDuration);
+      Generator result = new Generator(this);
+      result.templateProperties = templateProperties.merge(delta.getProperties());
+      result.name = delta.getName().orElse(name);
+      result.templateName = delta.getTemplateName().orElse(templateName);
+      result.templateMarkup = delta.getTemplateMarkup().orElse(templateMarkup);
+      result.templateDuration = delta.getTemplateDuration().orElse(templateDuration);
+      result.modifyRecord = modifyRecord.updatedNow();
 
-      TaskDelta taskDelta = delta.asTaskDelta();
-      return Either
-         .sequenceRight(taskIds.asList().stream()
-            .map(id -> taskStore
-               .getTasks().getById(id)
-               .flatMap(t -> t.modify(taskDelta, false)))
-            .collect(Collectors.toList()))
-         .map(x -> {
-            modifyRecord = modifyRecord.updatedNow();
-            return this;
-         });
+      return result;
    }
 
    Either<TaskAccessException, Generator> unlinkTasksBefore(String taskId) {

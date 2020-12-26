@@ -135,9 +135,8 @@ public class DataProvider {
 
    public Generator createModifiedGenerator() {
       Generator generator = createDefaultGenerator();
-      generator.modify(getFullGeneratorDelta()).get();
-      taskStore.getGenerators().save(generator).get();
-      return generator;
+      GeneratorDelta delta = getFullGeneratorDelta();
+      return Orchestration.modifyGenerator(generator, delta).get();
    }
 
    public GeneratorDelta getFullGeneratorDelta() {

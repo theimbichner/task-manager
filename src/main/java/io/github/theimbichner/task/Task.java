@@ -127,7 +127,7 @@ public class Task implements Storable {
             throw new IllegalStateException(msg);
          }))
          .flatMap(g -> g.unlinkTasksBefore(id))
-         .flatMap(g -> g.modify(delta))
+         .flatMap(g -> Orchestration.modifyGenerator(g, delta))
          .map(g -> this);
    }
 

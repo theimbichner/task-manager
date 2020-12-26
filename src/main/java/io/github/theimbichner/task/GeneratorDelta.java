@@ -1,9 +1,7 @@
 package io.github.theimbichner.task;
 
-import java.util.Map;
 import java.util.Optional;
 
-import io.github.theimbichner.task.schema.Property;
 import io.github.theimbichner.task.schema.PropertyMap;
 
 public class GeneratorDelta {
