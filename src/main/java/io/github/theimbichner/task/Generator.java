@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.control.Either;
 
@@ -148,23 +149,17 @@ public class Generator implements Storable {
       return result;
    }
 
-   Either<TaskAccessException, Generator> unlinkTasksBefore(String taskId) {
+   // TODO update modification timestamp here?
+   Tuple2<Generator, List<String>> withoutTasksBefore(String taskId) {
       if (!taskIds.contains(taskId)) {
          throw new IllegalArgumentException("Task not found in generator");
       }
 
-      Either<TaskAccessException, Task> result = Either.right(null);
-
       Tuple2<List<String>, List<String>> split = taskIds.split(taskId);
-      for (String s : split._1) {
-         result = result
-            .flatMap(x -> taskStore.getTasks().getById(s))
-            .peek(task -> task.unlinkGenerator());
-      }
-      taskIds = SetList.empty();
-      taskIds = taskIds.addAll(split._2);
+      Generator result = new Generator(this);
+      result.taskIds = SetList.<String>empty().addAll(split._2);
 
-      return result.map(x -> this);
+      return Tuple.of(result, split._1);
    }
 
    Either<TaskAccessException, List<String>> generateTasks(Instant timestamp) {

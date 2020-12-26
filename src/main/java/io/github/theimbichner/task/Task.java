@@ -126,7 +126,7 @@ public class Task implements Storable {
             String msg = "Cannot modify series on non series task";
             throw new IllegalStateException(msg);
          }))
-         .flatMap(g -> g.unlinkTasksBefore(id))
+         .flatMap(g -> Orchestration.removeTasksFromGeneratorBefore(g, id))
          .flatMap(g -> Orchestration.modifyGenerator(g, delta))
          .map(g -> this);
    }

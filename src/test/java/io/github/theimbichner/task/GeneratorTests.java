@@ -244,14 +244,10 @@ public class GeneratorTests {
       Instant firstInstant = Instant.now().plusSeconds(100);
       Instant secondInstant = Instant.now().plusSeconds(350);
 
-      List<String> firstResult = generator.generateTasks(firstInstant).get();
+      generator.generateTasks(firstInstant).get();
       List<String> secondResult = generator.generateTasks(secondInstant).get();
 
-      generator.unlinkTasksBefore(secondResult.get(0)).get();
-      for (String s : firstResult) {
-         Task task = data.getTaskStore().getTasks().getById(s).get();
-         assertThat(task.getGeneratorId()).isNull();
-      }
+      generator = generator.withoutTasksBefore(secondResult.get(0))._1;
       assertThat(generator.getTaskIds().asList()).isEqualTo(secondResult);
    }
 
@@ -259,6 +255,6 @@ public class GeneratorTests {
    void testUnlinkTasksBeforeInvalid() {
       Generator generator = data.createDefaultGenerator();
       assertThatExceptionOfType(IllegalArgumentException.class)
-         .isThrownBy(() -> generator.unlinkTasksBefore("alpha"));
+         .isThrownBy(() -> generator.withoutTasksBefore("alpha"));
    }
 }

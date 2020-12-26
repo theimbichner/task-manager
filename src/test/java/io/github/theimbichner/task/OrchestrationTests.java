@@ -140,4 +140,22 @@ public class OrchestrationTests {
             .isEqualTo(date.getStart().plusSeconds(data.getDuration()));
       }
    }
+
+   @Test
+   void testRemoveTasksFromGeneratorBefore() {
+      Generator generator = data.createDefaultGenerator();
+      Instant firstInstant = Instant.now().plusSeconds(100);
+      Instant secondInstant = Instant.now().plusSeconds(350);
+
+      List<String> firstResult = generator.generateTasks(firstInstant).get();
+      List<String> secondResult = generator.generateTasks(secondInstant).get();
+
+      Orchestration.removeTasksFromGeneratorBefore(generator, secondResult.get(0)).get();
+      generator = generator.getTaskStore().getGenerators().getById(generator.getId()).get();
+      for (String s : firstResult) {
+         Task task = data.getTaskStore().getTasks().getById(s).get();
+         assertThat(task.getGeneratorId()).isNull();
+      }
+      assertThat(generator.getTaskIds().asList()).isEqualTo(secondResult);
+   }
 }
