@@ -90,18 +90,19 @@ public class DataProvider {
    }
 
    public Task createDefaultTask() {
-      return Task.createTask(table);
+      Task task = Task.createTask(table);
+      return taskStore.getTasks().save(task).get();
    }
 
    public Task createModifiedTask() {
       Task task = createDefaultTask();
-      task.modify(getTaskDelta()).get();
-      return task;
+      return Orchestration.modifyAndSeverTask(task, getTaskDelta()).get();
    }
 
    public Task createDefaultTaskWithGenerator() {
       Generator generator = createModifiedGenerator();
-      return Task.newSeriesTask(generator, Instant.now());
+      Task task = Task.newSeriesTask(generator, Instant.now());
+      return taskStore.getTasks().save(task).get();
    }
 
    public Task createModifiedTaskWithGenerator() {

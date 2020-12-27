@@ -97,7 +97,8 @@ public class TaskTests {
       String oldMarkup = task.getMarkup();
 
       Instant beforeModify = Instant.now();
-      task.modify(new TaskDelta(data.getProperties(), null, null, null)).get();
+      TaskDelta delta = new TaskDelta(data.getProperties(), null, null, null);
+      task = task.withModification(delta).get();
 
       assertThat(task.getDateLastModified().getStart())
          .isAfterOrEqualTo(beforeModify)
@@ -110,8 +111,9 @@ public class TaskTests {
    @Test
    void testModifyUpdateProperties() {
       Task task = data.createModifiedTask();
+      TaskDelta delta = new TaskDelta(data.getUpdateProperties(), null, null, null);
+      task = task.withModification(delta).get();
 
-      task.modify(new TaskDelta(data.getUpdateProperties(), null, null, null)).get();
       assertThat(task.getProperties().asMap().keySet()).isEqualTo(HashSet.of("alpha", "gamma"));
       assertThat(task.getProperties().asMap().get("alpha")).contains(Property.of(null));
    }
@@ -121,13 +123,6 @@ public class TaskTests {
       Task task = data.createModifiedTask();
       assertThatExceptionOfType(IllegalArgumentException.class)
          .isThrownBy(() -> task.withModification(data.getFullTaskDelta()));
-   }
-
-   @ParameterizedTest
-   @MethodSource("provideTasks")
-   void testModifyAndSeverInvalid(Task task) {
-      assertThatExceptionOfType(IllegalArgumentException.class)
-         .isThrownBy(() -> task.modify(data.getFullTaskDelta()));
    }
 
    @ParameterizedTest
@@ -142,24 +137,6 @@ public class TaskTests {
 
       assertThat(dateTime.getStart()).isEqualTo(initial.getStart());
       assertThat(dateTime.getEnd()).isEqualTo(expectedEnd);
-   }
-
-   @ParameterizedTest
-   @MethodSource("provideGeneratorTasks")
-   void testModifySeverGenerator(Task task) {
-      Instant beforeModify = Instant.now();
-      task.modify(data.getTaskDelta()).get();
-
-      assertThat(task.getGeneratorId()).isNull();
-
-      assertThat(task.getDateLastModified().getStart())
-         .isAfterOrEqualTo(beforeModify)
-         .isEqualTo(task.getDateLastModified().getEnd());
-
-      assertThat(task.getName()).isEqualTo(data.getTemplateName());
-      assertThat(task.getMarkup()).isEqualTo(data.getMarkup());
-      assertThat(task.getProperties().asMap())
-         .containsAllEntriesOf(data.getProperties().asMap());
    }
 
    @ParameterizedTest

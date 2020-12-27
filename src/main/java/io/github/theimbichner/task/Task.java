@@ -87,47 +87,6 @@ public class Task implements Storable {
       return taskStore.getGenerators().getById(generatorId).map(Option::some);
    }
 
-   public Either<TaskAccessException, Task> modify(TaskDelta delta) {
-      return modify(delta, true);
-   }
-
-   private Either<TaskAccessException, Task> modify(TaskDelta delta, boolean shouldUnlinkGenerator) {
-      if (delta.isEmpty()) {
-         return Either.right(this);
-      }
-
-      return getGenerator()
-         .flatMap(generator -> {
-            if (shouldUnlinkGenerator && generator.isDefined()) {
-               return taskStore.getGenerators()
-                  .save(generator.get().withoutTask(id))
-                  .map(x -> {
-                     generatorId = null;
-                     return Option.<Generator>none();
-                  });
-            }
-            return Either.right(generator);
-         })
-         .map(generator -> {
-            properties = properties.merge(delta.getProperties());
-            name = delta.getName().orElse(name);
-            markup = delta.getMarkup().orElse(markup);
-
-            if (delta.getDuration().isPresent()) {
-               if (generator.isEmpty()) {
-                  throw new IllegalArgumentException("Cannot set duration without generator");
-               }
-               String generationField = generator.get().getGenerationField();
-               DateTime date = (DateTime) properties.asMap().get(generationField).get().get();
-               DateTime newDate = date.withDuration(delta.getDuration().get());
-               properties = properties.put(generationField, Property.of(newDate));
-            }
-
-            modifyRecord = modifyRecord.updatedNow();
-            return this;
-         });
-   }
-
    Either<TaskAccessException, Task> withModification(TaskDelta delta) {
       if (delta.isEmpty()) {
          return Either.right(this);

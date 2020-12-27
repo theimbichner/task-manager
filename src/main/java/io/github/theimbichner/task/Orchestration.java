@@ -36,6 +36,29 @@ public class Orchestration {
          .flatMap(t -> taskStore.getTasks().save(t));
    }
 
+   public static Either<TaskAccessException, Task> modifyAndSeverTask(Task task, TaskDelta delta) {
+      if (delta.isEmpty()) {
+         return Either.right(task);
+      }
+
+      TaskStore taskStore = task.getTaskStore();
+
+      return task.getGenerator()
+         .flatMap(generator -> {
+            if (generator.isEmpty()) {
+               return Either.right(task);
+            }
+            return taskStore.getGenerators()
+               .save(generator.get().withoutTask(task.getId()))
+               .map(x -> {
+                  task.unlinkGenerator();
+                  return task;
+               });
+         })
+         .flatMap(t -> t.withModification(delta))
+         .flatMap(taskStore.getTasks()::save);
+   }
+
    /* TODO should the call to unlinkGenerator on earlier tasks in the series
     * cause the modification timestamp to update on those tasks?
     */
