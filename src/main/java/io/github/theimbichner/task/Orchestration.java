@@ -50,10 +50,8 @@ public class Orchestration {
             }
             return taskStore.getGenerators()
                .save(generator.get().withoutTask(task.getId()))
-               .map(x -> {
-                  task.unlinkGenerator();
-                  return task;
-               });
+               .map(x -> task.withoutGenerator())
+               .flatMap(taskStore.getTasks()::save);
          })
          .flatMap(t -> t.withModification(delta))
          .flatMap(taskStore.getTasks()::save);
@@ -88,7 +86,8 @@ public class Orchestration {
       for (String s : split._2) {
          result = result
             .flatMap(x -> taskStore.getTasks().getById(s))
-            .peek(task -> task.unlinkGenerator());
+            .map(Task::withoutGenerator)
+            .flatMap(taskStore.getTasks()::save);
       }
 
       return result.map(x -> split._1);
