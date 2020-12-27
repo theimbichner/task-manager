@@ -85,31 +85,36 @@ public class Task implements Storable {
          return Either.right(this);
       }
 
-      return getGenerator().map(generator -> {
-         properties = properties.merge(delta.getProperties());
-         name = delta.getName().orElse(name);
-         markup = delta.getMarkup().orElse(markup);
-
-         if (delta.getDuration().isPresent()) {
-            if (generator.isEmpty() || shouldUnlinkGenerator) {
-               throw new IllegalArgumentException("Cannot set duration without generator");
+      return getGenerator()
+         .flatMap(generator -> {
+            if (shouldUnlinkGenerator && generator.isDefined()) {
+               return taskStore.getGenerators()
+                  .save(generator.get().withoutTask(id))
+                  .map(x -> {
+                     generatorId = null;
+                     return Option.<Generator>none();
+                  });
             }
-            String generationField = generator.get().getGenerationField();
-            DateTime date = (DateTime) properties.asMap().get(generationField).get().get();
-            long duration = delta.getDuration().get();
-            properties = properties.put(generationField, Property.of(date.withDuration(duration)));
-         }
+            return Either.right(generator);
+         })
+         .map(generator -> {
+            properties = properties.merge(delta.getProperties());
+            name = delta.getName().orElse(name);
+            markup = delta.getMarkup().orElse(markup);
 
-         generator.peek(g -> {
-            if (shouldUnlinkGenerator) {
-               g.unlinkTask(id);
-               generatorId = null;
+            if (delta.getDuration().isPresent()) {
+               if (generator.isEmpty()) {
+                  throw new IllegalArgumentException("Cannot set duration without generator");
+               }
+               String generationField = generator.get().getGenerationField();
+               DateTime date = (DateTime) properties.asMap().get(generationField).get().get();
+               DateTime newDate = date.withDuration(delta.getDuration().get());
+               properties = properties.put(generationField, Property.of(newDate));
             }
+
+            modifyRecord = modifyRecord.updatedNow();
+            return this;
          });
-         modifyRecord = modifyRecord.updatedNow();
-
-         return this;
-      });
    }
 
    void unlinkGenerator() {

@@ -20,58 +20,91 @@ import io.github.theimbichner.task.time.DatePattern;
 import io.github.theimbichner.task.time.ModifyRecord;
 
 public class Generator implements Storable {
+   private static class Builder {
+      private final String id;
+      private String name;
+      private ModifyRecord modifyRecord;
+      private String templateName;
+      private String templateMarkup;
+      private final String templateTableId;
+      private PropertyMap templateProperties;
+      private long templateDuration;
+      private Instant generationLastTimestamp;
+      private final String generationField;
+      private final DatePattern generationDatePattern;
+      private SetList<String> taskIds;
+
+      private TaskStore taskStore;
+
+      private Builder(
+         String id,
+         String templateTableId,
+         String generationField,
+         DatePattern generationDatePattern
+      ) {
+         this.id = id;
+         name = "";
+         modifyRecord = ModifyRecord.createdNow();
+         templateName = "";
+         templateMarkup = "";
+         this.templateTableId = templateTableId;
+         templateProperties = PropertyMap.empty();
+         templateDuration = 0;
+         generationLastTimestamp = modifyRecord.getDateCreated();
+         this.generationField = generationField;
+         this.generationDatePattern = generationDatePattern;
+         taskIds = SetList.empty();
+
+         taskStore = null;
+      }
+
+      private Builder(Generator g) {
+         id = g.id;
+         name = g.name;
+         modifyRecord = g.modifyRecord;
+         templateName = g.templateName;
+         templateMarkup = g.templateMarkup;
+         templateTableId = g.templateTableId;
+         templateProperties = g.templateProperties;
+         templateDuration = g.templateDuration;
+         generationLastTimestamp = g.generationLastTimestamp;
+         generationField = g.generationField;
+         generationDatePattern = g.generationDatePattern;
+         taskIds = g.taskIds;
+
+         taskStore = g.taskStore;
+      }
+   }
+
    private final String id;
-   private String name;
-   private ModifyRecord modifyRecord;
-   private String templateName;
-   private String templateMarkup;
+   private final String name;
+   private final ModifyRecord modifyRecord;
+   private final String templateName;
+   private final String templateMarkup;
    private final String templateTableId;
-   private PropertyMap templateProperties;
-   private long templateDuration;
-   private Instant generationLastTimestamp;
+   private final PropertyMap templateProperties;
+   private final long templateDuration;
+   private final Instant generationLastTimestamp;
    private final String generationField;
    private final DatePattern generationDatePattern;
-   private SetList<String> taskIds;
+   private final SetList<String> taskIds;
 
    private TaskStore taskStore;
 
-   private Generator(
-      String id,
-      String templateTableId,
-      String generationField,
-      DatePattern generationDatePattern
-   ) {
-      this.id = id;
-      this.templateTableId = templateTableId;
-      this.generationField = generationField;
-      this.generationDatePattern = generationDatePattern;
-
-      name = "";
-      modifyRecord = ModifyRecord.createdNow();
-      templateName = "";
-      templateMarkup = "";
-      templateProperties = PropertyMap.empty();
-      templateDuration = 0;
-      generationLastTimestamp = modifyRecord.getDateCreated();
-      taskIds = SetList.empty();
-
-      taskStore = null;
-   }
-
-   private Generator(Generator other) {
-      id = other.id;
-      name = other.name;
-      modifyRecord = other.modifyRecord;
-      templateName = other.templateName;
-      templateMarkup = other.templateMarkup;
-      templateTableId = other.templateTableId;
-      templateProperties = other.templateProperties;
-      templateDuration = other.templateDuration;
-      generationLastTimestamp = other.generationLastTimestamp;
-      generationField = other.generationField;
-      generationDatePattern = other.generationDatePattern;
-      taskIds = other.taskIds;
-      taskStore = other.taskStore;
+   private Generator(Builder builder) {
+      id = builder.id;
+      name = builder.name;
+      modifyRecord = builder.modifyRecord;
+      templateName = builder.templateName;
+      templateMarkup = builder.templateMarkup;
+      templateTableId = builder.templateTableId;
+      templateProperties = builder.templateProperties;
+      templateDuration = builder.templateDuration;
+      generationLastTimestamp = builder.generationLastTimestamp;
+      generationField = builder.generationField;
+      generationDatePattern = builder.generationDatePattern;
+      taskIds = builder.taskIds;
+      taskStore = builder.taskStore;
    }
 
    @Override
@@ -123,8 +156,10 @@ public class Generator implements Storable {
       return taskIds;
    }
 
-   void unlinkTask(String id) {
-      taskIds = taskIds.remove(id);
+   Generator withoutTask(String id) {
+      Builder result = new Builder(this);
+      result.taskIds = taskIds.remove(id);
+      return new Generator(result);
    }
 
    Generator withModification(GeneratorDelta delta) {
@@ -136,7 +171,7 @@ public class Generator implements Storable {
          throw new IllegalArgumentException("Cannot modify generator generationField");
       }
 
-      Generator result = new Generator(this);
+      Builder result = new Builder(this);
       result.templateProperties = templateProperties.merge(delta.getProperties());
       result.name = delta.getName().orElse(name);
       result.templateName = delta.getTemplateName().orElse(templateName);
@@ -144,7 +179,7 @@ public class Generator implements Storable {
       result.templateDuration = delta.getTemplateDuration().orElse(templateDuration);
       result.modifyRecord = modifyRecord.updatedNow();
 
-      return result;
+      return new Generator(result);
    }
 
    // TODO update modification timestamp here?
@@ -154,10 +189,10 @@ public class Generator implements Storable {
       }
 
       Tuple2<List<String>, List<String>> split = taskIds.split(taskId);
-      Generator result = new Generator(this);
+      Builder result = new Builder(this);
       result.taskIds = SetList.<String>empty().addAll(split._2);
 
-      return Tuple.of(result, split._1);
+      return Tuple.of(new Generator(result), split._1);
    }
 
    // TODO update the modification timestamp?
@@ -173,11 +208,11 @@ public class Generator implements Storable {
          .collect(Collectors.toList());
       List<String> ids = tasks.stream().map(Task::getId).collect(Collectors.toList());
 
-      Generator result = new Generator(this);
+      Builder result = new Builder(this);
       result.generationLastTimestamp = timestamp;
       result.taskIds = result.taskIds.addAll(ids);
 
-      return Tuple.of(result, tasks);
+      return Tuple.of(new Generator(result), tasks);
    }
 
    @Override
@@ -191,11 +226,11 @@ public class Generator implements Storable {
    }
 
    public static Generator createGenerator(Table table, String field, DatePattern pattern) {
-      Generator result = new Generator(UUID.randomUUID().toString(), table.getId(), field, pattern);
+      Builder result = new Builder(UUID.randomUUID().toString(), table.getId(), field, pattern);
       result.templateProperties = table.getDefaultProperties();
-      result.setTaskStore(table.getTaskStore());
+      result.taskStore = table.getTaskStore();
 
-      return result;
+      return new Generator(result);
    }
 
    public JSONObject toJson() {
@@ -223,7 +258,7 @@ public class Generator implements Storable {
       JSONObject jsonDatePattern = json.getJSONObject("generationDatePattern");
       DatePattern generationDatePattern = DatePattern.fromJson(jsonDatePattern);
 
-      Generator result = new Generator(id, templateTableId, generationField, generationDatePattern);
+      Builder result = new Builder(id, templateTableId, generationField, generationDatePattern);
       result.name = json.getString("name");
       result.modifyRecord = ModifyRecord.readFromJson(json);
       result.templateName = json.getString("templateName");
@@ -237,6 +272,6 @@ public class Generator implements Storable {
          result.taskIds = result.taskIds.add(tasksJson.getString(i));
       }
 
-      return result;
+      return new Generator(result);
    }
 }
