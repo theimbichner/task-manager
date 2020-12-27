@@ -49,24 +49,23 @@ public class TableTests {
    @Test
    void testLinkUnlinkTasks() {
       Table table = Table.createTable();
-      Instant instant = Instant.now();
 
-      assertThat(table.getAllTaskIds(instant).get().asList()).isEmpty();
+      assertThat(table.getAllTaskIds().asList()).isEmpty();
 
       table.linkTask("alpha");
-      assertThat(table.getAllTaskIds(instant).get().asList()).isEqualTo(List.of("alpha"));
+      assertThat(table.getAllTaskIds().asList()).isEqualTo(List.of("alpha"));
 
       table.linkTask("beta");
-      assertThat(table.getAllTaskIds(instant).get().asList()).isEqualTo(List.of("alpha", "beta"));
+      assertThat(table.getAllTaskIds().asList()).isEqualTo(List.of("alpha", "beta"));
 
       table.linkTask("alpha");
-      assertThat(table.getAllTaskIds(instant).get().asList()).isEqualTo(List.of("alpha", "beta"));
+      assertThat(table.getAllTaskIds().asList()).isEqualTo(List.of("alpha", "beta"));
 
       table.unlinkTask("gamma");
-      assertThat(table.getAllTaskIds(instant).get().asList()).isEqualTo(List.of("alpha", "beta"));
+      assertThat(table.getAllTaskIds().asList()).isEqualTo(List.of("alpha", "beta"));
 
       table.unlinkTask("alpha");
-      assertThat(table.getAllTaskIds(instant).get().asList()).isEqualTo(List.of("beta"));
+      assertThat(table.getAllTaskIds().asList()).isEqualTo(List.of("beta"));
    }
 
    @Test
@@ -88,28 +87,6 @@ public class TableTests {
 
       table.unlinkGenerator("alpha");
       assertThat(table.getAllGeneratorIds().asList()).isEqualTo(List.of("beta"));
-   }
-
-   @Test
-   void testGetAllTaskIdsWithGenerators() {
-      Table table = Table.createTable();
-      table.setTaskStore(taskStore);
-
-      Instant start = Instant.now();
-      Instant end = start.plusSeconds(600);
-
-      int numTasks = Stream.of(getDatePattern(7), getDatePattern(13))
-         .peek(pattern -> {
-            Generator generator = Generator.createGenerator(table, "", pattern);
-            taskStore.getGenerators().save(generator).get();
-            table.linkGenerator(generator.getId());
-         })
-         .mapToInt(pattern -> pattern.getDates(start, end).size())
-         .sum();
-
-      assertThat(table.getAllTaskIds(start).get().asList()).isEmpty();
-      assertThat(table.getAllTaskIds(end).get().asList()).hasSize(numTasks);
-      assertThat(table.getAllTaskIds(start).get().asList()).hasSize(numTasks);
    }
 
    @Test
@@ -141,7 +118,7 @@ public class TableTests {
       assertThat(newTable.getDateLastModified().getEnd())
          .isEqualTo(table.getDateLastModified().getEnd());
 
-      assertThat(newTable.getAllTaskIds(Instant.now()).get().asList()).isEqualTo(List.of("alpha", "beta"));
+      assertThat(newTable.getAllTaskIds().asList()).isEqualTo(List.of("alpha", "beta"));
       assertThat(newTable.getAllGeneratorIds().asList()).isEqualTo(List.of(generatorId));
    }
 
@@ -151,7 +128,7 @@ public class TableTests {
       JSONObject json = table.toJson();
       Table newTable = Table.fromJson(json);
 
-      assertThat(newTable.getAllTaskIds(Instant.now()).get().asList()).isEmpty();
+      assertThat(newTable.getAllTaskIds().asList()).isEmpty();
       assertThat(newTable.getAllGeneratorIds().asList()).isEmpty();
    }
 }

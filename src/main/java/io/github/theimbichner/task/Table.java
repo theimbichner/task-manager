@@ -66,16 +66,13 @@ public class Table implements Storable {
       return new DateTime(modifyRecord.getDateLastModified());
    }
 
-   public Either<TaskAccessException, SetList<String>> getAllTaskIds(Instant timestamp) {
-      return Either
-         .sequenceRight(generatorIds.asList().stream()
-            .map(s -> taskStore
-               .getGenerators().getById(s)
-               .flatMap(g ->
-                  Orchestration.runGenerator(g, timestamp)
-                  .peek(tasks -> taskIds = taskIds.addAll(tasks))))
-            .collect(Collectors.toList()))
-         .map(x -> taskIds);
+   SetList<String> getAllTaskIds() {
+      return taskIds;
+   }
+
+   Table withTaskIds(Iterable<String> ids) {
+      taskIds = taskIds.addAll(ids);
+      return this;
    }
 
    void linkTask(String id) {

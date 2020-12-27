@@ -1,5 +1,6 @@
 package io.github.theimbichner.task;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.stream.Stream;
@@ -11,10 +12,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import io.github.theimbichner.task.io.TaskStore;
 import io.github.theimbichner.task.schema.Property;
 import io.github.theimbichner.task.schema.PropertyMap;
 import io.github.theimbichner.task.time.DatePattern;
 import io.github.theimbichner.task.time.DateTime;
+import io.github.theimbichner.task.time.UniformDatePattern;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.assertj.vavr.api.VavrAssertions.*;
@@ -45,6 +48,37 @@ public class OrchestrationTests {
       return Stream.of(
          data.createDefaultGenerator(),
          data.createModifiedGenerator());
+   }
+
+   private static DatePattern getDatePattern(int step) {
+      return new UniformDatePattern(Instant.now().plusSeconds(1), Duration.ofSeconds(step));
+   }
+
+   @Test
+   void testGetTasksFromTable() {
+      TaskStore taskStore = data.getTaskStore();
+
+      Table table = Table.createTable();
+      table.setTaskStore(taskStore);
+
+      Instant start = Instant.now();
+      Instant end = start.plusSeconds(600);
+
+      int numTasks = 0;
+      List<DatePattern> datePatterns = List.of(getDatePattern(7), getDatePattern(13));
+      for (DatePattern pattern : datePatterns) {
+         Generator generator = Generator.createGenerator(table, "", pattern);
+         taskStore.getGenerators().save(generator).get();
+         table.linkGenerator(generator.getId());
+
+         numTasks += pattern.getDates(start, end).size();
+      }
+
+      assertThat(Orchestration.getTasksFromTable(table, start).get().asList()).isEmpty();
+      table = taskStore.getTables().getById(table.getId()).get();
+      assertThat(Orchestration.getTasksFromTable(table, end).get().asList()).hasSize(numTasks);
+      table = taskStore.getTables().getById(table.getId()).get();
+      assertThat(Orchestration.getTasksFromTable(table, start).get().asList()).hasSize(numTasks);
    }
 
    @ParameterizedTest

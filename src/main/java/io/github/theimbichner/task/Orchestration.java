@@ -7,10 +7,29 @@ import java.util.stream.Collectors;
 import io.vavr.Tuple2;
 import io.vavr.control.Either;
 
+import io.github.theimbichner.task.collection.SetList;
 import io.github.theimbichner.task.io.TaskAccessException;
 import io.github.theimbichner.task.io.TaskStore;
 
 public class Orchestration {
+   public static Either<TaskAccessException, SetList<String>> getTasksFromTable(
+      Table table,
+      Instant timestamp
+   ) {
+      TaskStore taskStore = table.getTaskStore();
+
+      Either<TaskAccessException, Table> result = Either.right(table);
+      for (String id : table.getAllGeneratorIds().asList()) {
+         result = result.flatMap(t -> taskStore
+            .getGenerators().getById(id)
+            .flatMap(g -> Orchestration.runGenerator(g, timestamp))
+            .map(table::withTaskIds));
+      }
+      return result
+         .flatMap(taskStore.getTables()::save)
+         .map(Table::getAllTaskIds);
+   }
+
    public static Either<TaskAccessException, Generator> modifyGenerator(
       Generator generator,
       GeneratorDelta delta
