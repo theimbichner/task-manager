@@ -3,7 +3,6 @@ package io.github.theimbichner.task;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
-import java.util.stream.Stream;
 
 import org.json.JSONObject;
 
@@ -52,19 +51,19 @@ public class TableTests {
 
       assertThat(table.getAllTaskIds().asList()).isEmpty();
 
-      table.linkTask("alpha");
+      table = table.withTasks(List.of("alpha"));
       assertThat(table.getAllTaskIds().asList()).isEqualTo(List.of("alpha"));
 
-      table.linkTask("beta");
+      table = table.withTasks(List.of("beta"));
       assertThat(table.getAllTaskIds().asList()).isEqualTo(List.of("alpha", "beta"));
 
-      table.linkTask("alpha");
+      table = table.withTasks(List.of("alpha"));
       assertThat(table.getAllTaskIds().asList()).isEqualTo(List.of("alpha", "beta"));
 
-      table.unlinkTask("gamma");
+      table = table.withoutTask("gamma");
       assertThat(table.getAllTaskIds().asList()).isEqualTo(List.of("alpha", "beta"));
 
-      table.unlinkTask("alpha");
+      table = table.withoutTask("alpha");
       assertThat(table.getAllTaskIds().asList()).isEqualTo(List.of("beta"));
    }
 
@@ -73,19 +72,19 @@ public class TableTests {
       Table table = Table.createTable();
       assertThat(table.getAllGeneratorIds().asList()).isEmpty();
 
-      table.linkGenerator("alpha");
+      table = table.withGenerator("alpha");
       assertThat(table.getAllGeneratorIds().asList()).isEqualTo(List.of("alpha"));
 
-      table.linkGenerator("beta");
+      table = table.withGenerator("beta");
       assertThat(table.getAllGeneratorIds().asList()).isEqualTo(List.of("alpha", "beta"));
 
-      table.linkGenerator("alpha");
+      table = table.withGenerator("alpha");
       assertThat(table.getAllGeneratorIds().asList()).isEqualTo(List.of("alpha", "beta"));
 
-      table.unlinkGenerator("gamma");
+      table = table.withoutGenerator("gamma");
       assertThat(table.getAllGeneratorIds().asList()).isEqualTo(List.of("alpha", "beta"));
 
-      table.unlinkGenerator("alpha");
+      table = table.withoutGenerator("alpha");
       assertThat(table.getAllGeneratorIds().asList()).isEqualTo(List.of("beta"));
    }
 
@@ -98,9 +97,9 @@ public class TableTests {
       taskStore.getGenerators().save(generator).get();
       String generatorId = generator.getId();
 
-      table.linkTask("alpha");
-      table.linkTask("beta");
-      table.linkGenerator(generatorId);
+      table = table
+         .withTasks(List.of("alpha", "beta"))
+         .withGenerator(generatorId);
 
       JSONObject json = table.toJson();
       Table newTable = Table.fromJson(json);

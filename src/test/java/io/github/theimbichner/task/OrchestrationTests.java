@@ -69,7 +69,7 @@ public class OrchestrationTests {
       for (DatePattern pattern : datePatterns) {
          Generator generator = Generator.createGenerator(table, "", pattern);
          taskStore.getGenerators().save(generator).get();
-         table.linkGenerator(generator.getId());
+         table = table.withGenerator(generator.getId());
 
          numTasks += pattern.getDates(start, end).size();
       }

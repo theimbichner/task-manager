@@ -20,10 +20,10 @@ public class Orchestration {
 
       Either<TaskAccessException, Table> result = Either.right(table);
       for (String id : table.getAllGeneratorIds().asList()) {
-         result = result.flatMap(t -> taskStore
+         result = result.flatMap(resultTable -> taskStore
             .getGenerators().getById(id)
             .flatMap(g -> Orchestration.runGenerator(g, timestamp))
-            .map(table::withTaskIds));
+            .map(resultTable::withTasks));
       }
       return result
          .flatMap(taskStore.getTables()::save)

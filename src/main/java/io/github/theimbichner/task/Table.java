@@ -1,19 +1,16 @@
 package io.github.theimbichner.task;
 
-import java.time.Instant;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
-import io.vavr.control.Either;
+import io.vavr.Tuple2;
+import io.vavr.collection.HashMap;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import io.github.theimbichner.task.collection.SetList;
 import io.github.theimbichner.task.io.Storable;
-import io.github.theimbichner.task.io.TaskAccessException;
 import io.github.theimbichner.task.io.TaskStore;
 import io.github.theimbichner.task.schema.Property;
 import io.github.theimbichner.task.schema.PropertyMap;
@@ -29,24 +26,57 @@ import io.github.theimbichner.task.time.ModifyRecord;
  */
 
 public class Table implements Storable {
+   private static class Builder {
+      private final String id;
+      private String name;
+      private ModifyRecord modifyRecord;
+      private SetList<String> taskIds;
+      private SetList<String> generatorIds;
+      private HashMap<String, TypeDescriptor> schema;
+
+      private TaskStore taskStore;
+
+      private Builder(String id) {
+         this.id = id;
+         name = "";
+         modifyRecord = ModifyRecord.createdNow();
+         taskIds = SetList.empty();
+         generatorIds = SetList.empty();
+         schema = HashMap.empty();
+
+         taskStore = null;
+      }
+
+      private Builder(Table table) {
+         id = table.id;
+         name = table.name;
+         modifyRecord = table.modifyRecord;
+         taskIds = table.taskIds;
+         generatorIds = table.generatorIds;
+         schema = table.schema;
+
+         taskStore = table.taskStore;
+      }
+   }
+
    private final String id;
-   private String name;
-   private ModifyRecord modifyRecord;
-   private SetList<String> taskIds;
-   private SetList<String> generatorIds;
-   private final Map<String, TypeDescriptor> schema;
+   private final String name;
+   private final ModifyRecord modifyRecord;
+   private final SetList<String> taskIds;
+   private final SetList<String> generatorIds;
+   private final HashMap<String, TypeDescriptor> schema;
 
    private TaskStore taskStore;
 
-   private Table(String id) {
-      this.id = id;
-      name = "";
-      modifyRecord = ModifyRecord.createdNow();
-      taskIds = SetList.empty();
-      generatorIds = SetList.empty();
-      schema = new HashMap<>();
+   private Table(Builder builder) {
+      id = builder.id;
+      name = builder.name;
+      modifyRecord = builder.modifyRecord;
+      taskIds = builder.taskIds;
+      generatorIds = builder.generatorIds;
+      schema = builder.schema;
 
-      taskStore = null;
+      taskStore = builder.taskStore;
    }
 
    @Override
@@ -70,29 +100,32 @@ public class Table implements Storable {
       return taskIds;
    }
 
-   Table withTaskIds(Iterable<String> ids) {
-      taskIds = taskIds.addAll(ids);
-      return this;
+   Table withTasks(Iterable<String> ids) {
+      Builder result = new Builder(this);
+      result.taskIds = taskIds.addAll(ids);
+      return new Table(result);
    }
 
-   void linkTask(String id) {
-      taskIds = taskIds.add(id);
-   }
-
-   void unlinkTask(String id) {
-      taskIds = taskIds.remove(id);
+   Table withoutTask(String id) {
+      Builder result = new Builder(this);
+      result.taskIds = taskIds.remove(id);
+      return new Table(result);
    }
 
    public SetList<String> getAllGeneratorIds() {
       return generatorIds;
    }
 
-   void linkGenerator(String id) {
-      generatorIds = generatorIds.add(id);
+   Table withGenerator(String id) {
+      Builder result = new Builder(this);
+      result.generatorIds = generatorIds.add(id);
+      return new Table(result);
    }
 
-   void unlinkGenerator(String id) {
-      generatorIds = generatorIds.remove(id);
+   Table withoutGenerator(String id) {
+      Builder result = new Builder(this);
+      result.generatorIds = generatorIds.remove(id);
+      return new Table(result);
    }
 
    @Override
@@ -106,15 +139,15 @@ public class Table implements Storable {
    }
 
    public PropertyMap getDefaultProperties() {
-      Map<String, Property> result = new HashMap<>();
-      for (String key : schema.keySet()) {
-         result.put(key, schema.get(key).getDefaultValue());
+      Map<String, Property> result = new java.util.HashMap<>();
+      for (Tuple2<String, TypeDescriptor> entry : schema) {
+         result.put(entry._1, entry._2.getDefaultValue());
       }
       return PropertyMap.fromJava(result);
    }
 
    public static Table createTable() {
-      return new Table(UUID.randomUUID().toString());
+      return new Table(new Builder(UUID.randomUUID().toString()));
    }
 
    public JSONObject toJson() {
@@ -126,8 +159,8 @@ public class Table implements Storable {
       json.put("generators", generatorIds.asList());
 
       JSONObject schemaJson = new JSONObject();
-      for (String s : schema.keySet()) {
-         schemaJson.put(s, schema.get(s).toJson());
+      for (Tuple2<String, TypeDescriptor> entry : schema) {
+         schemaJson.put(entry._1, entry._2.toJson());
       }
       json.put("schema", schemaJson);
 
@@ -136,7 +169,7 @@ public class Table implements Storable {
 
    public static Table fromJson(JSONObject json) {
       String id = json.getString("id");
-      Table result = new Table(id);
+      Builder result = new Builder(id);
 
       result.name = json.getString("name");
       result.modifyRecord = ModifyRecord.readFromJson(json);
@@ -156,6 +189,6 @@ public class Table implements Storable {
          result.schema.put(s, TypeDescriptor.fromJson(schemaJson.getJSONObject(s)));
       }
 
-      return result;
+      return new Table(result);
    }
 }
