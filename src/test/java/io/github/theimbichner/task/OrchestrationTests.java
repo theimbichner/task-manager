@@ -17,6 +17,7 @@ import io.github.theimbichner.task.time.DatePattern;
 import io.github.theimbichner.task.time.DateTime;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.assertj.vavr.api.VavrAssertions.*;
 
 public class OrchestrationTests {
    static DataProvider data;
@@ -26,6 +27,20 @@ public class OrchestrationTests {
       data = new DataProvider();
    }
 
+   private static Stream<Task> provideTasks() {
+      return Stream.of(
+         data.createDefaultTask(),
+         data.createModifiedTask(),
+         data.createDefaultTaskWithGenerator(),
+         data.createModifiedTaskWithGenerator());
+   }
+
+   private static Stream<Task> provideGeneratorTasks() {
+      return Stream.of(
+         data.createDefaultTaskWithGenerator(),
+         data.createModifiedTaskWithGenerator());
+   }
+
    private static Stream<Generator> provideGenerators() {
       return Stream.of(
          data.createDefaultGenerator(),
@@ -33,8 +48,62 @@ public class OrchestrationTests {
    }
 
    @ParameterizedTest
+   @MethodSource("provideTasks")
+   void testModifyTask(Task task) {
+      Instant beforeModify = Instant.now();
+      Orchestration.modifyTask(task, data.getTaskDelta()).get();
+      task = data.getTaskStore().getTasks().getById(task.getId()).get();
+
+      assertThat(task.getDateLastModified().getStart())
+         .isAfterOrEqualTo(beforeModify)
+         .isEqualTo(task.getDateLastModified().getEnd());
+
+      assertThat(task.getName()).isEqualTo(data.getTemplateName());
+      assertThat(task.getMarkup()).isEqualTo(data.getMarkup());
+      assertThat(task.getProperties().asMap())
+         .containsAllEntriesOf(data.getProperties().asMap());
+   }
+
+   @ParameterizedTest
+   @MethodSource("provideTasks")
+   void testModifyTaskEmpty(Task task) {
+      DateTime oldDateLastModified = task.getDateLastModified();
+      String oldName = task.getName();
+      String oldMarkup = task.getMarkup();
+      PropertyMap oldProperties = task.getProperties();
+
+      TaskDelta delta = new TaskDelta(PropertyMap.empty(), null, null, null);
+      Orchestration.modifyTask(task, delta).get();
+      task = data.getTaskStore().getTasks().getById(task.getId()).get();
+
+      assertThat(task.getDateLastModified().getStart())
+         .isEqualTo(oldDateLastModified.getStart());
+      assertThat(task.getDateLastModified().getEnd())
+         .isEqualTo(oldDateLastModified.getEnd());
+
+      assertThat(task.getName()).isEqualTo(oldName);
+      assertThat(task.getMarkup()).isEqualTo(oldMarkup);
+      assertThat(task.getProperties().asMap()).isEqualTo(oldProperties.asMap());
+   }
+
+   @ParameterizedTest
+   @MethodSource("provideGeneratorTasks")
+   void testModifyTaskUpdateDuration(Task task) {
+      String generationField = data.getGenerationField();
+      DateTime initial = (DateTime) task.getProperties().asMap().get(generationField).get().get();
+      Instant expectedEnd = initial.getStart().plusSeconds(data.getDuration());
+
+      Orchestration.modifyTask(task, data.getFullTaskDelta()).get();
+      task = data.getTaskStore().getTasks().getById(task.getId()).get();
+
+      DateTime dateTime = (DateTime) task.getProperties().asMap().get(generationField).get().get();
+      assertThat(dateTime.getStart()).isEqualTo(initial.getStart());
+      assertThat(dateTime.getEnd()).isEqualTo(expectedEnd);
+   }
+
+   @ParameterizedTest
    @MethodSource("provideGenerators")
-   void testModifyFull(Generator generator) {
+   void testModifyGeneratorFull(Generator generator) {
       Instant beforeModify = Instant.now();
       Orchestration.modifyGenerator(generator, data.getFullGeneratorDelta()).get();
       generator = data.getTaskStore().getGenerators().getById(generator.getId()).get();
@@ -52,7 +121,7 @@ public class OrchestrationTests {
 
    @ParameterizedTest
    @MethodSource("provideGenerators")
-   void testModifyEmpty(Generator generator) {
+   void testModifyGeneratorEmpty(Generator generator) {
       DateTime oldDateLastModified = generator.getDateLastModified();
       String oldName = generator.getName();
       String oldTemplateName = generator.getTemplateName();
@@ -80,7 +149,7 @@ public class OrchestrationTests {
 
    @ParameterizedTest
    @MethodSource("provideGenerators")
-   void testModifyPartial(Generator generator) {
+   void testModifyGeneratorPartial(Generator generator) {
       String oldName = generator.getName();
       String oldTemplateName = generator.getTemplateName();
       String oldTemplateMarkup = generator.getTemplateMarkup();
@@ -102,7 +171,7 @@ public class OrchestrationTests {
    }
 
    @Test
-   void testModifyUpdateProperties() {
+   void testModifyGeneratorUpdateProperties() {
       Generator generator = data.createModifiedGenerator();
       GeneratorDelta delta = new GeneratorDelta(
          data.getUpdateProperties(),
@@ -120,22 +189,24 @@ public class OrchestrationTests {
    }
 
    @Test
-   void testModifyWithTasks() {
+   void testModifyGeneratorWithTasks() {
       Generator generator = data.createDefaultGenerator();
       Instant timestamp = Instant.now().plusSeconds(600);
+      String generationField = data.getGenerationField();
+
       List<String> tasks = Orchestration.runGenerator(generator, timestamp).get();
       generator = data.getTaskStore().getGenerators().getById(generator.getId()).get();
 
       Orchestration.modifyGenerator(generator, data.getFullGeneratorDelta()).get();
       generator = data.getTaskStore().getGenerators().getById(generator.getId()).get();
-
-      String generationField = data.getGenerationField();
+      assertThat(generator.getTaskIds().asList()).isEqualTo(tasks);
 
       for (String s : tasks) {
          Task task = data.getTaskStore().getTasks().getById(s).get();
          assertThat(task.getName()).isEqualTo(data.getTemplateName());
          assertThat(task.getMarkup()).isEqualTo(data.getMarkup());
-         assertThat(task.getProperties().asMap()).containsAll(data.getProperties().asMap());
+         assertThat(task.getProperties().asMap())
+            .containsAllEntriesOf(data.getProperties().asMap());
          DateTime date = (DateTime) task.getProperties().asMap().get(generationField).get().get();
          assertThat(date.getEnd())
             .isEqualTo(date.getStart().plusSeconds(data.getDuration()));

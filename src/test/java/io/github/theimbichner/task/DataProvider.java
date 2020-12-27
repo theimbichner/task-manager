@@ -107,8 +107,7 @@ public class DataProvider {
    public Task createModifiedTaskWithGenerator() {
       Generator generator = createDefaultGenerator();
       Task task = Task.newSeriesTask(generator, Instant.now());
-      task.modify(getFullTaskDelta(), false).get();
-      return task;
+      return Orchestration.modifyTask(task, getFullTaskDelta()).get();
    }
 
    public TaskDelta getTaskDelta() {

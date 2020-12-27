@@ -71,7 +71,7 @@ public class TaskTests {
    @MethodSource("provideTasks")
    void testModify(Task task) {
       Instant beforeModify = Instant.now();
-      task.modify(data.getTaskDelta(), false).get();
+      task = task.withModification(data.getTaskDelta()).get();
 
       assertThat(task.getDateLastModified().getStart())
          .isAfterOrEqualTo(beforeModify)
@@ -86,21 +86,8 @@ public class TaskTests {
    @ParameterizedTest
    @MethodSource("provideTasks")
    void testModifyEmpty(Task task) {
-      DateTime oldDateLastModified = task.getDateLastModified();
-      String oldName = task.getName();
-      String oldMarkup = task.getMarkup();
-      PropertyMap oldProperties = task.getProperties();
-
-      task.modify(new TaskDelta(PropertyMap.empty(), null, null, null), false).get();
-
-      assertThat(task.getDateLastModified().getStart())
-         .isEqualTo(oldDateLastModified.getStart());
-      assertThat(task.getDateLastModified().getEnd())
-         .isEqualTo(oldDateLastModified.getEnd());
-
-      assertThat(task.getName()).isEqualTo(oldName);
-      assertThat(task.getMarkup()).isEqualTo(oldMarkup);
-      assertThat(task.getProperties().asMap()).isEqualTo(oldProperties.asMap());
+      TaskDelta delta = new TaskDelta(PropertyMap.empty(), null, null, null);
+      assertThat(task.withModification(delta).get()).isSameAs(task);
    }
 
    @ParameterizedTest
@@ -133,7 +120,7 @@ public class TaskTests {
    void testModifyInvalid() {
       Task task = data.createModifiedTask();
       assertThatExceptionOfType(IllegalArgumentException.class)
-         .isThrownBy(() -> task.modify(data.getFullTaskDelta(), false));
+         .isThrownBy(() -> task.withModification(data.getFullTaskDelta()));
    }
 
    @ParameterizedTest
@@ -150,7 +137,7 @@ public class TaskTests {
       DateTime initial = (DateTime) task.getProperties().asMap().get(generationField).get().get();
       Instant expectedEnd = initial.getStart().plusSeconds(data.getDuration());
 
-      task.modify(data.getFullTaskDelta(), false).get();
+      task = task.withModification(data.getFullTaskDelta()).get();
       DateTime dateTime = (DateTime) task.getProperties().asMap().get(generationField).get().get();
 
       assertThat(dateTime.getStart()).isEqualTo(initial.getStart());
@@ -175,6 +162,8 @@ public class TaskTests {
          .containsAllEntriesOf(data.getProperties().asMap());
    }
 
+   @ParameterizedTest
+   @MethodSource("provideTasks")
    void testGetGenerator(Task task) {
       if (task.getGeneratorId() == null) {
          assertThat(task.getGenerator().get()).isEmpty();

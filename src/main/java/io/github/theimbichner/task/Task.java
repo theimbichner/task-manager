@@ -40,6 +40,17 @@ public class Task implements Storable {
       taskStore = null;
    }
 
+   private Task(Task other) {
+      id = other.id;
+      tableId = other.tableId;
+      name = other.name;
+      modifyRecord = other.modifyRecord;
+      markup = other.markup;
+      generatorId = other.generatorId;
+      properties = other.properties;
+      taskStore = other.taskStore;
+   }
+
    @Override
    public String getId() {
       return id;
@@ -80,7 +91,7 @@ public class Task implements Storable {
       return modify(delta, true);
    }
 
-   Either<TaskAccessException, Task> modify(TaskDelta delta, boolean shouldUnlinkGenerator) {
+   private Either<TaskAccessException, Task> modify(TaskDelta delta, boolean shouldUnlinkGenerator) {
       if (delta.isEmpty()) {
          return Either.right(this);
       }
@@ -114,6 +125,33 @@ public class Task implements Storable {
 
             modifyRecord = modifyRecord.updatedNow();
             return this;
+         });
+   }
+
+   Either<TaskAccessException, Task> withModification(TaskDelta delta) {
+      if (delta.isEmpty()) {
+         return Either.right(this);
+      }
+
+      return getGenerator()
+         .map(generator -> {
+            Task result = new Task(this);
+            result.properties = properties.merge(delta.getProperties());
+            result.name = delta.getName().orElse(name);
+            result.markup = delta.getMarkup().orElse(markup);
+
+            if (delta.getDuration().isPresent()) {
+               if (generator.isEmpty()) {
+                  throw new IllegalArgumentException("Cannot set duration without generator");
+               }
+               String generationField = generator.get().getGenerationField();
+               DateTime date = (DateTime) properties.asMap().get(generationField).get().get();
+               DateTime newDate = date.withDuration(delta.getDuration().get());
+               result.properties = result.properties.put(generationField, Property.of(newDate));
+            }
+
+            result.modifyRecord = modifyRecord.updatedNow();
+            return result;
          });
    }
 

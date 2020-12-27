@@ -22,12 +22,18 @@ public class Orchestration {
          .sequenceRight(generator.getTaskIds().asList().stream()
             .map(id -> taskStore
                .getTasks().getById(id)
-               .flatMap(t -> t.modify(taskDelta, false)))
+               .flatMap(t -> Orchestration.modifyTask(t, taskDelta)))
             .collect(Collectors.toList()))
          .flatMap(x -> {
             Generator modified = generator.withModification(delta);
             return taskStore.getGenerators().save(modified);
          });
+   }
+
+   public static Either<TaskAccessException, Task> modifyTask(Task task, TaskDelta delta) {
+      TaskStore taskStore = task.getTaskStore();
+      return task.withModification(delta)
+         .flatMap(t -> taskStore.getTasks().save(t));
    }
 
    /* TODO should the call to unlinkGenerator on earlier tasks in the series
