@@ -1,6 +1,5 @@
 package io.github.theimbichner.task;
 
-import java.util.List;
 import java.util.stream.Stream;
 import java.time.Instant;
 
@@ -17,6 +16,7 @@ import io.github.theimbichner.task.schema.PropertyMap;
 import io.github.theimbichner.task.time.DateTime;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.assertj.vavr.api.VavrAssertions.*;
 
 public class TaskTests {
    static DataProvider data;
@@ -79,7 +79,8 @@ public class TaskTests {
 
       assertThat(task.getName()).isEqualTo(data.getTemplateName());
       assertThat(task.getMarkup()).isEqualTo(data.getMarkup());
-      assertThat(task.getProperties().asMap()).containsAll(data.getProperties().asMap());
+      assertThat(task.getProperties().asMap())
+         .containsAllEntriesOf(data.getProperties().asMap());
    }
 
    @ParameterizedTest
@@ -170,40 +171,18 @@ public class TaskTests {
 
       assertThat(task.getName()).isEqualTo(data.getTemplateName());
       assertThat(task.getMarkup()).isEqualTo(data.getMarkup());
-      assertThat(task.getProperties().asMap()).containsAll(data.getProperties().asMap());
+      assertThat(task.getProperties().asMap())
+         .containsAllEntriesOf(data.getProperties().asMap());
    }
 
-   @ParameterizedTest
-   @MethodSource("provideGenerators")
-   void testModifySeries(Generator generator) {
-      Instant instant = Instant.now().plusSeconds(600);
-      List<String> tasks = Orchestration.runGenerator(generator, instant).get();
-      int index = tasks.size() / 2;
-      Task targetTask = data.getTaskStore().getTasks().getById(tasks.get(index)).get();
-      targetTask.modifySeries(data.getFullGeneratorDelta()).get();
-
-      String generationField = data.getGenerationField();
-
-      for (int i = 0; i < tasks.size(); i++) {
-         Task task = data.getTaskStore().getTasks().getById(tasks.get(i)).get();
-         if (i < index) {
-            assertThat(task.getGeneratorId()).isNull();
-         }
-         else {
-            assertThat(task.getName()).isEqualTo(data.getTemplateName());
-            assertThat(task.getMarkup()).isEqualTo(data.getMarkup());
-            assertThat(task.getProperties().asMap().remove(generationField))
-               .isEqualTo(data.getProperties().asMap());
-            assertThat(task.getProperties().asMap().containsKey(generationField)).isTrue();
-         }
+   void testGetGenerator(Task task) {
+      if (task.getGeneratorId() == null) {
+         assertThat(task.getGenerator().get()).isEmpty();
       }
-   }
-
-   @Test
-   void testModifySeriesInvalid() {
-      Task task = data.createModifiedTask();
-      assertThatExceptionOfType(IllegalStateException.class)
-         .isThrownBy(() -> task.modifySeries(data.getFullGeneratorDelta()));
+      else {
+         assertThat(task.getGenerator().get())
+            .hasValueSatisfying(g -> g.getId().equals(task.getGeneratorId()));
+      }
    }
 
    @ParameterizedTest

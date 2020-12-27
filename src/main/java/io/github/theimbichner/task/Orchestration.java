@@ -30,7 +30,21 @@ public class Orchestration {
          });
    }
 
-   public static Either<TaskAccessException, Generator> removeTasksFromGeneratorBefore(
+   /* TODO should the call to unlinkGenerator on earlier tasks in the series
+    * cause the modification timestamp to update on those tasks?
+    */
+   public static Either<TaskAccessException, Task> modifySeries(Task task, GeneratorDelta delta) {
+      return task.getGenerator()
+         .map(g -> g.getOrElse(() -> {
+            String msg = "Cannot modify series on non series task";
+            throw new IllegalStateException(msg);
+         }))
+         .flatMap(g -> removeTasksFromGeneratorBefore(g, task.getId()))
+         .flatMap(g -> Orchestration.modifyGenerator(g, delta))
+         .map(g -> task);
+   }
+
+   private static Either<TaskAccessException, Generator> removeTasksFromGeneratorBefore(
       Generator generator,
       String taskId
    ) {

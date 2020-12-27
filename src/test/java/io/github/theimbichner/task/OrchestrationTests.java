@@ -186,23 +186,40 @@ public class OrchestrationTests {
       assertThat(generator.getTaskIds().asList()).isEqualTo(prevTasks);
    }
 
-   @Test
-   void testRemoveTasksFromGeneratorBefore() {
-      Generator generator = data.createDefaultGenerator();
-      Instant firstInstant = Instant.now().plusSeconds(100);
-      Instant secondInstant = Instant.now().plusSeconds(350);
+   @ParameterizedTest
+   @MethodSource("provideGenerators")
+   void testModifySeries(Generator generator) {
+      Instant instant = Instant.now().plusSeconds(600);
+      List<String> tasks = Orchestration.runGenerator(generator, instant).get();
+      int index = tasks.size() / 2;
+      Task targetTask = data.getTaskStore().getTasks().getById(tasks.get(index)).get();
+      Orchestration.modifySeries(targetTask, data.getFullGeneratorDelta()).get();
 
-      List<String> firstResult = Orchestration.runGenerator(generator, firstInstant).get();
-      generator = data.getTaskStore().getGenerators().getById(generator.getId()).get();
-      List<String> secondResult = Orchestration.runGenerator(generator, secondInstant).get();
-      generator = data.getTaskStore().getGenerators().getById(generator.getId()).get();
+      String generationField = data.getGenerationField();
 
-      Orchestration.removeTasksFromGeneratorBefore(generator, secondResult.get(0)).get();
-      generator = generator.getTaskStore().getGenerators().getById(generator.getId()).get();
-      for (String s : firstResult) {
-         Task task = data.getTaskStore().getTasks().getById(s).get();
-         assertThat(task.getGeneratorId()).isNull();
+      for (int i = 0; i < tasks.size(); i++) {
+         Task task = data.getTaskStore().getTasks().getById(tasks.get(i)).get();
+         if (i < index) {
+            assertThat(task.getGeneratorId()).isNull();
+         }
+         else {
+            assertThat(task.getGeneratorId()).isEqualTo(generator.getId());
+            assertThat(task.getName()).isEqualTo(data.getTemplateName());
+            assertThat(task.getMarkup()).isEqualTo(data.getMarkup());
+            assertThat(task.getProperties().asMap().remove(generationField))
+               .isEqualTo(data.getProperties().asMap());
+            assertThat(task.getProperties().asMap().containsKey(generationField)).isTrue();
+         }
       }
-      assertThat(generator.getTaskIds().asList()).isEqualTo(secondResult);
+
+      generator = data.getTaskStore().getGenerators().getById(generator.getId()).get();
+      assertThat(generator.getTaskIds().asList()).isEqualTo(tasks.subList(index, tasks.size()));
+   }
+
+   @Test
+   void testModifySeriesInvalid() {
+      Task task = data.createModifiedTask();
+      assertThatExceptionOfType(IllegalStateException.class)
+         .isThrownBy(() -> Orchestration.modifySeries(task, data.getFullGeneratorDelta()));
    }
 }

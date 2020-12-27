@@ -69,7 +69,7 @@ public class Task implements Storable {
       return properties;
    }
 
-   private Either<TaskAccessException, Option<Generator>> getGenerator() {
+   Either<TaskAccessException, Option<Generator>> getGenerator() {
       if (generatorId == null) {
          return Either.right(Option.none());
       }
@@ -119,21 +119,6 @@ public class Task implements Storable {
 
    void unlinkGenerator() {
       generatorId = null;
-   }
-
-   /*
-    * TODO Should the call to unlinkGenerator on earlier tasks in the series
-    * cause the modification timestamp to update?
-    */
-   public Either<TaskAccessException, Task> modifySeries(GeneratorDelta delta) {
-      return getGenerator()
-         .map(g -> g.getOrElse(() -> {
-            String msg = "Cannot modify series on non series task";
-            throw new IllegalStateException(msg);
-         }))
-         .flatMap(g -> Orchestration.removeTasksFromGeneratorBefore(g, id))
-         .flatMap(g -> Orchestration.modifyGenerator(g, delta))
-         .map(g -> this);
    }
 
    @Override
