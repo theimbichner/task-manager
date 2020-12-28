@@ -104,6 +104,7 @@ public class Generator implements Storable {
       generationField = builder.generationField;
       generationDatePattern = builder.generationDatePattern;
       taskIds = builder.taskIds;
+
       taskStore = builder.taskStore;
    }
 

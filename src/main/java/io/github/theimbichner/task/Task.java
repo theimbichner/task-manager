@@ -49,6 +49,7 @@ public class Task implements Storable {
          markup = task.markup;
          generatorId = task.generatorId;
          properties = task.properties;
+
          taskStore = task.taskStore;
       }
    }

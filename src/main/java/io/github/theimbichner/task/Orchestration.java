@@ -22,7 +22,7 @@ public class Orchestration {
       for (String id : table.getAllGeneratorIds().asList()) {
          result = result.flatMap(resultTable -> taskStore
             .getGenerators().getById(id)
-            .flatMap(g -> Orchestration.runGenerator(g, timestamp))
+            .flatMap(g -> runGenerator(g, timestamp))
             .map(resultTable::withTasks));
       }
       return result
@@ -41,7 +41,7 @@ public class Orchestration {
          .sequenceRight(generator.getTaskIds().asList().stream()
             .map(id -> taskStore
                .getTasks().getById(id)
-               .flatMap(t -> Orchestration.modifyTask(t, taskDelta)))
+               .flatMap(t -> modifyTask(t, taskDelta)))
             .collect(Collectors.toList()))
          .flatMap(x -> {
             Generator modified = generator.withModification(delta);
@@ -86,7 +86,7 @@ public class Orchestration {
             throw new IllegalStateException(msg);
          }))
          .flatMap(g -> removeTasksFromGeneratorBefore(g, task.getId()))
-         .flatMap(g -> Orchestration.modifyGenerator(g, delta))
+         .flatMap(g -> modifyGenerator(g, delta))
          .map(g -> task);
    }
 
@@ -100,7 +100,7 @@ public class Orchestration {
       Either<TaskAccessException, Task> result = taskStore
          .getGenerators()
          .save(split._1)
-         .map(x -> (Task) null);
+         .map(x -> null);
 
       for (String s : split._2) {
          result = result

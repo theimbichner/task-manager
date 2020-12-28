@@ -147,7 +147,7 @@ public class TaskTests {
       }
       else {
          assertThat(task.getGenerator().get())
-            .hasValueSatisfying(g -> g.getId().equals(task.getGeneratorId()));
+            .hasValueSatisfying(g -> assertThat(g.getId()).isEqualTo(task.getGeneratorId()));
       }
    }
 

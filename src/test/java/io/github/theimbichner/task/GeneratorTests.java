@@ -226,7 +226,7 @@ public class GeneratorTests {
          Property dateProperty = task.getProperties().asMap().get(generationField).get();
          Instant date = ((DateTime) dateProperty.get()).getStart();
          assertThat(task.getGeneratorId()).isEqualTo(generator.getId());
-         assertThat(dates.contains(date));
+         assertThat(dates).contains(date);
       }
       List<String> firstIds = firstResult._2.stream().map(Task::getId).collect(Collectors.toList());
       assertThat(generator.getTaskIds().asList()).containsAll(firstIds);
@@ -239,7 +239,7 @@ public class GeneratorTests {
          Property dateProperty = task.getProperties().asMap().get(generationField).get();
          Instant date = ((DateTime) dateProperty.get()).getStart();
          assertThat(task.getGeneratorId()).isEqualTo(generator.getId());
-         assertThat(dates.contains(date));
+         assertThat(dates).contains(date);
       }
       List<String> secondIds = secondResult._2.stream().map(Task::getId).collect(Collectors.toList());
       assertThat(generator.getTaskIds().asList()).containsAll(firstIds);
