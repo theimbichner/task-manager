@@ -1,45 +1,44 @@
 package io.github.theimbichner.task;
 
-import java.util.Map;
 import java.util.Optional;
 
-import io.github.theimbichner.task.schema.Property;
+import io.github.theimbichner.task.schema.PropertyMap;
 
 public class TaskDelta {
-   private final Map<String, Property> properties;
-   private final Optional<String> name;
-   private final Optional<Optional<String>> markup;
-   private final Optional<Long> duration;
+   private final PropertyMap properties;
+   private final String name;
+   private final String markup;
+   private final Long duration;
 
    public TaskDelta(
-      Map<String, Property> properties,
+      PropertyMap properties,
       String name,
-      Optional<String> markup,
+      String markup,
       Long duration
    ) {
-      this.properties = Map.copyOf(properties);
-      this.name = Optional.ofNullable(name);
-      this.markup = Optional.ofNullable(markup);
-      this.duration = Optional.ofNullable(duration);
+      this.properties = properties;
+      this.name = name;
+      this.markup = markup;
+      this.duration = duration;
    }
 
-   public Map<String, Property> getProperties() {
+   public PropertyMap getProperties() {
       return properties;
    }
 
    public Optional<String> getName() {
-      return name;
+      return Optional.ofNullable(name);
    }
 
-   public Optional<Optional<String>> getMarkup() {
-      return markup;
+   public Optional<String> getMarkup() {
+      return Optional.ofNullable(markup);
    }
 
    public Optional<Long> getDuration() {
-      return duration;
+      return Optional.ofNullable(duration);
    }
 
    public boolean isEmpty() {
-      return name.isEmpty() && markup.isEmpty() && duration.isEmpty() && properties.isEmpty();
+      return name == null && markup == null && duration == null && properties.asMap().isEmpty();
    }
 }

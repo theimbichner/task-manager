@@ -3,6 +3,8 @@ package io.github.theimbichner.task;
 import java.util.Map;
 import java.util.Set;
 
+import io.vavr.collection.HashMap;
+
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -13,7 +15,7 @@ import static org.assertj.core.api.Assertions.*;
 
 public class TableDeltaTests {
    static Map<String, TypeDescriptor> properties;
-   static Map<String, Property> taskProperties;
+   static HashMap<String, Property> taskProperties;
    static String name;
 
    @BeforeAll
@@ -22,7 +24,7 @@ public class TableDeltaTests {
          "alpha", TypeDescriptor.fromTypeName("EnumList"),
          "beta", TypeDescriptor.fromTypeName("String"),
          "gamma", TypeDescriptor.fromTypeName("Boolean"));
-      taskProperties = Map.of(
+      taskProperties = HashMap.of(
          "alpha", Property.of(Set.of()),
          "beta", Property.of(""),
          "gamma", Property.of(false));
@@ -47,7 +49,7 @@ public class TableDeltaTests {
    void testAsTaskDelta() {
       TableDelta tableDelta = new TableDelta(properties, name);
       TaskDelta taskDelta = tableDelta.asTaskDelta();
-      assertThat(taskDelta.getProperties()).isEqualTo(taskProperties);
+      assertThat(taskDelta.getProperties().asMap()).isEqualTo(taskProperties);
       assertThat(taskDelta.getName()).isEmpty();
       assertThat(taskDelta.getMarkup()).isEmpty();
       assertThat(taskDelta.getDuration()).isEmpty();
@@ -57,14 +59,14 @@ public class TableDeltaTests {
    void testAsTaskDeltaNoProperties() {
       TableDelta tableDelta = new TableDelta(Map.of(), name);
       TaskDelta taskDelta = tableDelta.asTaskDelta();
-      assertThat(taskDelta.getProperties()).isEqualTo(Map.of());
+      assertThat(taskDelta.getProperties().asMap()).isEmpty();
    }
 
    @Test
    void testAsGeneratorDelta() {
       TableDelta tableDelta = new TableDelta(properties, name);
       GeneratorDelta generatorDelta = tableDelta.asGeneratorDelta();
-      assertThat(generatorDelta.getProperties()).isEqualTo(taskProperties);
+      assertThat(generatorDelta.getProperties().asMap()).isEqualTo(taskProperties);
       assertThat(generatorDelta.getName()).isEmpty();
       assertThat(generatorDelta.getTemplateName()).isEmpty();
       assertThat(generatorDelta.getTemplateMarkup()).isEmpty();
@@ -75,6 +77,6 @@ public class TableDeltaTests {
    void testAsGeneratorDeltaNoProperties() {
       TableDelta tableDelta = new TableDelta(Map.of(), name);
       GeneratorDelta generatorDelta = tableDelta.asGeneratorDelta();
-      assertThat(generatorDelta.getProperties()).isEqualTo(Map.of());
+      assertThat(generatorDelta.getProperties().asMap()).isEmpty();
    }
 }

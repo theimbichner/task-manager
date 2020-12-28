@@ -7,6 +7,8 @@ import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.util.function.Function;
 
+import io.vavr.control.Either;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
@@ -33,36 +35,38 @@ public class JsonFileDataStore<T extends Storable> implements DataStore<T> {
    }
 
    @Override
-   public T getById(String id) throws TaskAccessException {
+   public Either<TaskAccessException, T> getById(String id) {
       try (FileInputStream stream = new FileInputStream(getFile(id))) {
          JSONTokener tokener = new JSONTokener(stream);
          JSONObject json = new JSONObject(tokener);
-         return fromJson.apply(json);
+         return Either.right(fromJson.apply(json));
       }
       catch (IOException|JSONException e) {
-         throw new TaskAccessException(e);
+         return Either.left(new TaskAccessException(e));
       }
    }
 
    @Override
-   public void save(T t) throws TaskAccessException {
+   public Either<TaskAccessException, T> save(T t) {
       String id = t.getId();
       root.mkdirs();
       try (PrintWriter writer = new PrintWriter(getFile(id))) {
          toJson.apply(t).write(writer);
+         return Either.right(t);
       }
       catch (IOException|JSONException e) {
-         throw new TaskAccessException(e);
+         return Either.left(new TaskAccessException(e));
       }
    }
 
    @Override
-   public void deleteById(String id) throws TaskAccessException {
+   public Either<TaskAccessException, Void> deleteById(String id) {
       try {
          Files.delete(getFile(id).toPath());
+         return Either.right(null);
       }
       catch (IOException e) {
-         throw new TaskAccessException(e);
+         return Either.left(new TaskAccessException(e));
       }
    }
 }

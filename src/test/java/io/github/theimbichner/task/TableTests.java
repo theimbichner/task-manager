@@ -2,8 +2,7 @@ package io.github.theimbichner.task;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Set;
-import java.util.stream.Stream;
+import java.util.List;
 
 import org.json.JSONObject;
 
@@ -11,7 +10,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import io.github.theimbichner.task.io.InMemoryDataStore;
-import io.github.theimbichner.task.io.TaskAccessException;
 import io.github.theimbichner.task.io.TaskStore;
 import io.github.theimbichner.task.time.DatePattern;
 import io.github.theimbichner.task.time.UniformDatePattern;
@@ -48,87 +46,64 @@ public class TableTests {
    }
 
    @Test
-   void testLinkUnlinkTasks() throws TaskAccessException {
+   void testLinkUnlinkTasks() {
       Table table = Table.createTable();
-      Instant instant = Instant.now();
 
-      assertThat(table.getAllTaskIds(instant)).isEqualTo(Set.of());
+      assertThat(table.getAllTaskIds().asList()).isEmpty();
 
-      table.linkTask("alpha");
-      assertThat(table.getAllTaskIds(instant)).isEqualTo(Set.of("alpha"));
+      table = table.withTasks(List.of("alpha"));
+      assertThat(table.getAllTaskIds().asList()).isEqualTo(List.of("alpha"));
 
-      table.linkTask("beta");
-      assertThat(table.getAllTaskIds(instant)).isEqualTo(Set.of("alpha", "beta"));
+      table = table.withTasks(List.of("beta"));
+      assertThat(table.getAllTaskIds().asList()).isEqualTo(List.of("alpha", "beta"));
 
-      table.linkTask("alpha");
-      assertThat(table.getAllTaskIds(instant)).isEqualTo(Set.of("alpha", "beta"));
+      table = table.withTasks(List.of("alpha"));
+      assertThat(table.getAllTaskIds().asList()).isEqualTo(List.of("alpha", "beta"));
 
-      table.unlinkTask("gamma");
-      assertThat(table.getAllTaskIds(instant)).isEqualTo(Set.of("alpha", "beta"));
+      table = table.withoutTask("gamma");
+      assertThat(table.getAllTaskIds().asList()).isEqualTo(List.of("alpha", "beta"));
 
-      table.unlinkTask("alpha");
-      assertThat(table.getAllTaskIds(instant)).isEqualTo(Set.of("beta"));
+      table = table.withoutTask("alpha");
+      assertThat(table.getAllTaskIds().asList()).isEqualTo(List.of("beta"));
    }
 
    @Test
    void testLinkUnlinkGenerators() {
       Table table = Table.createTable();
-      assertThat(table.getAllGeneratorIds()).isEqualTo(Set.of());
+      assertThat(table.getAllGeneratorIds().asList()).isEmpty();
 
-      table.linkGenerator("alpha");
-      assertThat(table.getAllGeneratorIds()).isEqualTo(Set.of("alpha"));
+      table = table.withGenerator("alpha");
+      assertThat(table.getAllGeneratorIds().asList()).isEqualTo(List.of("alpha"));
 
-      table.linkGenerator("beta");
-      assertThat(table.getAllGeneratorIds()).isEqualTo(Set.of("alpha", "beta"));
+      table = table.withGenerator("beta");
+      assertThat(table.getAllGeneratorIds().asList()).isEqualTo(List.of("alpha", "beta"));
 
-      table.linkGenerator("alpha");
-      assertThat(table.getAllGeneratorIds()).isEqualTo(Set.of("alpha", "beta"));
+      table = table.withGenerator("alpha");
+      assertThat(table.getAllGeneratorIds().asList()).isEqualTo(List.of("alpha", "beta"));
 
-      table.unlinkGenerator("gamma");
-      assertThat(table.getAllGeneratorIds()).isEqualTo(Set.of("alpha", "beta"));
+      table = table.withoutGenerator("gamma");
+      assertThat(table.getAllGeneratorIds().asList()).isEqualTo(List.of("alpha", "beta"));
 
-      table.unlinkGenerator("alpha");
-      assertThat(table.getAllGeneratorIds()).isEqualTo(Set.of("beta"));
+      table = table.withoutGenerator("alpha");
+      assertThat(table.getAllGeneratorIds().asList()).isEqualTo(List.of("beta"));
    }
 
    @Test
-   void testGetAllTaskIdsWithGenerators() throws TaskAccessException {
+   void testToFromJson() {
       Table table = Table.createTable();
-      table.registerTaskStore(taskStore);
-
-      Instant start = Instant.now();
-      Instant end = start.plusSeconds(600);
-
-      int numTasks = Stream.of(getDatePattern(7), getDatePattern(13))
-         .peek(pattern -> {
-            Generator generator = Generator.createGenerator(table, "", pattern);
-            // TODO fix when refactoring TaskAccessException
-            try { taskStore.getGenerators().save(generator); } catch (TaskAccessException e) {}
-            table.linkGenerator(generator.getId());
-         })
-         .mapToInt(pattern -> pattern.getDates(start, end).size())
-         .sum();
-
-      assertThat(table.getAllTaskIds(start)).isEmpty();
-      assertThat(table.getAllTaskIds(end).size()).isEqualTo(numTasks);
-   }
-
-   @Test
-   void testToFromJson() throws TaskAccessException {
-      Table table = Table.createTable();
-      table.registerTaskStore(taskStore);
+      table.setTaskStore(taskStore);
 
       Generator generator = Generator.createGenerator(table, "", getDatePattern(7));
-      taskStore.getGenerators().save(generator);
+      taskStore.getGenerators().save(generator).get();
       String generatorId = generator.getId();
 
-      table.linkTask("alpha");
-      table.linkTask("beta");
-      table.linkGenerator(generatorId);
+      table = table
+         .withTasks(List.of("alpha", "beta"))
+         .withGenerator(generatorId);
 
       JSONObject json = table.toJson();
       Table newTable = Table.fromJson(json);
-      newTable.registerTaskStore(taskStore);
+      newTable.setTaskStore(taskStore);
 
       assertThat(newTable.getId()).isEqualTo(table.getId());
       assertThat(newTable.getName()).isEqualTo(table.getName());
@@ -142,17 +117,17 @@ public class TableTests {
       assertThat(newTable.getDateLastModified().getEnd())
          .isEqualTo(table.getDateLastModified().getEnd());
 
-      assertThat(newTable.getAllTaskIds(Instant.now())).isEqualTo(Set.of("alpha", "beta"));
-      assertThat(newTable.getAllGeneratorIds()).isEqualTo(Set.of(generatorId));
+      assertThat(newTable.getAllTaskIds().asList()).isEqualTo(List.of("alpha", "beta"));
+      assertThat(newTable.getAllGeneratorIds().asList()).isEqualTo(List.of(generatorId));
    }
 
    @Test
-   void testToFromJsonNoTasks() throws TaskAccessException {
+   void testToFromJsonNoTasks() {
       Table table = Table.createTable();
       JSONObject json = table.toJson();
       Table newTable = Table.fromJson(json);
 
-      assertThat(newTable.getAllTaskIds(Instant.now())).isEqualTo(Set.of());
-      assertThat(newTable.getAllGeneratorIds()).isEqualTo(Set.of());
+      assertThat(newTable.getAllTaskIds().asList()).isEmpty();
+      assertThat(newTable.getAllGeneratorIds().asList()).isEmpty();
    }
 }

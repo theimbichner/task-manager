@@ -1,9 +1,8 @@
 package io.github.theimbichner.task.io;
 
 import java.io.File;
-import java.util.function.Function;
 
-import org.json.JSONObject;
+import io.vavr.control.Either;
 
 import io.github.theimbichner.task.Generator;
 import io.github.theimbichner.task.Table;
@@ -18,20 +17,18 @@ public class TaskStore {
       }
 
       @Override
-      public T getById(String id) throws TaskAccessException {
-         T result = delegate.getById(id);
-         result.registerTaskStore(TaskStore.this);
-         return result;
+      public Either<TaskAccessException, T> getById(String id) {
+         return delegate.getById(id).peek(t -> t.setTaskStore(TaskStore.this));
       }
 
       @Override
-      public void save(T t) throws TaskAccessException {
-         delegate.save(t);
+      public Either<TaskAccessException, T> save(T t) {
+         return delegate.save(t);
       }
 
       @Override
-      public void deleteById(String id) throws TaskAccessException {
-         delegate.deleteById(id);
+      public Either<TaskAccessException, Void> deleteById(String id) {
+         return delegate.deleteById(id);
       }
    }
 

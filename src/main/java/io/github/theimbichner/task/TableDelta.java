@@ -5,15 +5,16 @@ import java.util.Map;
 import java.util.Optional;
 
 import io.github.theimbichner.task.schema.Property;
+import io.github.theimbichner.task.schema.PropertyMap;
 import io.github.theimbichner.task.schema.TypeDescriptor;
 
 public class TableDelta {
    private final Map<String, TypeDescriptor> properties;
-   private final Optional<String> name;
+   private final String name;
 
    public TableDelta(Map<String, TypeDescriptor> properties, String name) {
       this.properties = Map.copyOf(properties);
-      this.name = Optional.ofNullable(name);
+      this.name = name;
    }
 
    public Map<String, TypeDescriptor> getProperties() {
@@ -21,16 +22,16 @@ public class TableDelta {
    }
 
    public Optional<String> getName() {
-      return name;
+      return Optional.ofNullable(name);
    }
 
-   private Map<String, Property> getTaskProperties() {
+   private PropertyMap getTaskProperties() {
       Map<String, Property> result = new HashMap<>();
       for (String s : properties.keySet()) {
          result.put(s, properties.get(s) == null ? null : properties.get(s).getDefaultValue());
       }
 
-      return result;
+      return PropertyMap.fromJava(result);
    }
 
    public TaskDelta asTaskDelta() {

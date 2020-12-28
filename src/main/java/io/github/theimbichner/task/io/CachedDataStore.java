@@ -3,6 +3,8 @@ package io.github.theimbichner.task.io;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 
+import io.vavr.control.Either;
+
 public class CachedDataStore<T extends Storable> implements DataStore<T> {
    private final Cache<String, T> cache;
    private final DataStore<T> delegate;
@@ -15,24 +17,23 @@ public class CachedDataStore<T extends Storable> implements DataStore<T> {
    }
 
    @Override
-   public T getById(String id) throws TaskAccessException {
+   public Either<TaskAccessException, T> getById(String id) {
       T t = cache.getIfPresent(id);
-      if (t == null) {
-         t = delegate.getById(id);
-         cache.put(id, t);
+      if (t != null) {
+         return Either.right(t);
       }
-      return t;
+
+      return delegate.getById(id).peek(result -> cache.put(id, result));
    }
 
    @Override
-   public void save(T t) throws TaskAccessException {
-      delegate.save(t);
-      cache.put(t.getId(), t);
+   public Either<TaskAccessException, T> save(T t) {
+      return delegate.save(t).peek(result -> cache.put(result.getId(), result));
    }
 
    @Override
-   public void deleteById(String id) throws TaskAccessException {
+   public Either<TaskAccessException, Void> deleteById(String id) {
       cache.invalidate(id);
-      delegate.deleteById(id);
+      return delegate.deleteById(id);
    }
 }

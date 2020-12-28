@@ -1,64 +1,59 @@
 package io.github.theimbichner.task;
 
-import java.util.Map;
 import java.util.Optional;
 
-import io.github.theimbichner.task.schema.Property;
+import io.github.theimbichner.task.schema.PropertyMap;
 
 public class GeneratorDelta {
-   private final Map<String, Property> properties;
-   private final Optional<String> name;
-   private final Optional<String> templateName;
-   private final Optional<Optional<String>> templateMarkup;
-   private final Optional<Long> templateDuration;
+   private final PropertyMap properties;
+   private final String name;
+   private final String templateName;
+   private final String templateMarkup;
+   private final Long templateDuration;
 
    public GeneratorDelta(
-      Map<String, Property> properties,
+      PropertyMap properties,
       String name,
       String templateName,
-      Optional<String> templateMarkup,
+      String templateMarkup,
       Long templateDuration
    ) {
-      this.properties = Map.copyOf(properties);
-      this.name = Optional.ofNullable(name);
-      this.templateName = Optional.ofNullable(templateName);
-      this.templateMarkup = Optional.ofNullable(templateMarkup);
-      this.templateDuration = Optional.ofNullable(templateDuration);
+      this.properties = properties;
+      this.name = name;
+      this.templateName = templateName;
+      this.templateMarkup = templateMarkup;
+      this.templateDuration = templateDuration;
    }
 
-   public Map<String, Property> getProperties() {
+   public PropertyMap getProperties() {
       return properties;
    }
 
    public Optional<String> getName() {
-      return name;
+      return Optional.ofNullable(name);
    }
 
    public Optional<String> getTemplateName() {
-      return templateName;
+      return Optional.ofNullable(templateName);
    }
 
-   public Optional<Optional<String>> getTemplateMarkup() {
-      return templateMarkup;
+   public Optional<String> getTemplateMarkup() {
+      return Optional.ofNullable(templateMarkup);
    }
 
    public Optional<Long> getTemplateDuration() {
-      return templateDuration;
+      return Optional.ofNullable(templateDuration);
    }
 
    public boolean isEmpty() {
-      return name.isEmpty()
-         && templateName.isEmpty()
-         && templateMarkup.isEmpty()
-         && templateDuration.isEmpty()
-         && properties.isEmpty();
+      return name == null
+         && templateName == null
+         && templateMarkup == null
+         && templateDuration == null
+         && properties.asMap().isEmpty();
    }
 
    public TaskDelta asTaskDelta() {
-      return new TaskDelta(
-         properties,
-         templateName.orElse(null),
-         templateMarkup.orElse(null),
-         templateDuration.orElse(null));
+      return new TaskDelta(properties, templateName, templateMarkup, templateDuration);
    }
 }

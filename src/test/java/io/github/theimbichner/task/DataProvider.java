@@ -3,12 +3,11 @@ package io.github.theimbichner.task;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
-import java.util.Optional;
 
 import io.github.theimbichner.task.io.InMemoryDataStore;
-import io.github.theimbichner.task.io.TaskAccessException;
 import io.github.theimbichner.task.io.TaskStore;
 import io.github.theimbichner.task.schema.Property;
+import io.github.theimbichner.task.schema.PropertyMap;
 import io.github.theimbichner.task.time.DatePattern;
 import io.github.theimbichner.task.time.DateTime;
 import io.github.theimbichner.task.time.UniformDatePattern;
@@ -28,7 +27,7 @@ public class DataProvider {
       taskStore = InMemoryDataStore.createTaskStore();
 
       table = Table.createTable();
-      table.registerTaskStore(taskStore);
+      table.setTaskStore(taskStore);
 
       generationField = "";
       datePattern = new UniformDatePattern(
@@ -57,21 +56,21 @@ public class DataProvider {
       return datePattern;
    }
 
-   public Map<String, Property> getProperties() {
-      return Map.of(
+   public PropertyMap getProperties() {
+      return PropertyMap.fromJava(Map.of(
          "alpha", Property.of(1),
          "beta", Property.of(""),
-         "gamma", Property.of(new DateTime(Instant.ofEpochSecond(12345))));
+         "gamma", Property.of(new DateTime(Instant.ofEpochSecond(12345)))));
    }
 
-   public Map<String, Property> getUpdateProperties() {
-      return Map.of(
+   public PropertyMap getUpdateProperties() {
+      return PropertyMap.fromJava(Map.of(
          // modify
          "alpha", Property.of(null),
          // delete
          "beta", Property.DELETE,
          // delete nonexistent
-         "delta", Property.DELETE);
+         "delta", Property.DELETE));
    }
 
    public String getName() {
@@ -91,32 +90,32 @@ public class DataProvider {
    }
 
    public Task createDefaultTask() {
-      return Task.createTask(table);
+      Task task = Task.createTask(table);
+      return taskStore.getTasks().save(task).get();
    }
 
-   public Task createModifiedTask() throws TaskAccessException {
+   public Task createModifiedTask() {
       Task task = createDefaultTask();
-      task.modify(getTaskDelta());
-      return task;
+      return Orchestration.modifyAndSeverTask(task, getTaskDelta()).get();
    }
 
-   public Task createDefaultTaskWithGenerator() throws TaskAccessException {
+   public Task createDefaultTaskWithGenerator() {
       Generator generator = createModifiedGenerator();
-      return Task.newSeriesTask(generator, Instant.now());
+      Task task = Task.newSeriesTask(generator, Instant.now());
+      return taskStore.getTasks().save(task).get();
    }
 
-   public Task createModifiedTaskWithGenerator() throws TaskAccessException {
+   public Task createModifiedTaskWithGenerator() {
       Generator generator = createDefaultGenerator();
       Task task = Task.newSeriesTask(generator, Instant.now());
-      task.modify(getFullTaskDelta(), false);
-      return task;
+      return Orchestration.modifyTask(task, getFullTaskDelta()).get();
    }
 
    public TaskDelta getTaskDelta() {
       return new TaskDelta(
          getProperties(),
          deltaTemplateName,
-         Optional.of(deltaTemplateMarkup),
+         deltaTemplateMarkup,
          null);
    }
 
@@ -124,21 +123,20 @@ public class DataProvider {
       return new TaskDelta(
          getProperties(),
          deltaTemplateName,
-         Optional.of(deltaTemplateMarkup),
+         deltaTemplateMarkup,
          deltaTemplateDuration);
    }
 
-   public Generator createDefaultGenerator() throws TaskAccessException {
+   public Generator createDefaultGenerator() {
       Generator generator = Generator.createGenerator(table, generationField, datePattern);
-      taskStore.getGenerators().save(generator);
+      taskStore.getGenerators().save(generator).get();
       return generator;
    }
 
-   public Generator createModifiedGenerator() throws TaskAccessException {
+   public Generator createModifiedGenerator() {
       Generator generator = createDefaultGenerator();
-      generator.modify(getFullGeneratorDelta());
-      taskStore.getGenerators().save(generator);
-      return generator;
+      GeneratorDelta delta = getFullGeneratorDelta();
+      return Orchestration.modifyGenerator(generator, delta).get();
    }
 
    public GeneratorDelta getFullGeneratorDelta() {
@@ -146,7 +144,7 @@ public class DataProvider {
          getProperties(),
          deltaName,
          deltaTemplateName,
-         Optional.of(deltaTemplateMarkup),
+         deltaTemplateMarkup,
          deltaTemplateDuration);
    }
 }

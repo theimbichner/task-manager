@@ -8,7 +8,6 @@ import java.time.Instant;
 import java.time.Duration;
 import java.util.Comparator;
 import java.util.function.Supplier;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.AfterAll;
@@ -66,6 +65,7 @@ public class TaskStoreTests {
          .count() == 0;
    }
 
+   // TODO actually modify the task/table/generators
    static Stream<Arguments> provideTaskGeneratorTable() {
       Table table = Table.createTable();
       Table overwriteTable = Table.fromJson(table.toJson());
@@ -111,9 +111,9 @@ public class TaskStoreTests {
       T overwrite,
       DataStore<T> dataStore,
       Comparator<T> comparator
-   ) throws TaskAccessException {
-      dataStore.save(t);
-      T result = dataStore.getById(t.getId());
+   ) {
+      dataStore.save(t).get();
+      T result = dataStore.getById(t.getId()).get();
       assertThat(result).usingComparator(comparator).isEqualTo(t);
       assertThat(result.getTaskStore()).isEqualTo(taskStore);
    }
@@ -125,10 +125,10 @@ public class TaskStoreTests {
       T overwrite,
       DataStore<T> dataStore,
       Comparator<T> comparator
-   ) throws TaskAccessException {
-      dataStore.save(t);
-      dataStore.save(overwrite);
-      T result = dataStore.getById(t.getId());
+   ) {
+      dataStore.save(t).get();
+      dataStore.save(overwrite).get();
+      T result = dataStore.getById(t.getId()).get();
       assertThat(result).usingComparator(comparator).isEqualTo(overwrite);
       assertThat(result.getTaskStore()).isEqualTo(taskStore);
    }
@@ -140,11 +140,11 @@ public class TaskStoreTests {
       T overwrite,
       DataStore<T> dataStore,
       Comparator<T> comparator
-   ) throws TaskAccessException {
-      dataStore.save(t);
-      dataStore.deleteById(t.getId());
-      assertThatExceptionOfType(TaskAccessException.class)
-         .isThrownBy(() -> dataStore.getById(t.getId()));
+   ) {
+      dataStore.save(t).get();
+      dataStore.deleteById(t.getId()).get();
+      assertThat(dataStore.getById(t.getId()).getLeft())
+         .isInstanceOf(TaskAccessException.class);
    }
 
    @ParameterizedTest
@@ -154,11 +154,11 @@ public class TaskStoreTests {
       T overwrite,
       DataStore<T> dataStore,
       Comparator<T> comparator
-   ) throws TaskAccessException {
-      dataStore.save(t);
-      dataStore.deleteById(t.getId());
-      assertThatExceptionOfType(TaskAccessException.class)
-         .isThrownBy(() -> dataStore.deleteById(t.getId()));
+   ) {
+      dataStore.save(t).get();
+      dataStore.deleteById(t.getId()).get();
+      assertThat(dataStore.deleteById(t.getId()).getLeft())
+         .isInstanceOf(TaskAccessException.class);
    }
 
    @ParameterizedTest
@@ -168,11 +168,11 @@ public class TaskStoreTests {
       T overwrite,
       DataStore<T> dataStore,
       Comparator<T> comparator
-   ) throws TaskAccessException {
-      dataStore.save(t);
+   ) {
+      dataStore.save(t).get();
       dataStore.deleteById(t.getId());
-      dataStore.save(overwrite);
-      T result = dataStore.getById(t.getId());
+      dataStore.save(overwrite).get();
+      T result = dataStore.getById(t.getId()).get();
       assertThat(result).usingComparator(comparator).isEqualTo(overwrite);
       assertThat(result.getTaskStore()).isEqualTo(taskStore);
    }
@@ -184,9 +184,9 @@ public class TaskStoreTests {
       T overwrite,
       DataStore<T> dataStore,
       Comparator<T> comparator
-   ) throws TaskAccessException {
-      assertThatExceptionOfType(TaskAccessException.class)
-         .isThrownBy(() -> dataStore.getById(t.getId()));
+   ) {
+      assertThat(dataStore.getById(t.getId()).getLeft())
+         .isInstanceOf(TaskAccessException.class);
    }
 
    @ParameterizedTest
@@ -196,9 +196,9 @@ public class TaskStoreTests {
       T overwrite,
       DataStore<T> dataStore,
       Comparator<T> comparator
-   ) throws TaskAccessException {
-      assertThatExceptionOfType(TaskAccessException.class)
-         .isThrownBy(() -> dataStore.deleteById(t.getId()));
+   ) {
+      assertThat(dataStore.deleteById(t.getId()).getLeft())
+         .isInstanceOf(TaskAccessException.class);
    }
 
    @ParameterizedTest
@@ -210,10 +210,10 @@ public class TaskStoreTests {
       Comparator<T> comparator,
       Supplier<T> supplier,
       int cacheSize
-   ) throws TaskAccessException {
-      dataStore.save(t);
+   ) {
+      dataStore.save(t).get();
       uncache(dataStore, supplier, cacheSize);
-      T result = dataStore.getById(t.getId());
+      T result = dataStore.getById(t.getId()).get();
       assertThat(result).usingComparator(comparator).isEqualTo(t);
       assertThat(result.getTaskStore()).isEqualTo(taskStore);
    }
@@ -227,11 +227,11 @@ public class TaskStoreTests {
       Comparator<T> comparator,
       Supplier<T> supplier,
       int cacheSize
-   ) throws TaskAccessException {
-      dataStore.save(t);
-      dataStore.save(overwrite);
+   ) {
+      dataStore.save(t).get();
+      dataStore.save(overwrite).get();
       uncache(dataStore, supplier, cacheSize);
-      T result = dataStore.getById(t.getId());
+      T result = dataStore.getById(t.getId()).get();
       assertThat(result).usingComparator(comparator).isEqualTo(overwrite);
       assertThat(result.getTaskStore()).isEqualTo(taskStore);
    }
@@ -245,12 +245,12 @@ public class TaskStoreTests {
       Comparator<T> comparator,
       Supplier<T> supplier,
       int cacheSize
-   ) throws TaskAccessException {
-      dataStore.save(t);
+   ) {
+      dataStore.save(t).get();
       uncache(dataStore, supplier, cacheSize);
-      dataStore.save(overwrite);
+      dataStore.save(overwrite).get();
       uncache(dataStore, supplier, cacheSize);
-      T result = dataStore.getById(t.getId());
+      T result = dataStore.getById(t.getId()).get();
       assertThat(result).usingComparator(comparator).isEqualTo(overwrite);
       assertThat(result.getTaskStore()).isEqualTo(taskStore);
    }
@@ -259,9 +259,9 @@ public class TaskStoreTests {
       DataStore<T> dataStore,
       Supplier<T> supplier,
       int count
-   ) throws TaskAccessException {
+   ) {
       for (int i = 0; i <= count; i++) {
-         dataStore.save(supplier.get());
+         dataStore.save(supplier.get()).get();
       }
    }
 }

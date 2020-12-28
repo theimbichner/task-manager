@@ -2,9 +2,12 @@ package io.github.theimbichner.task.io;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.NoSuchElementException;
+
+import io.vavr.control.Either;
 
 public class InMemoryDataStore<T extends Storable> implements DataStore<T> {
-   private Map<String, T> data = new HashMap<>();
+   private final Map<String, T> data = new HashMap<>();
 
    public static TaskStore createTaskStore() {
       return new TaskStore(
@@ -14,23 +17,25 @@ public class InMemoryDataStore<T extends Storable> implements DataStore<T> {
    }
 
    @Override
-   public T getById(String id) throws TaskAccessException {
+   public Either<TaskAccessException, T> getById(String id) {
       if (!data.containsKey(id)) {
-         throw new TaskAccessException(new IllegalStateException());
+         return Either.left(new TaskAccessException(new NoSuchElementException()));
       }
-      return data.get(id);
+      return Either.right(data.get(id));
    }
 
    @Override
-   public void save(T t) {
+   public Either<TaskAccessException, T> save(T t) {
       data.put(t.getId(), t);
+      return Either.right(t);
    }
 
    @Override
-   public void deleteById(String id) throws TaskAccessException {
+   public Either<TaskAccessException, Void> deleteById(String id) {
       if (!data.containsKey(id)) {
-         throw new TaskAccessException(new IllegalStateException());
+         return Either.left(new TaskAccessException(new NoSuchElementException()));
       }
       data.remove(id);
+      return Either.right(null);
    }
 }

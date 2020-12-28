@@ -1,66 +1,111 @@
 package io.github.theimbichner.task;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
+import io.vavr.Tuple;
+import io.vavr.Tuple2;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import io.github.theimbichner.task.collection.SetList;
 import io.github.theimbichner.task.io.Storable;
-import io.github.theimbichner.task.io.TaskAccessException;
 import io.github.theimbichner.task.io.TaskStore;
-import io.github.theimbichner.task.schema.Property;
+import io.github.theimbichner.task.schema.PropertyMap;
 import io.github.theimbichner.task.time.DateTime;
 import io.github.theimbichner.task.time.DatePattern;
+import io.github.theimbichner.task.time.ModifyRecord;
 
 public class Generator implements Storable {
+   private static class Builder {
+      private final String id;
+      private String name;
+      private ModifyRecord modifyRecord;
+      private String templateName;
+      private String templateMarkup;
+      private final String templateTableId;
+      private PropertyMap templateProperties;
+      private long templateDuration;
+      private Instant generationLastTimestamp;
+      private final String generationField;
+      private final DatePattern generationDatePattern;
+      private SetList<String> taskIds;
+
+      private TaskStore taskStore;
+
+      private Builder(
+         String id,
+         String templateTableId,
+         String generationField,
+         DatePattern generationDatePattern
+      ) {
+         this.id = id;
+         name = "";
+         modifyRecord = ModifyRecord.createdNow();
+         templateName = "";
+         templateMarkup = "";
+         this.templateTableId = templateTableId;
+         templateProperties = PropertyMap.empty();
+         templateDuration = 0;
+         generationLastTimestamp = modifyRecord.getDateCreated();
+         this.generationField = generationField;
+         this.generationDatePattern = generationDatePattern;
+         taskIds = SetList.empty();
+
+         taskStore = null;
+      }
+
+      private Builder(Generator g) {
+         id = g.id;
+         name = g.name;
+         modifyRecord = g.modifyRecord;
+         templateName = g.templateName;
+         templateMarkup = g.templateMarkup;
+         templateTableId = g.templateTableId;
+         templateProperties = g.templateProperties;
+         templateDuration = g.templateDuration;
+         generationLastTimestamp = g.generationLastTimestamp;
+         generationField = g.generationField;
+         generationDatePattern = g.generationDatePattern;
+         taskIds = g.taskIds;
+
+         taskStore = g.taskStore;
+      }
+   }
+
    private final String id;
-   private String name;
-   private DateTime dateCreated;
-   private DateTime dateLastModified;
-   private String templateName;
-   private Optional<String> templateMarkup;
+   private final String name;
+   private final ModifyRecord modifyRecord;
+   private final String templateName;
+   private final String templateMarkup;
    private final String templateTableId;
-   private final Map<String, Property> templateProperties;
-   private long templateDuration;
-   private Instant generationLastTimestamp;
+   private final PropertyMap templateProperties;
+   private final long templateDuration;
+   private final Instant generationLastTimestamp;
    private final String generationField;
    private final DatePattern generationDatePattern;
-   private final LinkedHashSet<String> taskIds;
+   private final SetList<String> taskIds;
 
    private TaskStore taskStore;
 
-   private Generator(
-      String id,
-      String templateTableId,
-      String generationField,
-      DatePattern generationDatePattern
-   ) {
-      this.id = id;
-      this.templateTableId = templateTableId;
-      this.generationField = generationField;
-      this.generationDatePattern = generationDatePattern;
+   private Generator(Builder builder) {
+      id = builder.id;
+      name = builder.name;
+      modifyRecord = builder.modifyRecord;
+      templateName = builder.templateName;
+      templateMarkup = builder.templateMarkup;
+      templateTableId = builder.templateTableId;
+      templateProperties = builder.templateProperties;
+      templateDuration = builder.templateDuration;
+      generationLastTimestamp = builder.generationLastTimestamp;
+      generationField = builder.generationField;
+      generationDatePattern = builder.generationDatePattern;
+      taskIds = builder.taskIds;
 
-      name = "";
-      dateCreated = new DateTime();
-      dateLastModified = dateCreated;
-      templateName = "";
-      templateMarkup = Optional.empty();
-      templateProperties = new HashMap<>();
-      templateDuration = 0;
-      generationLastTimestamp = dateCreated.getStart();
-      taskIds = new LinkedHashSet<>();
-
-      taskStore = null;
+      taskStore = builder.taskStore;
    }
 
    @Override
@@ -73,11 +118,11 @@ public class Generator implements Storable {
    }
 
    public DateTime getDateCreated() {
-      return dateCreated;
+      return new DateTime(modifyRecord.getDateCreated());
    }
 
    public DateTime getDateLastModified() {
-      return dateLastModified;
+      return new DateTime(modifyRecord.getDateLastModified());
    }
 
    public String getTemplateName() {
@@ -85,19 +130,15 @@ public class Generator implements Storable {
    }
 
    public String getTemplateMarkup() {
-      return templateMarkup.orElse(null);
+      return templateMarkup;
    }
 
    public String getTemplateTableId() {
       return templateTableId;
    }
 
-   public Set<String> getTemplatePropertyNames() {
-      return Set.copyOf(templateProperties.keySet());
-   }
-
-   public Property getTemplateProperty(String key) {
-      return templateProperties.get(key);
+   public PropertyMap getTemplateProperties() {
+      return templateProperties;
    }
 
    public long getTemplateDuration() {
@@ -112,78 +153,71 @@ public class Generator implements Storable {
       return generationDatePattern;
    }
 
-   void unlinkTask(String id) {
-      taskIds.remove(id);
+   SetList<String> getTaskIds() {
+      return taskIds;
    }
 
-   public void modify(GeneratorDelta delta) throws TaskAccessException {
+   Generator withoutTask(String id) {
+      Builder result = new Builder(this);
+      result.taskIds = taskIds.remove(id);
+      return new Generator(result);
+   }
+
+   Generator withModification(GeneratorDelta delta) {
       if (delta.isEmpty()) {
-         return;
+         return this;
       }
 
-      for (String key : delta.getProperties().keySet()) {
-         if (key.equals(generationField)) {
-            throw new IllegalArgumentException("Cannot modify generator generationField");
-         }
-         Property newProperty = delta.getProperties().get(key);
-         if (newProperty == Property.DELETE) {
-            templateProperties.remove(key);
-         }
-         else {
-            templateProperties.put(key, newProperty);
-         }
+      if (delta.getProperties().asMap().containsKey(generationField)) {
+         throw new IllegalArgumentException("Cannot modify generator generationField");
       }
 
-      name = delta.getName().orElse(name);
-      templateName = delta.getTemplateName().orElse(templateName);
-      templateMarkup = delta.getTemplateMarkup().orElse(templateMarkup);
-      templateDuration = delta.getTemplateDuration().orElse(templateDuration);
+      Builder result = new Builder(this);
+      result.templateProperties = templateProperties.merge(delta.getProperties());
+      result.name = delta.getName().orElse(name);
+      result.templateName = delta.getTemplateName().orElse(templateName);
+      result.templateMarkup = delta.getTemplateMarkup().orElse(templateMarkup);
+      result.templateDuration = delta.getTemplateDuration().orElse(templateDuration);
+      result.modifyRecord = modifyRecord.updatedNow();
 
-      TaskDelta taskDelta = delta.asTaskDelta();
-      for (String id : taskIds) {
-         Task task = taskStore.getTasks().getById(id);
-         task.modify(taskDelta, false);
-      }
-
-      dateLastModified = new DateTime();
+      return new Generator(result);
    }
 
-   void unlinkTasksBefore(String taskId) throws TaskAccessException {
+   // TODO update modification timestamp here?
+   Tuple2<Generator, List<String>> withoutTasksBefore(String taskId) {
       if (!taskIds.contains(taskId)) {
          throw new IllegalArgumentException("Task not found in generator");
       }
 
-      Iterator<String> iterator = taskIds.iterator();
-      while (iterator.hasNext()) {
-         String nextId = iterator.next();
-         if (nextId.equals(taskId)) {
-            return;
-         }
-         Task task = taskStore.getTasks().getById(nextId);
-         task.unlinkGenerator();
-         iterator.remove();
-      }
+      Tuple2<List<String>, List<String>> split = taskIds.split(taskId);
+      Builder result = new Builder(this);
+      result.taskIds = SetList.<String>empty().addAll(split._2);
+
+      return Tuple.of(new Generator(result), split._1);
    }
 
-   List<String> generateTasks(Instant timestamp) throws TaskAccessException {
+   // TODO update the modification timestamp?
+   Tuple2<Generator, List<Task>> withTasksUntil(Instant timestamp) {
       if (!timestamp.isAfter(generationLastTimestamp)) {
-         return new ArrayList<>();
+         return Tuple.of(this, List.of());
       }
-      List<String> result = generationDatePattern
+
+      List<Task> tasks = generationDatePattern
          .getDates(generationLastTimestamp, timestamp)
          .stream()
          .map(instant -> Task.newSeriesTask(this, instant))
-         // TODO fix when refactoring TaskAccessException
-         .peek(task -> { try { taskStore.getTasks().save(task); } catch (TaskAccessException e) {} })
-         .map(Task::getId)
-         .peek(taskIds::add)
          .collect(Collectors.toList());
-      generationLastTimestamp = timestamp;
-      return result;
+      List<String> ids = tasks.stream().map(Task::getId).collect(Collectors.toList());
+
+      Builder result = new Builder(this);
+      result.generationLastTimestamp = timestamp;
+      result.taskIds = result.taskIds.addAll(ids);
+
+      return Tuple.of(new Generator(result), tasks);
    }
 
    @Override
-   public void registerTaskStore(TaskStore taskStore) {
+   public void setTaskStore(TaskStore taskStore) {
       this.taskStore = taskStore;
    }
 
@@ -193,33 +227,27 @@ public class Generator implements Storable {
    }
 
    public static Generator createGenerator(Table table, String field, DatePattern pattern) {
-      Generator result = new Generator(UUID.randomUUID().toString(), table.getId(), field, pattern);
-      result.templateProperties.putAll(table.getDefaultProperties());
-      result.registerTaskStore(table.getTaskStore());
+      Builder result = new Builder(UUID.randomUUID().toString(), table.getId(), field, pattern);
+      result.templateProperties = table.getDefaultProperties();
+      result.taskStore = table.getTaskStore();
 
-      return result;
+      return new Generator(result);
    }
 
    public JSONObject toJson() {
       JSONObject json = new JSONObject();
       json.put("id", id);
       json.put("name", name);
-      json.put("dateCreated", dateCreated.toJson());
-      json.put("dateLastModified", dateLastModified.toJson());
+      modifyRecord.writeIntoJson(json);
       json.put("templateName", templateName);
-      json.put("templateMarkup", templateMarkup.map(s -> (Object) s).orElse(JSONObject.NULL));
+      json.put("templateMarkup", templateMarkup);
       json.put("templateTable", templateTableId);
       json.put("templateDuration", templateDuration);
       json.put("generationLastTimestamp", generationLastTimestamp.toString());
       json.put("generationField", generationField);
       json.put("generationDatePattern", generationDatePattern.toJson());
-      json.put("tasks", taskIds);
-
-      JSONObject propertiesJson = new JSONObject();
-      for (String s : templateProperties.keySet()) {
-         propertiesJson.put(s, templateProperties.get(s).toJson());
-      }
-      json.put("templateProperties", propertiesJson);
+      json.put("tasks", taskIds.asList());
+      json.put("templateProperties", templateProperties.toJson());
 
       return json;
    }
@@ -231,25 +259,20 @@ public class Generator implements Storable {
       JSONObject jsonDatePattern = json.getJSONObject("generationDatePattern");
       DatePattern generationDatePattern = DatePattern.fromJson(jsonDatePattern);
 
-      Generator result = new Generator(id, templateTableId, generationField, generationDatePattern);
+      Builder result = new Builder(id, templateTableId, generationField, generationDatePattern);
       result.name = json.getString("name");
-      result.dateCreated = DateTime.fromJson(json.getJSONObject("dateCreated"));
-      result.dateLastModified = DateTime.fromJson(json.getJSONObject("dateLastModified"));
+      result.modifyRecord = ModifyRecord.readFromJson(json);
       result.templateName = json.getString("templateName");
-      result.templateMarkup = Optional.ofNullable(json.optString("templateMarkup", null));
+      result.templateMarkup = json.getString("templateMarkup");
       result.templateDuration = json.getLong("templateDuration");
       result.generationLastTimestamp = Instant.parse(json.getString("generationLastTimestamp"));
+      result.templateProperties = PropertyMap.fromJson(json.getJSONObject("templateProperties"));
 
       JSONArray tasksJson = json.getJSONArray("tasks");
       for (int i = 0; i < tasksJson.length(); i++) {
-         result.taskIds.add(tasksJson.getString(i));
+         result.taskIds = result.taskIds.add(tasksJson.getString(i));
       }
 
-      JSONObject propertiesJson = json.getJSONObject("templateProperties");
-      for (String s : propertiesJson.keySet()) {
-         result.templateProperties.put(s, Property.fromJson(propertiesJson.getJSONObject(s)));
-      }
-
-      return result;
+      return new Generator(result);
    }
 }

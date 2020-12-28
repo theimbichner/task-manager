@@ -44,6 +44,11 @@ public interface Property {
          }
          return Objects.equals(get(), other.get());
       }
+
+      @Override
+      public int hashCode() {
+         return 0;
+      }
    }
 
    Property DELETE = new Property() {

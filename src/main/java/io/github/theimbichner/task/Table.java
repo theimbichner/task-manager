@@ -1,21 +1,22 @@
 package io.github.theimbichner.task;
 
-import java.time.Instant;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
+
+import io.vavr.Tuple2;
+import io.vavr.collection.HashMap;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import io.github.theimbichner.task.collection.SetList;
 import io.github.theimbichner.task.io.Storable;
-import io.github.theimbichner.task.io.TaskAccessException;
 import io.github.theimbichner.task.io.TaskStore;
 import io.github.theimbichner.task.schema.Property;
+import io.github.theimbichner.task.schema.PropertyMap;
 import io.github.theimbichner.task.schema.TypeDescriptor;
 import io.github.theimbichner.task.time.DateTime;
+import io.github.theimbichner.task.time.ModifyRecord;
 
 /*
  * TODO restrict user property names to avoid collision with system properties.
@@ -25,26 +26,57 @@ import io.github.theimbichner.task.time.DateTime;
  */
 
 public class Table implements Storable {
+   private static class Builder {
+      private final String id;
+      private String name;
+      private ModifyRecord modifyRecord;
+      private SetList<String> taskIds;
+      private SetList<String> generatorIds;
+      private HashMap<String, TypeDescriptor> schema;
+
+      private TaskStore taskStore;
+
+      private Builder(String id) {
+         this.id = id;
+         name = "";
+         modifyRecord = ModifyRecord.createdNow();
+         taskIds = SetList.empty();
+         generatorIds = SetList.empty();
+         schema = HashMap.empty();
+
+         taskStore = null;
+      }
+
+      private Builder(Table table) {
+         id = table.id;
+         name = table.name;
+         modifyRecord = table.modifyRecord;
+         taskIds = table.taskIds;
+         generatorIds = table.generatorIds;
+         schema = table.schema;
+
+         taskStore = table.taskStore;
+      }
+   }
+
    private final String id;
-   private String name;
-   private DateTime dateCreated;
-   private DateTime dateLastModified;
-   private final Set<String> taskIds;
-   private final Set<String> generatorIds;
-   private final Map<String, TypeDescriptor> schema;
+   private final String name;
+   private final ModifyRecord modifyRecord;
+   private final SetList<String> taskIds;
+   private final SetList<String> generatorIds;
+   private final HashMap<String, TypeDescriptor> schema;
 
    private TaskStore taskStore;
 
-   private Table(String id) {
-      this.id = id;
-      name = "";
-      dateCreated = new DateTime();
-      dateLastModified = dateCreated;
-      taskIds = new LinkedHashSet<>();
-      generatorIds = new LinkedHashSet<>();
-      schema = new HashMap<>();
+   private Table(Builder builder) {
+      id = builder.id;
+      name = builder.name;
+      modifyRecord = builder.modifyRecord;
+      taskIds = builder.taskIds;
+      generatorIds = builder.generatorIds;
+      schema = builder.schema;
 
-      taskStore = null;
+      taskStore = builder.taskStore;
    }
 
    @Override
@@ -57,43 +89,47 @@ public class Table implements Storable {
    }
 
    public DateTime getDateCreated() {
-      return dateCreated;
+      return new DateTime(modifyRecord.getDateCreated());
    }
 
    public DateTime getDateLastModified() {
-      return dateLastModified;
+      return new DateTime(modifyRecord.getDateLastModified());
    }
 
-   public Set<String> getAllTaskIds(Instant timestamp) throws TaskAccessException {
-      for (String s : generatorIds) {
-         Generator generator = taskStore.getGenerators().getById(s);
-         taskIds.addAll(generator.generateTasks(timestamp));
-      }
-      return Set.copyOf(taskIds);
+   SetList<String> getAllTaskIds() {
+      return taskIds;
    }
 
-   void linkTask(String id) {
-      taskIds.add(id);
+   Table withTasks(Iterable<String> ids) {
+      Builder result = new Builder(this);
+      result.taskIds = taskIds.addAll(ids);
+      return new Table(result);
    }
 
-   void unlinkTask(String id) {
-      taskIds.remove(id);
+   Table withoutTask(String id) {
+      Builder result = new Builder(this);
+      result.taskIds = taskIds.remove(id);
+      return new Table(result);
    }
 
-   public Set<String> getAllGeneratorIds() {
-      return Set.copyOf(generatorIds);
+   public SetList<String> getAllGeneratorIds() {
+      return generatorIds;
    }
 
-   void linkGenerator(String id) {
-      generatorIds.add(id);
+   Table withGenerator(String id) {
+      Builder result = new Builder(this);
+      result.generatorIds = generatorIds.add(id);
+      return new Table(result);
    }
 
-   void unlinkGenerator(String id) {
-      generatorIds.remove(id);
+   Table withoutGenerator(String id) {
+      Builder result = new Builder(this);
+      result.generatorIds = generatorIds.remove(id);
+      return new Table(result);
    }
 
    @Override
-   public void registerTaskStore(TaskStore taskStore) {
+   public void setTaskStore(TaskStore taskStore) {
       this.taskStore = taskStore;
    }
 
@@ -102,30 +138,29 @@ public class Table implements Storable {
       return taskStore;
    }
 
-   public Map<String, Property> getDefaultProperties() {
-      Map<String, Property> result = new HashMap<>();
-      for (String key : schema.keySet()) {
-         result.put(key, schema.get(key).getDefaultValue());
+   public PropertyMap getDefaultProperties() {
+      Map<String, Property> result = new java.util.HashMap<>();
+      for (Tuple2<String, TypeDescriptor> entry : schema) {
+         result.put(entry._1, entry._2.getDefaultValue());
       }
-      return result;
+      return PropertyMap.fromJava(result);
    }
 
    public static Table createTable() {
-      return new Table(UUID.randomUUID().toString());
+      return new Table(new Builder(UUID.randomUUID().toString()));
    }
 
    public JSONObject toJson() {
       JSONObject json = new JSONObject();
       json.put("id", id);
       json.put("name", name);
-      json.put("dateCreated", dateCreated.toJson());
-      json.put("dateLastModified", dateLastModified.toJson());
-      json.put("tasks", taskIds);
-      json.put("generators", generatorIds);
+      modifyRecord.writeIntoJson(json);
+      json.put("tasks", taskIds.asList());
+      json.put("generators", generatorIds.asList());
 
       JSONObject schemaJson = new JSONObject();
-      for (String s : schema.keySet()) {
-         schemaJson.put(s, schema.get(s).toJson());
+      for (Tuple2<String, TypeDescriptor> entry : schema) {
+         schemaJson.put(entry._1, entry._2.toJson());
       }
       json.put("schema", schemaJson);
 
@@ -134,20 +169,19 @@ public class Table implements Storable {
 
    public static Table fromJson(JSONObject json) {
       String id = json.getString("id");
-      Table result = new Table(id);
+      Builder result = new Builder(id);
 
       result.name = json.getString("name");
-      result.dateCreated = DateTime.fromJson(json.getJSONObject("dateCreated"));
-      result.dateLastModified = DateTime.fromJson(json.getJSONObject("dateLastModified"));
+      result.modifyRecord = ModifyRecord.readFromJson(json);
 
       JSONArray tasksJson = json.getJSONArray("tasks");
       for (int i = 0; i < tasksJson.length(); i++) {
-         result.taskIds.add(tasksJson.getString(i));
+         result.taskIds = result.taskIds.add(tasksJson.getString(i));
       }
 
       JSONArray generatorsJson = json.getJSONArray("generators");
       for (int i = 0; i < generatorsJson.length(); i++) {
-         result.generatorIds.add(generatorsJson.getString(i));
+         result.generatorIds = result.generatorIds.add(generatorsJson.getString(i));
       }
 
       JSONObject schemaJson = json.getJSONObject("schema");
@@ -155,6 +189,6 @@ public class Table implements Storable {
          result.schema.put(s, TypeDescriptor.fromJson(schemaJson.getJSONObject(s)));
       }
 
-      return result;
+      return new Table(result);
    }
 }
