@@ -35,6 +35,21 @@ public class DateTime {
       return new DateTime(start, start.plusSeconds(duration));
    }
 
+   @Override
+   public boolean equals(Object obj) {
+      if (!(obj instanceof DateTime)) {
+         return false;
+      }
+
+      DateTime other = (DateTime) obj;
+      return start.equals(other.start) && end.equals(other.end);
+   }
+
+   @Override
+   public int hashCode() {
+      return start.hashCode() ^ end.hashCode();
+   }
+
    public JSONObject toJson() {
       JSONObject result = new JSONObject();
       result.put("start", start.toString());
