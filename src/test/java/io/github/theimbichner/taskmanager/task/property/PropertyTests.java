@@ -3,6 +3,8 @@ package io.github.theimbichner.taskmanager.task.property;
 import java.util.stream.Stream;
 import java.time.Instant;
 
+import org.json.JSONObject;
+
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -34,10 +36,14 @@ public class PropertyTests {
 
       Property alphaProp = Property.of("alpha");
       Property emptyProp = Property.empty();
+      Property longProp = Property.of(1L);
+      Property doubleProp = Property.of(2.25D);
 
       return Stream.of(
          Arguments.of(alphaProp, "alpha", false),
          Arguments.of(alphaProp, null, false),
+         Arguments.of(longProp, "alpha", false),
+         Arguments.of(longProp, null, false),
 
          Arguments.of(alphaProp, alphaProp, true),
          Arguments.of(alphaProp, Property.of("alpha"), true),
@@ -68,13 +74,52 @@ public class PropertyTests {
          Arguments.of(Property.of(true), alphaProp, false),
          Arguments.of(alphaProp, Property.of(true), false),
 
-         Arguments.of(Property.of(1L), Property.of(1L), true),
-         Arguments.of(Property.of(2.25D), Property.of(2.25D), true),
-         Arguments.of(Property.of(1.0D), Property.of(1L), false), // TODO fix
-         Arguments.of(Property.of(1L), Property.of(1.0D), false), // TODO fix
-         Arguments.of(Property.of(1L), Property.of(2L), false),
-         Arguments.of(Property.of(1.5D), Property.of(2.25D), false),
-         Arguments.of(Property.of(1L), Property.of(2.25D), false),
-         Arguments.of(Property.of(2.25D), Property.of(1L), false));
+         Arguments.of(longProp, longProp, true),
+         Arguments.of(longProp, Property.of(1L), true),
+         Arguments.of(longProp, Property.of(2L), false),
+         Arguments.of(longProp, alphaProp, false),
+         Arguments.of(alphaProp, longProp, false),
+
+         Arguments.of(doubleProp, doubleProp, true),
+         Arguments.of(doubleProp, Property.of(2.25D), true),
+         Arguments.of(doubleProp, Property.of(1.5D), false),
+         Arguments.of(doubleProp, alphaProp, false),
+         Arguments.of(alphaProp, doubleProp, false),
+
+         Arguments.of(Property.of(1.0D), longProp, true),
+         Arguments.of(longProp, Property.of(1.0D), true),
+         Arguments.of(longProp, doubleProp, false),
+         Arguments.of(doubleProp, longProp, false));
+   }
+
+   @ParameterizedTest
+   @MethodSource
+   void testToFromJson(Property property) {
+      JSONObject json = property.toJson();
+      assertThat(Property.fromJson(json)).isEqualTo(property);
+   }
+
+   private static Stream<Property> testToFromJson() {
+      return Stream.of(
+         Property.of("alpha"),
+         Property.empty(),
+         Property.of(new DateTime(Instant.now())),
+         Property.of(SetList.<String>empty().add("alpha").add("beta")),
+         Property.of(false),
+         Property.of(2.25D),
+         Property.of(1L));
+   }
+
+   @ParameterizedTest
+   @MethodSource
+   void testToFromJsonInvalid(JSONObject json, Class<? extends Exception> cls) {
+      assertThatExceptionOfType(cls)
+         .isThrownBy(() -> Property.fromJson(json));
+   }
+
+   private static Stream<Arguments> testToFromJsonInvalid() {
+      return Stream.of(
+         Arguments.of(Property.DELETE.toJson(), NullPointerException.class),
+         Arguments.of(new JSONObject(), IllegalArgumentException.class));
    }
 }

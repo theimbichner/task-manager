@@ -1,5 +1,6 @@
 package io.github.theimbichner.taskmanager.task.property;
 
+import java.math.BigDecimal;
 import java.util.Objects;
 
 import org.json.JSONArray;
@@ -46,7 +47,7 @@ public abstract class Property {
    }
 
    public static Property fromJson(JSONObject json) {
-      switch (json.getString("type")) {
+      switch (json.optString("type", "")) {
       case "DateTime":
          DateTime dateTime = DateTime.fromJson(json.getJSONObject("value"));
          return Property.of(dateTime);
@@ -93,11 +94,11 @@ public abstract class Property {
    }
 
    public static Property of(Double d) {
-      return new JsonAdapterProperty<>(d, "Number", x -> x);
+      return new NumberProperty(BigDecimal.valueOf(d));
    }
 
    public static Property of(Long l) {
-      return new JsonAdapterProperty<>(l, "Number", x -> x);
+      return new NumberProperty(BigDecimal.valueOf(l));
    }
 
    public static Property empty() {
