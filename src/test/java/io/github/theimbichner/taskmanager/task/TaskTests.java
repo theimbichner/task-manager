@@ -170,10 +170,7 @@ public class TaskTests {
 
       assertThat(newTask.getMarkup()).isEqualTo(task.getMarkup());
       assertThat(newTask.getGeneratorId()).isEqualTo(task.getGeneratorId());
-      // TODO reenable tests after implementing properties
-      // for (String s : newTask.getPropertyNames()) {
-      //    assertThat(newTask.getProperty(s)).isEqualTo(task.getProperty(s));
-      // }
+      assertThat(newTask.getProperties().asMap()).isEqualTo(task.getProperties().asMap());
    }
 
    @ParameterizedTest

@@ -1,11 +1,15 @@
 package io.github.theimbichner.taskmanager.task.property;
 
+import java.time.Instant;
 import java.util.Map;
 
 import io.vavr.collection.HashMap;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import io.github.theimbichner.taskmanager.collection.SetList;
+import io.github.theimbichner.taskmanager.time.DateTime;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -54,6 +58,15 @@ public class PropertyMapTests {
 
    @Test
    void testToFromJson() {
-      // TODO add tests after fully implementing properties
+      PropertyMap propertyMap = PropertyMap.fromJava(Map.of(
+         "alpha", Property.of(new DateTime(Instant.now())),
+         "beta", Property.of(SetList.<String>empty().add("alpha").add("beta")),
+         "gamma", Property.of("string"),
+         "delta", Property.of(true),
+         "epsilon", Property.of(2.25D),
+         "zeta", Property.of(1L),
+         "eta", Property.empty()));
+      assertThat(PropertyMap.fromJson(propertyMap.toJson()).asMap())
+         .isEqualTo(propertyMap.asMap());
    }
 }
