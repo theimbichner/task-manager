@@ -1,5 +1,6 @@
 package io.github.theimbichner.taskmanager.task.property;
 
+import java.math.BigDecimal;
 import java.util.stream.Stream;
 import java.time.Instant;
 
@@ -107,7 +108,8 @@ public class PropertyTests {
          Property.of(SetList.<String>empty().add("alpha").add("beta")),
          Property.of(false),
          Property.of(2.25D),
-         Property.of(1L));
+         Property.of(1L),
+         Property.of(new BigDecimal("0.123456789012345678901234567890123456789")));
    }
 
    @ParameterizedTest

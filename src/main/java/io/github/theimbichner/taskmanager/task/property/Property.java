@@ -67,7 +67,7 @@ public abstract class Property {
          return Property.of(json.getBoolean("value"));
 
       case "Number":
-         return Property.of(json.getDouble("value"));
+         return Property.of(json.getBigDecimal("value"));
 
       case "Empty":
          return Property.empty();
@@ -99,6 +99,10 @@ public abstract class Property {
 
    public static Property of(Long l) {
       return new NumberProperty(BigDecimal.valueOf(l));
+   }
+
+   public static Property of(BigDecimal bigDecimal) {
+      return new NumberProperty(bigDecimal);
    }
 
    public static Property empty() {
