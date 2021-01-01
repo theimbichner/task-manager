@@ -191,7 +191,7 @@ public class GeneratorTests {
       assertThat(generator.getTemplateProperties().asMap().keySet())
          .isEqualTo(HashSet.of("alpha", "gamma"));
       assertThat(generator.getTemplateProperties().asMap().get("alpha"))
-         .contains(Property.of(null));
+         .contains(Property.empty());
    }
 
    @Test

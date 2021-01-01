@@ -2,10 +2,11 @@ package io.github.theimbichner.taskmanager.task.property;
 
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.Set;
 
 import org.json.JSONObject;
+
+import io.github.theimbichner.taskmanager.collection.SetList;
 
 public class EnumerationTypeDescriptor implements TypeDescriptor {
    private final boolean permitMultiple;
@@ -51,8 +52,8 @@ public class EnumerationTypeDescriptor implements TypeDescriptor {
    @Override
    public Property getDefaultValue() {
       if (permitMultiple) {
-         return Property.of(new LinkedHashSet<String>());
+         return Property.of(SetList.empty());
       }
-      return Property.of(null);
+      return Property.empty();
    }
 }

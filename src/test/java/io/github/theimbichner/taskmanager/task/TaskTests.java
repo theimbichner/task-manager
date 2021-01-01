@@ -115,7 +115,7 @@ public class TaskTests {
       task = task.withModification(delta).get();
 
       assertThat(task.getProperties().asMap().keySet()).isEqualTo(HashSet.of("alpha", "gamma"));
-      assertThat(task.getProperties().asMap().get("alpha")).contains(Property.of(null));
+      assertThat(task.getProperties().asMap().get("alpha")).contains(Property.empty());
    }
 
    @Test

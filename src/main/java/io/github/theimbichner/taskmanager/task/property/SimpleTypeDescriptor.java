@@ -29,7 +29,7 @@ public class SimpleTypeDescriptor implements TypeDescriptor {
          case "Boolean":
             return Property.of(false);
          default:
-            return Property.of(null);
+            return Property.empty();
       }
    }
 }

@@ -188,7 +188,7 @@ public class OrchestrationTests {
       task = data.getTaskStore().getTasks().getById(task.getId()).get();
 
       assertThat(task.getProperties().asMap().keySet()).isEqualTo(HashSet.of("alpha", "gamma"));
-      assertThat(task.getProperties().asMap().get("alpha")).contains(Property.of(null));
+      assertThat(task.getProperties().asMap().get("alpha")).contains(Property.empty());
    }
 
    @ParameterizedTest
@@ -298,7 +298,7 @@ public class OrchestrationTests {
       assertThat(generator.getTemplateProperties().asMap().keySet())
          .isEqualTo(HashSet.of("alpha", "gamma"));
       assertThat(generator.getTemplateProperties().asMap().get("alpha"))
-         .contains(Property.of(null));
+         .contains(Property.empty());
    }
 
    @Test

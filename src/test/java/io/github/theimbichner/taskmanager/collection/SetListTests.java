@@ -2,11 +2,15 @@ package io.github.theimbichner.taskmanager.collection;
 
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.stream.Stream;
 
 import io.vavr.Tuple2;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -91,6 +95,32 @@ public class SetListTests {
          .remove("beta")
          .addAll(List.of("beta", "gamma"));
       assertThat(setList.asList()).isEqualTo(List.of("alpha", "gamma", "beta"));
+   }
+
+   @ParameterizedTest
+   @MethodSource
+   void testEquals(Object left, Object right, boolean equals) {
+      if (equals) {
+         assertThat(left).isEqualTo(right);
+         assertThat(left.hashCode()).isEqualTo(right.hashCode());
+      }
+      else {
+         assertThat(left).isNotEqualTo(right);
+      }
+   }
+
+   private static Stream<Arguments> testEquals() {
+      SetList<String> list = SetList.<String>empty().add("alpha").add("beta");
+      SetList<String> listCopy = SetList.<String>empty().add("alpha").remove("gamma").add("beta");
+
+      return Stream.of(
+         Arguments.of(SetList.empty(), SetList.empty(), true),
+         Arguments.of(SetList.empty(), list, false),
+         Arguments.of(SetList.empty(), null, false),
+         Arguments.of(SetList.empty(), "alpha", false),
+         Arguments.of(list, list, true),
+         Arguments.of(list, listCopy, true),
+         Arguments.of(list, SetList.empty(), false));
    }
 
    @Test

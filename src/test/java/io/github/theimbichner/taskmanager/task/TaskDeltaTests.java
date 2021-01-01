@@ -20,10 +20,10 @@ public class TaskDeltaTests {
    @BeforeAll
    static void beforeAll() {
       properties = PropertyMap.fromJava(Map.of(
-         "alpha", Property.of(1),
-         "beta", Property.of(2),
-         "gamma", Property.of(3),
-         "delta", Property.of(4)));
+         "alpha", Property.of(1L),
+         "beta", Property.of(2L),
+         "gamma", Property.of(3L),
+         "delta", Property.of(4L)));
       empty = PropertyMap.empty();
       name = "epsilon";
       markup = "zeta";

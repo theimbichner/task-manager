@@ -15,8 +15,8 @@ public class PropertyMapTests {
    @BeforeEach
    void beforeEach() {
       propertyMap = PropertyMap.fromJava(Map.of(
-         "alpha", Property.of(1),
-         "beta", Property.of(2)));
+         "alpha", Property.of(1L),
+         "beta", Property.of(2L)));
    }
 
    @Test
@@ -24,31 +24,31 @@ public class PropertyMapTests {
       PropertyMap delta = PropertyMap.fromJava(Map.of(
          "alpha", Property.of("update"),
          "beta", Property.DELETE,
-         "gamma", Property.of(3),
+         "gamma", Property.of(3L),
          "delta", Property.DELETE));
       HashMap<String, Property> expected = HashMap.of(
          "alpha", Property.of("update"),
-         "gamma", Property.of(3));
+         "gamma", Property.of(3L));
       propertyMap = propertyMap.merge(delta);
       assertThat(propertyMap.asMap()).isEqualTo(expected);
    }
 
    @Test
    void testPut() {
-      propertyMap = propertyMap.put("gamma", Property.of(3));
+      propertyMap = propertyMap.put("gamma", Property.of(3L));
       HashMap<String, Property> expected = HashMap.of(
-         "alpha", Property.of(1),
-         "beta", Property.of(2),
-         "gamma", Property.of(3));
+         "alpha", Property.of(1L),
+         "beta", Property.of(2L),
+         "gamma", Property.of(3L));
       assertThat(propertyMap.asMap()).isEqualTo(expected);
    }
 
    @Test
    void testPutOverwrite() {
-      propertyMap = propertyMap.put("alpha", Property.of(3));
+      propertyMap = propertyMap.put("alpha", Property.of(3L));
       HashMap<String, Property> expected = HashMap.of(
-         "alpha", Property.of(3),
-         "beta", Property.of(2));
+         "alpha", Property.of(3L),
+         "beta", Property.of(2L));
       assertThat(propertyMap.asMap()).isEqualTo(expected);
    }
 
