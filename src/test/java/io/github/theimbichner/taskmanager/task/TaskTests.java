@@ -115,7 +115,7 @@ public class TaskTests {
       task = task.withModification(delta).get();
 
       assertThat(task.getProperties().asMap().keySet()).isEqualTo(HashSet.of("alpha", "gamma"));
-      assertThat(task.getProperties().asMap().get("alpha")).contains(Property.of(null));
+      assertThat(task.getProperties().asMap().get("alpha")).contains(Property.empty());
    }
 
    @Test
@@ -170,10 +170,7 @@ public class TaskTests {
 
       assertThat(newTask.getMarkup()).isEqualTo(task.getMarkup());
       assertThat(newTask.getGeneratorId()).isEqualTo(task.getGeneratorId());
-      // TODO reenable tests after implementing properties
-      // for (String s : newTask.getPropertyNames()) {
-      //    assertThat(newTask.getProperty(s)).isEqualTo(task.getProperty(s));
-      // }
+      assertThat(newTask.getProperties().asMap()).isEqualTo(task.getProperties().asMap());
    }
 
    @ParameterizedTest

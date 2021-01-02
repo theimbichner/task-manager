@@ -1,6 +1,5 @@
 package io.github.theimbichner.taskmanager.task.property;
 
-import java.util.LinkedHashSet;
 import java.util.stream.Stream;
 
 import org.json.JSONObject;
@@ -9,6 +8,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+
+import io.github.theimbichner.taskmanager.collection.SetList;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -21,7 +22,7 @@ public class TypeDescriptorTests {
          Arguments.of("Boolean", false),
          Arguments.of("DateTime", null),
          Arguments.of("Enum", null),
-         Arguments.of("EnumList", new LinkedHashSet<String>()));
+         Arguments.of("EnumList", SetList.empty()));
    }
 
    @ParameterizedTest

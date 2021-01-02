@@ -87,11 +87,8 @@ public class GeneratorTests {
       assertThat(newGenerator.getTaskIds().asList())
          .isEqualTo(generator.getTaskIds().asList());
 
-      // TODO reenable tests after implementing properties
-      // for (String s : newGenerator.getTemplatePropertyNames()) {
-      //    assertThat(newGenerator.getTemplateProperty(s))
-      //       .isEqualTo(generator.getTemplateProperty(s));
-      // }
+      assertThat(newGenerator.getTemplateProperties().asMap())
+         .isEqualTo(generator.getTemplateProperties().asMap());
 
       assertThat(newGenerator.getDateCreated().getStart())
          .isEqualTo(generator.getDateCreated().getStart());
@@ -191,7 +188,7 @@ public class GeneratorTests {
       assertThat(generator.getTemplateProperties().asMap().keySet())
          .isEqualTo(HashSet.of("alpha", "gamma"));
       assertThat(generator.getTemplateProperties().asMap().get("alpha"))
-         .contains(Property.of(null));
+         .contains(Property.empty());
    }
 
    @Test

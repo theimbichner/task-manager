@@ -58,7 +58,7 @@ public class DataProvider {
 
    public PropertyMap getProperties() {
       return PropertyMap.fromJava(Map.of(
-         "alpha", Property.of(1),
+         "alpha", Property.ofNumber("1"),
          "beta", Property.of(""),
          "gamma", Property.of(new DateTime(Instant.ofEpochSecond(12345)))));
    }
@@ -66,7 +66,7 @@ public class DataProvider {
    public PropertyMap getUpdateProperties() {
       return PropertyMap.fromJava(Map.of(
          // modify
-         "alpha", Property.of(null),
+         "alpha", Property.empty(),
          // delete
          "beta", Property.DELETE,
          // delete nonexistent

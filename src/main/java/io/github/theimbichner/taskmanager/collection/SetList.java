@@ -73,6 +73,22 @@ public class SetList<T> {
       return Tuple.of(left.asJava(), right.asJava());
    }
 
+   @Override
+   public boolean equals(Object obj) {
+      if (!(obj instanceof SetList)) {
+         return false;
+      }
+
+      SetList<?> other = (SetList<?>) obj;
+
+      return asList().equals(other.asList());
+   }
+
+   @Override
+   public int hashCode() {
+      return asList().hashCode();
+   }
+
    public List<T> asList() {
       clean();
       return list.asJava();

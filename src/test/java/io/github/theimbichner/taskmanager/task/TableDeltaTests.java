@@ -1,13 +1,13 @@
 package io.github.theimbichner.taskmanager.task;
 
 import java.util.Map;
-import java.util.Set;
 
 import io.vavr.collection.HashMap;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import io.github.theimbichner.taskmanager.collection.SetList;
 import io.github.theimbichner.taskmanager.task.property.Property;
 import io.github.theimbichner.taskmanager.task.property.TypeDescriptor;
 
@@ -25,7 +25,7 @@ public class TableDeltaTests {
          "beta", TypeDescriptor.fromTypeName("String"),
          "gamma", TypeDescriptor.fromTypeName("Boolean"));
       taskProperties = HashMap.of(
-         "alpha", Property.of(Set.of()),
+         "alpha", Property.of(SetList.empty()),
          "beta", Property.of(""),
          "gamma", Property.of(false));
       name = "delta";

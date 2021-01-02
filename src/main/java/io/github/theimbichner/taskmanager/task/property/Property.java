@@ -1,57 +1,16 @@
 package io.github.theimbichner.taskmanager.task.property;
 
+import java.math.BigDecimal;
 import java.util.Objects;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
+import io.github.theimbichner.taskmanager.collection.SetList;
 import io.github.theimbichner.taskmanager.time.DateTime;
 
-public interface Property {
-   class SimpleExposingProperty implements Property {
-      private final Object obj;
-
-      private SimpleExposingProperty(Object obj) {
-         this.obj = obj;
-      }
-
-      @Override
-      public Object get() {
-         return obj;
-      }
-
-      @Override
-      public JSONObject toJson() {
-         return new JSONObject();
-      }
-
-      @Override
-      public boolean equals(Object obj) {
-         if (!(obj instanceof Property)) {
-            return false;
-         }
-
-         Property other = (Property) obj;
-
-         if (get() instanceof DateTime) {
-            // TODO implement and test equals on DateTime
-            if (!(other.get() instanceof DateTime)) {
-               return false;
-            }
-            DateTime dateTime = (DateTime) get();
-            DateTime otherDateTime = (DateTime) other.get();
-            return dateTime.getStart().equals(otherDateTime.getStart())
-               && dateTime.getEnd().equals(otherDateTime.getEnd());
-         }
-         return Objects.equals(get(), other.get());
-      }
-
-      @Override
-      public int hashCode() {
-         return 0;
-      }
-   }
-
-   Property DELETE = new Property() {
+public abstract class Property {
+   public static final Property DELETE = new Property() {
       @Override
       public Object get() {
          return this;
@@ -61,16 +20,84 @@ public interface Property {
       public JSONObject toJson() {
          return null;
       }
+
+      @Override
+      public int hashCode() {
+         return 0;
+      }
    };
 
-   JSONObject toJson();
-   Object get();
+   public abstract JSONObject toJson();
+   public abstract Object get();
 
-   static Property fromJson(JSONObject json) {
-      return Property.of(null);
+   @Override
+   public boolean equals(Object obj) {
+      if (!(obj instanceof Property)) {
+         return false;
+      }
+
+      Property other = (Property) obj;
+
+      return Objects.equals(get(), other.get());
    }
 
-   static Property of(Object obj) {
-      return new SimpleExposingProperty(obj);
+   @Override
+   public int hashCode() {
+      return Objects.hashCode(get());
+   }
+
+   public static Property fromJson(JSONObject json) {
+      switch (json.optString("type", "")) {
+      case "DateTime":
+         DateTime dateTime = DateTime.fromJson(json.getJSONObject("value"));
+         return Property.of(dateTime);
+
+      case "EnumList":
+         SetList<String> list = SetList.empty();
+         JSONArray jsonArray = json.getJSONArray("value");
+         for (int i = 0; i < jsonArray.length(); i++) {
+            list = list.add(jsonArray.getString(i));
+         }
+         return Property.of(list);
+
+      case "String":
+         return Property.of(json.getString("value"));
+
+      case "Boolean":
+         return Property.of(json.getBoolean("value"));
+
+      case "Number":
+         return new NumberProperty(json.getBigDecimal("value"));
+
+      case "Empty":
+         return Property.empty();
+
+      default:
+         throw new IllegalArgumentException("Could not recognize property json.");
+      }
+   }
+
+   public static Property of(DateTime dateTime) {
+      return new JsonAdapterProperty<>(dateTime, "DateTime", DateTime::toJson);
+   }
+
+   public static Property of(SetList<String> list) {
+      return new JsonAdapterProperty<>(list, "EnumList", s -> new JSONArray(s.asList()));
+   }
+
+   public static Property of(String string) {
+      return new JsonAdapterProperty<>(string, "String", x -> x);
+   }
+
+   public static Property of(Boolean bool) {
+      return new JsonAdapterProperty<>(bool, "Boolean", x -> x);
+   }
+
+   public static Property ofNumber(String value) {
+      return new NumberProperty(new BigDecimal(value));
+   }
+
+   public static Property empty() {
+      return new JsonAdapterProperty<>(null, "Empty", x -> JSONObject.NULL);
    }
 }
