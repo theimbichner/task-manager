@@ -7,7 +7,7 @@ import org.json.JSONObject;
 public class NumberProperty extends Property {
    private final BigDecimal bigDecimal;
 
-   public NumberProperty(BigDecimal bigDecimal) {
+   NumberProperty(BigDecimal bigDecimal) {
       this.bigDecimal = bigDecimal;
    }
 

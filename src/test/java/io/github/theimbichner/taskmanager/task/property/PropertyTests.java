@@ -1,6 +1,5 @@
 package io.github.theimbichner.taskmanager.task.property;
 
-import java.math.BigDecimal;
 import java.util.stream.Stream;
 import java.time.Instant;
 
@@ -37,8 +36,8 @@ public class PropertyTests {
 
       Property alphaProp = Property.of("alpha");
       Property emptyProp = Property.empty();
-      Property longProp = Property.of(1L);
-      Property doubleProp = Property.of(2.25D);
+      Property longProp = Property.ofNumber("1");
+      Property doubleProp = Property.ofNumber("2.25");
 
       return Stream.of(
          Arguments.of(alphaProp, "alpha", false),
@@ -76,19 +75,19 @@ public class PropertyTests {
          Arguments.of(alphaProp, Property.of(true), false),
 
          Arguments.of(longProp, longProp, true),
-         Arguments.of(longProp, Property.of(1L), true),
-         Arguments.of(longProp, Property.of(2L), false),
+         Arguments.of(longProp, Property.ofNumber("1"), true),
+         Arguments.of(longProp, Property.ofNumber("2"), false),
          Arguments.of(longProp, alphaProp, false),
          Arguments.of(alphaProp, longProp, false),
 
          Arguments.of(doubleProp, doubleProp, true),
-         Arguments.of(doubleProp, Property.of(2.25D), true),
-         Arguments.of(doubleProp, Property.of(1.5D), false),
+         Arguments.of(doubleProp, Property.ofNumber("2.25"), true),
+         Arguments.of(doubleProp, Property.ofNumber("1.5"), false),
          Arguments.of(doubleProp, alphaProp, false),
          Arguments.of(alphaProp, doubleProp, false),
 
-         Arguments.of(Property.of(1.0D), longProp, true),
-         Arguments.of(longProp, Property.of(1.0D), true),
+         Arguments.of(Property.ofNumber("1.0"), longProp, true),
+         Arguments.of(longProp, Property.ofNumber("1.0"), true),
          Arguments.of(longProp, doubleProp, false),
          Arguments.of(doubleProp, longProp, false));
    }
@@ -107,9 +106,9 @@ public class PropertyTests {
          Property.of(new DateTime(Instant.now())),
          Property.of(SetList.<String>empty().add("alpha").add("beta")),
          Property.of(false),
-         Property.of(2.25D),
-         Property.of(1L),
-         Property.of(new BigDecimal("0.123456789012345678901234567890123456789")));
+         Property.ofNumber("2.25"),
+         Property.ofNumber("1"),
+         Property.ofNumber("0.123456789012345678901234567890123456789"));
    }
 
    @ParameterizedTest

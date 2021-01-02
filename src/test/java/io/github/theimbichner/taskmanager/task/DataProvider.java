@@ -58,7 +58,7 @@ public class DataProvider {
 
    public PropertyMap getProperties() {
       return PropertyMap.fromJava(Map.of(
-         "alpha", Property.of(1L),
+         "alpha", Property.ofNumber("1"),
          "beta", Property.of(""),
          "gamma", Property.of(new DateTime(Instant.ofEpochSecond(12345)))));
    }

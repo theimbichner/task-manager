@@ -9,7 +9,7 @@ public class JsonAdapterProperty<T> extends Property {
    private final String typeName;
    private final Function<T, Object> toJson;
 
-   public JsonAdapterProperty(T data, String typeName, Function<T, Object> toJson) {
+   JsonAdapterProperty(T data, String typeName, Function<T, Object> toJson) {
       this.data = data;
       this.typeName = typeName;
       this.toJson = toJson;
