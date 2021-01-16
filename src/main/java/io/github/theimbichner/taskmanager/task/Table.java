@@ -1,9 +1,6 @@
 package io.github.theimbichner.taskmanager.task;
 
-import java.util.Map;
 import java.util.UUID;
-
-import io.vavr.Tuple2;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -11,10 +8,7 @@ import org.json.JSONObject;
 import io.github.theimbichner.taskmanager.collection.SetList;
 import io.github.theimbichner.taskmanager.io.Storable;
 import io.github.theimbichner.taskmanager.io.TaskStore;
-import io.github.theimbichner.taskmanager.task.property.Property;
-import io.github.theimbichner.taskmanager.task.property.PropertyMap;
 import io.github.theimbichner.taskmanager.task.property.Schema;
-import io.github.theimbichner.taskmanager.task.property.TypeDescriptor;
 import io.github.theimbichner.taskmanager.time.DateTime;
 import io.github.theimbichner.taskmanager.time.ModifyRecord;
 
@@ -128,6 +122,10 @@ public class Table implements Storable {
       return new Table(result);
    }
 
+   public Schema getSchema() {
+      return schema;
+   }
+
    @Override
    public void setTaskStore(TaskStore taskStore) {
       this.taskStore = taskStore;
@@ -136,14 +134,6 @@ public class Table implements Storable {
    @Override
    public TaskStore getTaskStore() {
       return taskStore;
-   }
-
-   public PropertyMap getDefaultProperties() {
-      Map<String, Property> result = new java.util.HashMap<>();
-      for (Tuple2<String, TypeDescriptor> entry : schema.asMap()) {
-         result.put(entry._1, entry._2.getDefaultValue());
-      }
-      return PropertyMap.fromJava(result);
    }
 
    public static Table createTable() {

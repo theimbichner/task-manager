@@ -157,7 +157,7 @@ public class Task implements Storable {
 
    public static Task createTask(Table table) {
       Builder result = new Builder(UUID.randomUUID().toString(), table.getId());
-      result.properties = table.getDefaultProperties();
+      result.properties = table.getSchema().getDefaultProperties();
       // TODO replace with method in orchestration that checks left
       if (table.getTaskStore() != null) {
          table.getTaskStore().getTables().save(table.withTasks(List.of(result.id))).get();

@@ -93,6 +93,14 @@ public class SchemaTests {
          "gamma", Property.of(SetList.empty())));
    }
 
+   @Test
+   void testDefaultProperties() {
+      assertThat(baseSchema.getDefaultProperties().asMap()).isEqualTo(HashMap.of(
+         "alpha", Property.of(""),
+         "beta", Property.empty(),
+         "gamma", Property.of(SetList.empty())));
+   }
+
    @ParameterizedTest
    @MethodSource
    void testMerge(
@@ -325,6 +333,8 @@ public class SchemaTests {
          .isThrownBy(() -> delta.asMap());
       assertThatExceptionOfType(IllegalStateException.class)
          .isThrownBy(() -> delta.toJson());
+      assertThatExceptionOfType(IllegalStateException.class)
+         .isThrownBy(() -> delta.getDefaultProperties());
    }
 
    @Test
@@ -336,5 +346,7 @@ public class SchemaTests {
          .isThrownBy(() -> delta.asMap());
       assertThatExceptionOfType(IllegalStateException.class)
          .isThrownBy(() -> delta.toJson());
+      assertThatExceptionOfType(IllegalStateException.class)
+         .isThrownBy(() -> delta.getDefaultProperties());
    }
 }

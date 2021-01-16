@@ -43,6 +43,8 @@ public class TableTests {
       assertThat(table.getDateLastModified().getStart())
          .isEqualTo(table.getDateCreated().getStart())
          .isEqualTo(table.getDateLastModified().getEnd());
+
+      assertThat(table.getSchema().isEmpty()).isTrue();
    }
 
    @Test
@@ -119,6 +121,7 @@ public class TableTests {
 
       assertThat(newTable.getAllTaskIds().asList()).isEqualTo(List.of("alpha", "beta"));
       assertThat(newTable.getAllGeneratorIds().asList()).isEqualTo(List.of(generatorId));
+      assertThat(newTable.getSchema().isEmpty()).isTrue();
    }
 
    @Test
@@ -129,5 +132,6 @@ public class TableTests {
 
       assertThat(newTable.getAllTaskIds().asList()).isEmpty();
       assertThat(newTable.getAllGeneratorIds().asList()).isEmpty();
+      assertThat(newTable.getSchema().isEmpty()).isTrue();
    }
 }

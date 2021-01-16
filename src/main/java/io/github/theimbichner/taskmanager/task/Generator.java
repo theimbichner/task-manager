@@ -228,7 +228,7 @@ public class Generator implements Storable {
 
    public static Generator createGenerator(Table table, String field, DatePattern pattern) {
       Builder result = new Builder(UUID.randomUUID().toString(), table.getId(), field, pattern);
-      result.templateProperties = table.getDefaultProperties();
+      result.templateProperties = table.getSchema().getDefaultProperties();
       result.taskStore = table.getTaskStore();
 
       return new Generator(result);
