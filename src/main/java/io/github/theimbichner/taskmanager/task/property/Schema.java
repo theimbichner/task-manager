@@ -67,7 +67,7 @@ public class Schema {
       this.columns = columns;
    }
 
-   public Schema empty() {
+   public static Schema empty() {
       return new Schema(HashMap.empty());
    }
 
@@ -81,6 +81,10 @@ public class Schema {
 
    public Schema withColumnRenamed(String oldName, String newName) {
       Column newColumn = columns.get(oldName).getOrElse(new Column.Renamed(oldName));
+      if (newColumn == Column.DELETE) {
+         throw new IllegalStateException("Cannot rename deleted column.");
+      }
+
       return new Schema(columns.put(newName, newColumn).put(oldName, Column.DELETE));
    }
 
