@@ -43,10 +43,13 @@ public class SchemaTests {
 
    @Test
    void testAsMap() {
-      assertThat(baseSchema.asMap()).isEqualTo(HashMap.of(
-         "alpha", TypeDescriptor.fromTypeName("String"),
-         "beta", TypeDescriptor.fromTypeName("DateTime"),
-         "gamma", TypeDescriptor.fromTypeName("EnumList")));
+      assertThat(baseSchema.asMap().mapValues(x -> x.getTypeName())).isEqualTo(HashMap.of(
+         "alpha", "String",
+         "beta", "DateTime",
+         "gamma", "EnumList"));
+      TypeDescriptor type = baseSchema.asMap().get("gamma").get();
+      assertThat(((EnumerationTypeDescriptor) type).getEnumValues())
+         .containsExactlyInAnyOrder("one", "two", "three");
    }
 
    @Test
@@ -59,7 +62,7 @@ public class SchemaTests {
          "gamma", "EnumList"));
       TypeDescriptor type = schema.asMap().get("gamma").get();
       assertThat(((EnumerationTypeDescriptor) type).getEnumValues())
-         .containsExactly("one", "two", "three");
+         .containsExactlyInAnyOrder("one", "two", "three");
    }
 
    @Test
@@ -101,7 +104,7 @@ public class SchemaTests {
             HashMap.of(
                "alpha", Property.of("abcde"),
                "beta", Property.of(dateTime),
-               "gamme", Property.of(setList))),
+               "gamma", Property.of(setList))),
          Arguments.of(
             Schema.empty().withColumn("alpha", TypeDescriptor.fromTypeName("Integer")),
             HashMap.of(
@@ -238,7 +241,7 @@ public class SchemaTests {
          Arguments.of(
             Schema.empty()
                .withColumn("beta", TypeDescriptor.fromTypeName("Integer"))
-               .withColumnRenamed("beta", "epsilon"),
+               .withColumnRenamed("beta", "delta"),
             HashMap.of(
                "alpha", "String",
                "gamma", "EnumList",

@@ -22,13 +22,13 @@ public class TableDelta {
       return Optional.ofNullable(name);
    }
 
-   public TaskDelta asTaskDelta(Task task) {
-      PropertyMap properties = schema.asPropertiesDelta(task.getProperties());
-      return new TaskDelta(properties, null, null, null);
+   public TaskDelta asTaskDelta(PropertyMap baseProperties) {
+      PropertyMap deltaProperties = schema.asPropertiesDelta(baseProperties);
+      return new TaskDelta(deltaProperties, null, null, null);
    }
 
-   public GeneratorDelta asGeneratorDelta(Generator generator) {
-      PropertyMap templateProperties = schema.asPropertiesDelta(generator.getTemplateProperties());
-      return new GeneratorDelta(templateProperties, null, null, null, null);
+   public GeneratorDelta asGeneratorDelta(PropertyMap baseProperties) {
+      PropertyMap deltaProperties = schema.asPropertiesDelta(baseProperties);
+      return new GeneratorDelta(deltaProperties, null, null, null, null);
    }
 }
