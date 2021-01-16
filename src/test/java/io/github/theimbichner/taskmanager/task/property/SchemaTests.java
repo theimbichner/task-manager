@@ -71,6 +71,21 @@ public class SchemaTests {
    }
 
    @Test
+   void testEmpty() {
+      assertThat(Schema.empty().isEmpty()).isTrue();
+   }
+
+   @Test
+   void testNotEmpty() {
+      assertThat(baseSchema.isEmpty()).isFalse();
+   }
+
+   @Test
+   void testEmptyNonConcrete() {
+      assertThat(Schema.empty().withColumnRenamed("alpha", "beta").isEmpty()).isFalse();
+   }
+
+   @Test
    void testAsPropertiesDelta() {
       assertThat(baseSchema.asPropertiesDelta(baseProperties).asMap()).isEqualTo(HashMap.of(
          "alpha", Property.of(""),

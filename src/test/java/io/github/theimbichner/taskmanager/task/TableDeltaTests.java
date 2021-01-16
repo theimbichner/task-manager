@@ -49,6 +49,7 @@ public class TableDeltaTests {
       TableDelta delta = new TableDelta(schema, name);
       assertThat(delta.getSchema().asMap()).isEqualTo(schema.asMap());
       assertThat(delta.getName()).hasValue(name);
+      assertThat(delta.isEmpty()).isFalse();
    }
 
    @Test
@@ -56,6 +57,7 @@ public class TableDeltaTests {
       TableDelta delta = new TableDelta(Schema.empty(), name);
       assertThat(delta.getSchema().asMap()).isEmpty();
       assertThat(delta.getName()).hasValue(name);
+      assertThat(delta.isEmpty()).isFalse();
    }
 
    @Test
@@ -63,6 +65,7 @@ public class TableDeltaTests {
       TableDelta delta = new TableDelta(schema, null);
       assertThat(delta.getSchema().asMap()).isEqualTo(schema.asMap());
       assertThat(delta.getName()).isEmpty();
+      assertThat(delta.isEmpty()).isFalse();
    }
 
    @Test
@@ -70,6 +73,7 @@ public class TableDeltaTests {
       TableDelta delta = new TableDelta(Schema.empty(), null);
       assertThat(delta.getSchema().asMap()).isEmpty();
       assertThat(delta.getName()).isEmpty();
+      assertThat(delta.isEmpty()).isTrue();
    }
 
    @Test

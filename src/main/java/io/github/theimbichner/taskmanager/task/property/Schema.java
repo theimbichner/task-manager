@@ -108,6 +108,10 @@ public class Schema {
       return result;
    }
 
+   public boolean isEmpty() {
+      return columns.isEmpty();
+   }
+
    public HashMap<String, TypeDescriptor> asMap() {
       return columns.mapValues(Column::asTypeDescriptor);
    }

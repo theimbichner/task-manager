@@ -22,6 +22,10 @@ public class TableDelta {
       return Optional.ofNullable(name);
    }
 
+   public boolean isEmpty() {
+      return name == null && schema.isEmpty();
+   }
+
    public TaskDelta asTaskDelta(PropertyMap baseProperties) {
       PropertyMap deltaProperties = schema.asPropertiesDelta(baseProperties);
       return new TaskDelta(deltaProperties, null, null, null);
