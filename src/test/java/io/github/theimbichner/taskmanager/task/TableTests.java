@@ -4,6 +4,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
+import io.vavr.collection.HashMap;
+
 import org.json.JSONObject;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -11,7 +13,10 @@ import org.junit.jupiter.api.Test;
 
 import io.github.theimbichner.taskmanager.io.InMemoryDataStore;
 import io.github.theimbichner.taskmanager.io.TaskStore;
+import io.github.theimbichner.taskmanager.task.property.Schema;
+import io.github.theimbichner.taskmanager.task.property.TypeDescriptor;
 import io.github.theimbichner.taskmanager.time.DatePattern;
+import io.github.theimbichner.taskmanager.time.DateTime;
 import io.github.theimbichner.taskmanager.time.UniformDatePattern;
 
 import static org.assertj.core.api.Assertions.*;
@@ -44,6 +49,57 @@ public class TableTests {
          .isEqualTo(table.getDateCreated().getStart())
          .isEqualTo(table.getDateLastModified().getEnd());
 
+      assertThat(table.getSchema().isEmpty()).isTrue();
+   }
+
+   @Test
+   void testWithModification() {
+      Table table = Table.createTable();
+
+      Instant before = Instant.now();
+      table = table.withModification(new TableDelta(
+         Schema.empty()
+            .withColumn("alpha", TypeDescriptor.fromTypeName("String"))
+            .withColumn("beta", TypeDescriptor.fromTypeName("DateTime")),
+         null));
+      assertThat(table.getDateLastModified().getStart()).isAfterOrEqualTo(before);
+      assertThat(table.getName()).isEqualTo("");
+      assertThat(table.getSchema().asMap().mapValues(x -> x.getTypeName()))
+         .isEqualTo(HashMap.of(
+            "alpha", "String",
+            "beta", "DateTime"));
+
+      before = Instant.now();
+      table = table.withModification(new TableDelta(
+         Schema.empty()
+            .withoutColumn("alpha")
+            .withColumnRenamed("beta", "gamma"),
+         "name 1"));
+      assertThat(table.getDateLastModified().getStart()).isAfterOrEqualTo(before);
+      assertThat(table.getName()).isEqualTo("name 1");
+      assertThat(table.getSchema().asMap().mapValues(x -> x.getTypeName()))
+         .isEqualTo(HashMap.of(
+            "gamma", "DateTime"));
+
+      before = Instant.now();
+      table = table.withModification(new TableDelta(
+         Schema.empty(),
+         "name 2"));
+      assertThat(table.getDateLastModified().getStart()).isAfterOrEqualTo(before);
+      assertThat(table.getName()).isEqualTo("name 2");
+      assertThat(table.getSchema().asMap().mapValues(x -> x.getTypeName()))
+         .isEqualTo(HashMap.of(
+            "gamma", "DateTime"));
+   }
+
+   @Test
+   void testWithModificationEmpty() {
+      Table table = Table.createTable();
+      DateTime dateLastModified = table.getDateLastModified();
+
+      table = table.withModification(new TableDelta(Schema.empty(), null));
+      assertThat(table.getDateLastModified()).isEqualTo(dateLastModified);
+      assertThat(table.getName()).isEqualTo("");
       assertThat(table.getSchema().isEmpty()).isTrue();
    }
 

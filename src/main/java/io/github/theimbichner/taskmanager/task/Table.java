@@ -90,6 +90,19 @@ public class Table implements Storable {
       return new DateTime(modifyRecord.getDateLastModified());
    }
 
+   public Table withModification(TableDelta delta) {
+      if (delta.isEmpty()) {
+         return this;
+      }
+
+      Builder result = new Builder(this);
+      result.name = delta.getName().orElse(name);
+      result.schema = schema.merge(delta.getSchema());
+      result.modifyRecord = modifyRecord.updatedNow();
+
+      return new Table(result);
+   }
+
    SetList<String> getAllTaskIds() {
       return taskIds;
    }
