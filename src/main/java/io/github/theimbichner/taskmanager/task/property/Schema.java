@@ -110,6 +110,17 @@ public class Schema {
       return result;
    }
 
+   public String findNewNameOf(String originalName) {
+      HashMap<String, Column> filtered = columns.filterValues(c -> {
+         if (c instanceof Column.Renamed) {
+            return ((Column.Renamed) c).originalName.equals(originalName);
+         }
+         return false;
+      });
+
+      return filtered.isEmpty() ? originalName : filtered.head()._1;
+   }
+
    public boolean isEmpty() {
       return columns.isEmpty();
    }

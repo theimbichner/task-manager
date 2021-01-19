@@ -303,6 +303,54 @@ public class SchemaTests {
                "zeta", Property.empty())));
    }
 
+   @ParameterizedTest
+   @MethodSource
+   void testFindNewNameOf(Schema schema, String originalName, String expected) {
+      assertThat(schema.findNewNameOf(originalName)).isEqualTo(expected);
+   }
+
+   private static Stream<Arguments> testFindNewNameOf() {
+      return Stream.of(
+         Arguments.of(
+            Schema.empty(),
+            "alpha",
+            "alpha"),
+         Arguments.of(
+            Schema.empty()
+               .withoutColumn("alpha")
+               .withColumn("beta", TypeDescriptor.fromTypeName("String")),
+            "alpha",
+            "alpha"),
+         Arguments.of(
+            Schema.empty()
+               .withColumnRenamed("beta", "gamma"),
+            "alpha",
+            "alpha"),
+         Arguments.of(
+            Schema.empty()
+               .withColumnRenamed("beta", "gamma"),
+            "beta",
+            "gamma"),
+         Arguments.of(
+            Schema.empty()
+               .withColumnRenamed("alpha", "beta")
+               .withColumnRenamed("beta", "gamma"),
+            "alpha",
+            "gamma"),
+         Arguments.of(
+            Schema.empty()
+               .withColumnRenamed("beta", "gamma")
+               .withColumnRenamed("alpha", "beta"),
+            "alpha",
+            "beta"),
+         Arguments.of(
+            Schema.empty()
+               .withColumnRenamed("alpha", "beta")
+               .withColumnRenamed("beta", "alpha"),
+            "alpha",
+            "alpha"));
+   }
+
    @Test
    void testMergeInvalidRenameNonexistent() {
       Schema delta = Schema.empty().withColumnRenamed("delta", "beta");
