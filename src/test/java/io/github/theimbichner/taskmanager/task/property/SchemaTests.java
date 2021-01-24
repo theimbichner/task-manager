@@ -5,6 +5,7 @@ import java.util.NoSuchElementException;
 import java.util.stream.Stream;
 
 import io.vavr.collection.HashMap;
+import io.vavr.control.Option;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -305,7 +306,7 @@ public class SchemaTests {
 
    @ParameterizedTest
    @MethodSource
-   void testFindNewNameOf(Schema schema, String originalName, String expected) {
+   void testFindNewNameOf(Schema schema, String originalName, Option<String> expected) {
       assertThat(schema.findNewNameOf(originalName)).isEqualTo(expected);
    }
 
@@ -314,41 +315,41 @@ public class SchemaTests {
          Arguments.of(
             Schema.empty(),
             "alpha",
-            "alpha"),
+            Option.none()),
          Arguments.of(
             Schema.empty()
                .withoutColumn("alpha")
                .withColumn("beta", TypeDescriptor.fromTypeName("String")),
             "alpha",
-            "alpha"),
+            Option.none()),
          Arguments.of(
             Schema.empty()
                .withColumnRenamed("beta", "gamma"),
             "alpha",
-            "alpha"),
+            Option.none()),
          Arguments.of(
             Schema.empty()
                .withColumnRenamed("beta", "gamma"),
             "beta",
-            "gamma"),
+            Option.some("gamma")),
          Arguments.of(
             Schema.empty()
                .withColumnRenamed("alpha", "beta")
                .withColumnRenamed("beta", "gamma"),
             "alpha",
-            "gamma"),
+            Option.some("gamma")),
          Arguments.of(
             Schema.empty()
                .withColumnRenamed("beta", "gamma")
                .withColumnRenamed("alpha", "beta"),
             "alpha",
-            "beta"),
+            Option.some("beta")),
          Arguments.of(
             Schema.empty()
                .withColumnRenamed("alpha", "beta")
                .withColumnRenamed("beta", "alpha"),
             "alpha",
-            "alpha"));
+            Option.some("alpha")));
    }
 
    @Test

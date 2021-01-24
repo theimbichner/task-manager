@@ -4,6 +4,7 @@ import java.util.Map;
 
 import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
+import io.vavr.control.Option;
 
 import org.json.JSONObject;
 
@@ -110,7 +111,7 @@ public class Schema {
       return result;
    }
 
-   public String findNewNameOf(String originalName) {
+   public Option<String> findNewNameOf(String originalName) {
       HashMap<String, Column> filtered = columns.filterValues(c -> {
          if (c instanceof Column.Renamed) {
             return ((Column.Renamed) c).originalName.equals(originalName);
@@ -118,7 +119,7 @@ public class Schema {
          return false;
       });
 
-      return filtered.isEmpty() ? originalName : filtered.head()._1;
+      return filtered.headOption().map(Tuple2::_1);
    }
 
    public boolean isEmpty() {
