@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.stream.Stream;
 
+import io.vavr.collection.HashMap;
 import io.vavr.collection.HashSet;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -24,10 +25,13 @@ import static org.assertj.vavr.api.VavrAssertions.*;
 
 public class OrchestrationTests {
    static DataProvider data;
+   static PropertyMap generationFieldMap;
 
    @BeforeAll
    static void beforeAll() {
       data = new DataProvider();
+      generationFieldMap = PropertyMap.empty()
+         .put(data.getGenerationField(), Property.empty());
    }
 
    private static Stream<Task> provideTasks() {
@@ -229,7 +233,8 @@ public class OrchestrationTests {
       assertThat(generator.getTemplateName()).isEqualTo(data.getTemplateName());
       assertThat(generator.getTemplateMarkup()).isEqualTo(data.getMarkup());
       assertThat(generator.getTemplateDuration()).isEqualTo(data.getDuration());
-      assertThat(generator.getTemplateProperties().asMap()).isEqualTo(data.getProperties().asMap());
+      assertThat(generator.getTemplateProperties().asMap())
+         .isEqualTo(data.getProperties().merge(generationFieldMap).asMap());
    }
 
    @ParameterizedTest
@@ -281,6 +286,8 @@ public class OrchestrationTests {
       assertThat(generator.getTemplateName()).isEqualTo(oldTemplateName);
       assertThat(generator.getTemplateMarkup()).isEqualTo(oldTemplateMarkup);
       assertThat(generator.getTemplateDuration()).isEqualTo(oldTemplateDuration);
+      assertThat(generator.getTemplateProperties().asMap())
+         .isEqualTo(data.getProperties().merge(generationFieldMap).asMap());
    }
 
    @Test
@@ -295,10 +302,10 @@ public class OrchestrationTests {
       Orchestration.modifyGenerator(generator, delta).get();
       generator = data.getTaskStore().getGenerators().getById(generator.getId()).get();
 
-      assertThat(generator.getTemplateProperties().asMap().keySet())
-         .isEqualTo(HashSet.of("alpha", "gamma"));
-      assertThat(generator.getTemplateProperties().asMap().get("alpha"))
-         .contains(Property.empty());
+      assertThat(generator.getTemplateProperties().asMap()).isEqualTo(HashMap.of(
+         "", Property.empty(),
+         "alpha", Property.empty(),
+         "gamma", Property.of(new DateTime(Instant.ofEpochSecond(12345)))));
    }
 
    @Test

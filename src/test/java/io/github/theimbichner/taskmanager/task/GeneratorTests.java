@@ -2,10 +2,12 @@ package io.github.theimbichner.taskmanager.task;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.stream.Stream;
 import java.util.stream.Collectors;
 
 import io.vavr.Tuple2;
+import io.vavr.collection.HashMap;
 import io.vavr.collection.HashSet;
 
 import org.json.JSONArray;
@@ -18,6 +20,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import io.github.theimbichner.taskmanager.task.property.Property;
 import io.github.theimbichner.taskmanager.task.property.PropertyMap;
+import io.github.theimbichner.taskmanager.task.property.Schema;
+import io.github.theimbichner.taskmanager.task.property.TypeDescriptor;
 import io.github.theimbichner.taskmanager.time.DatePattern;
 import io.github.theimbichner.taskmanager.time.DateTime;
 
@@ -26,10 +30,13 @@ import static org.assertj.vavr.api.VavrAssertions.*;
 
 public class GeneratorTests {
    static DataProvider data;
+   static PropertyMap generationFieldMap;
 
    @BeforeAll
    static void beforeAll() {
       data = new DataProvider();
+      generationFieldMap = PropertyMap.empty()
+         .put(data.getGenerationField(), Property.empty());
    }
 
    @Test
@@ -43,7 +50,7 @@ public class GeneratorTests {
       assertThat(generator.getTemplateMarkup()).isEqualTo("");
       assertThat(generator.getTemplateDuration()).isEqualTo(0);
       assertThat(generator.getTemplateTableId()).isEqualTo(data.getTable().getId());
-      assertThat(generator.getTemplateProperties().asMap()).isEmpty();
+      assertThat(generator.getTemplateProperties().asMap()).isEqualTo(generationFieldMap.asMap());
       assertThat(generator.getGenerationField()).isEqualTo(data.getGenerationField());
       assertThat(generator.getTaskIds().asList()).isEmpty();
 
@@ -143,7 +150,8 @@ public class GeneratorTests {
       assertThat(generator.getTemplateName()).isEqualTo(data.getTemplateName());
       assertThat(generator.getTemplateMarkup()).isEqualTo(data.getMarkup());
       assertThat(generator.getTemplateDuration()).isEqualTo(data.getDuration());
-      assertThat(generator.getTemplateProperties().asMap()).isEqualTo(data.getProperties().asMap());
+      assertThat(generator.getTemplateProperties().asMap())
+         .isEqualTo(data.getProperties().merge(generationFieldMap).asMap());
    }
 
    @ParameterizedTest
@@ -173,6 +181,8 @@ public class GeneratorTests {
       assertThat(generator.getTemplateName()).isEqualTo(oldTemplateName);
       assertThat(generator.getTemplateMarkup()).isEqualTo(oldTemplateMarkup);
       assertThat(generator.getTemplateDuration()).isEqualTo(oldTemplateDuration);
+      assertThat(generator.getTemplateProperties().asMap())
+         .isEqualTo(data.getProperties().merge(generationFieldMap).asMap());
    }
 
    @Test
@@ -186,9 +196,15 @@ public class GeneratorTests {
       Generator generator = data.createModifiedGenerator().withModification(delta);
 
       assertThat(generator.getTemplateProperties().asMap().keySet())
-         .isEqualTo(HashSet.of("alpha", "gamma"));
+         .isEqualTo(HashSet.of("", "alpha", "gamma"));
+      assertThat(generator.getTemplateProperties().asMap().get(""))
+         .contains(Property.empty());
       assertThat(generator.getTemplateProperties().asMap().get("alpha"))
          .contains(Property.empty());
+      assertThat(generator.getTemplateProperties().asMap()).isEqualTo(HashMap.of(
+         "", Property.empty(),
+         "alpha", Property.empty(),
+         "gamma", Property.of(new DateTime(Instant.ofEpochSecond(12345)))));
    }
 
    @Test
@@ -205,7 +221,119 @@ public class GeneratorTests {
          .isThrownBy(() -> generator.withModification(delta));
    }
 
+   @Test
+   void testAdjustToSchema() {
+      Generator generator = data.createModifiedGenerator();
+
+      Schema schemaDelta = Schema.empty()
+         .withColumn("alpha", TypeDescriptor.fromTypeName("DateTime"))
+         .withoutColumn("gamma")
+         .withColumnRenamed("beta", "delta");
+
+      generator = generator.adjustToSchema(schemaDelta);
+
+      assertThat(generator.getTemplateProperties().asMap()).isEqualTo(HashMap.of(
+         data.getGenerationField(), Property.empty(),
+         "alpha", Property.empty(),
+         "delta", Property.of("")));
+      assertThat(generator.getGenerationField()).isEqualTo(data.getGenerationField());
+   }
+
+   @Test
+   void testAdjustToSchemaEmpty() {
+      Generator generator = data.createModifiedGenerator();
+      assertThat(generator.adjustToSchema(Schema.empty())).isSameAs(generator);
+   }
+
+   @Test
+   void testAdjustToSchemaRenameGenerationField() {
+      Generator generator = data.createModifiedGenerator();
+
+      Schema schemaDelta = Schema.empty()
+         .withColumnRenamed(data.getGenerationField(), "delta");
+
+      generator = generator.adjustToSchema(schemaDelta);
+
+      assertThat(generator.getTemplateProperties().asMap()).isEqualTo(HashMap.of(
+         "alpha", Property.ofNumber("1"),
+         "beta", Property.of(""),
+         "gamma", Property.of(new DateTime(Instant.ofEpochSecond(12345))),
+         "delta", Property.empty()));
+      assertThat(generator.getGenerationField()).isEqualTo("delta");
+   }
+
+   @Test
+   void testAdjustToSchemaRenameGenerationFieldToSelf() {
+      Generator generator = data.createModifiedGenerator();
+
+      Schema schemaDelta = Schema.empty()
+         .withColumnRenamed(data.getGenerationField(), "delta")
+         .withColumnRenamed("delta", data.getGenerationField());
+
+      generator = generator.adjustToSchema(schemaDelta);
+
+      assertThat(generator.getTemplateProperties().asMap()).isEqualTo(HashMap.of(
+         "alpha", Property.ofNumber("1"),
+         "beta", Property.of(""),
+         "gamma", Property.of(new DateTime(Instant.ofEpochSecond(12345))),
+         data.getGenerationField(), Property.empty()));
+      assertThat(generator.getGenerationField()).isEqualTo(data.getGenerationField());
+   }
+
+   @Test
+   void testAdjustToSchemaRenameOverwriteGenerationField() {
+      Generator generator = data.createModifiedGenerator();
+
+      Schema schemaDelta = Schema.empty()
+         .withColumnRenamed(data.getGenerationField(), "delta")
+         .withColumn(data.getGenerationField(), TypeDescriptor.fromTypeName("Boolean"));
+
+      generator = generator.adjustToSchema(schemaDelta);
+
+      assertThat(generator.getTemplateProperties().asMap()).isEqualTo(HashMap.of(
+         "alpha", Property.ofNumber("1"),
+         "beta", Property.of(""),
+         "gamma", Property.of(new DateTime(Instant.ofEpochSecond(12345))),
+         "delta", Property.empty(),
+         data.getGenerationField(), Property.of(false)));
+      assertThat(generator.getGenerationField()).isEqualTo("delta");
+   }
+
+   @Test
+   void testAdjustToSchemaInvalidDelete() {
+      Generator generator = data.createModifiedGenerator();
+
+      Schema schemaDelta = Schema.empty()
+         .withoutColumn(data.getGenerationField());
+
+      assertThatExceptionOfType(IllegalArgumentException.class)
+         .isThrownBy(() -> generator.adjustToSchema(schemaDelta));
+   }
+
+   @Test
+   void testAdjustToSchemaInvalidOverwrite() {
+      Generator generator = data.createModifiedGenerator();
+
+      Schema schemaDelta = Schema.empty()
+         .withColumn(data.getGenerationField(), TypeDescriptor.fromTypeName("Integer"));
+
+      assertThatExceptionOfType(IllegalArgumentException.class)
+         .isThrownBy(() -> generator.adjustToSchema(schemaDelta));
+   }
+
+   @Test
+   void testAdjustToSchemaInvalidSchema() {
+      Generator generator = data.createModifiedGenerator();
+
+      Schema schemaDelta = Schema.empty()
+         .withColumnRenamed("delta", "epsilon");
+
+      assertThatExceptionOfType(NoSuchElementException.class)
+         .isThrownBy(() -> generator.adjustToSchema(schemaDelta));
+   }
+
    // TODO add tests where generateTasks timestamp lies exactly on timestamp returned by getDates
+   // TODO add test where the same timestamp is used twice in a row
    @Test
    void testGenerateTasks() {
       Generator generator = data.createDefaultGenerator();
