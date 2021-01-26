@@ -92,22 +92,4 @@ public class TableDeltaTests {
       TaskDelta taskDelta = tableDelta.asTaskDelta(baseProperties);
       assertThat(taskDelta.getProperties().asMap()).isEmpty();
    }
-
-   @Test
-   void testAsGeneratorDelta() {
-      TableDelta tableDelta = new TableDelta(deltaSchema, name);
-      GeneratorDelta generatorDelta = tableDelta.asGeneratorDelta(baseProperties);
-      assertThat(generatorDelta.getProperties().asMap()).isEqualTo(deltaProperties.asMap());
-      assertThat(generatorDelta.getName()).isEmpty();
-      assertThat(generatorDelta.getTemplateName()).isEmpty();
-      assertThat(generatorDelta.getTemplateMarkup()).isEmpty();
-      assertThat(generatorDelta.getTemplateDuration()).isEmpty();
-   }
-
-   @Test
-   void testAsGeneratorDeltaNoProperties() {
-      TableDelta tableDelta = new TableDelta(Schema.empty(), name);
-      GeneratorDelta generatorDelta = tableDelta.asGeneratorDelta(baseProperties);
-      assertThat(generatorDelta.getProperties().asMap()).isEmpty();
-   }
 }

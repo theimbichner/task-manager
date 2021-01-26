@@ -3,6 +3,7 @@ package io.github.theimbichner.taskmanager.task;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 
 import io.vavr.collection.HashMap;
@@ -13,9 +14,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import io.github.theimbichner.taskmanager.collection.SetList;
 import io.github.theimbichner.taskmanager.io.TaskStore;
 import io.github.theimbichner.taskmanager.task.property.Property;
 import io.github.theimbichner.taskmanager.task.property.PropertyMap;
+import io.github.theimbichner.taskmanager.task.property.Schema;
+import io.github.theimbichner.taskmanager.task.property.TypeDescriptor;
 import io.github.theimbichner.taskmanager.time.DatePattern;
 import io.github.theimbichner.taskmanager.time.DateTime;
 import io.github.theimbichner.taskmanager.time.UniformDatePattern;
@@ -83,6 +87,91 @@ public class OrchestrationTests {
       assertThat(Orchestration.getTasksFromTable(table, end).get().asList()).hasSize(numTasks);
       table = taskStore.getTables().getById(table.getId()).get();
       assertThat(Orchestration.getTasksFromTable(table, start).get().asList()).hasSize(numTasks);
+   }
+
+   @Test
+   void testModifyTable() {
+      DateTime dateTime = new DateTime();
+
+      Table table = Table.createTable();
+      table.setTaskStore(data.getTaskStore());
+
+      Schema baseSchema = Schema.empty()
+         .withColumn("alpha", TypeDescriptor.fromTypeName("String"))
+         .withColumn("beta", TypeDescriptor.fromTypeName("DateTime"))
+         .withColumn("gamma", TypeDescriptor.fromTypeName("Boolean"));
+      table = table.withModification(new TableDelta(baseSchema, null));
+      data.getTaskStore().getTables().save(table).get();
+
+      Task task = Task.createTask(table);
+      table = data.getTaskStore().getTables().getById(table.getId()).get();
+
+      PropertyMap taskProperties = PropertyMap.fromJava(Map.of(
+         "beta", Property.of(dateTime)));
+      task = task.withModification(new TaskDelta(taskProperties, null, null, null)).get();
+      data.getTaskStore().getTasks().save(task).get();
+
+      Generator generator = Generator.createGenerator(table, "beta", getDatePattern(4));
+      data.getTaskStore().getTables().save(table.withGenerator(generator.getId())).get();
+      table = data.getTaskStore().getTables().getById(table.getId()).get();
+
+      PropertyMap generatorProperties = PropertyMap.fromJava(Map.of(
+         "alpha", Property.of("abcde"),
+         "gamma", Property.of(true)));
+      generator = generator.withModification(new GeneratorDelta(
+         generatorProperties,
+         null,
+         null,
+         null,
+         data.getDuration()));
+      data.getTaskStore().getGenerators().save(generator).get();
+
+      Orchestration.getTasksFromTable(table, Instant.now().plusSeconds(600)).get();
+
+      Schema deltaSchema = Schema.empty()
+         .withColumn("delta", TypeDescriptor.fromTypeName("EnumList"))
+         .withoutColumn("alpha")
+         .withColumnRenamed("beta", "epsilon");
+      Instant before = Instant.now();
+      Orchestration.modifyTable(table, new TableDelta(deltaSchema, "new name"));
+      table = data.getTaskStore().getTables().getById(table.getId()).get();
+
+      assertThat(table.getDateLastModified().getStart()).isAfterOrEqualTo(before);
+      assertThat(table.getName()).isEqualTo("new name");
+      assertThat(table.getSchema().asMap().mapValues(x -> x.getTypeName())).isEqualTo(HashMap.of(
+         "gamma", "Boolean",
+         "delta", "EnumList",
+         "epsilon", "DateTime"));
+
+      task = data.getTaskStore().getTasks().getById(task.getId()).get();
+      assertThat(task.getProperties().asMap()).isEqualTo(HashMap.of(
+         "gamma", Property.of(false),
+         "delta", Property.of(SetList.empty()),
+         "epsilon", Property.of(dateTime)));
+
+      generator = data.getTaskStore().getGenerators().getById(generator.getId()).get();
+      assertThat(generator.getTemplateProperties().asMap()).isEqualTo(HashMap.of(
+         "gamma", Property.of(true),
+         "delta", Property.of(SetList.empty()),
+         "epsilon", Property.empty()));
+      assertThat(generator.getGenerationField()).isEqualTo("epsilon");
+
+      for (String s : table.getAllTaskIds().asList()) {
+         if (s.equals(task.getId())) {
+            continue;
+         }
+
+         Task generatorTask = data.getTaskStore().getTasks().getById(s).get();
+         Property generationProperty = generatorTask.getProperties().asMap().get("epsilon").get();
+         assertThat(generatorTask.getProperties().asMap()).isEqualTo(HashMap.of(
+            "gamma", Property.of(true),
+            "delta", Property.of(SetList.empty()),
+            "epsilon", generationProperty));
+
+         DateTime generationDateTime = (DateTime) generationProperty.get();
+         assertThat(generationDateTime.getEnd())
+            .isEqualTo(generationDateTime.getStart().plusSeconds(data.getDuration()));
+      }
    }
 
    @ParameterizedTest

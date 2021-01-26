@@ -8,10 +8,13 @@ import io.vavr.Tuple2;
 import io.vavr.control.Either;
 
 import io.github.theimbichner.taskmanager.collection.SetList;
+import io.github.theimbichner.taskmanager.io.Storable;
 import io.github.theimbichner.taskmanager.io.TaskAccessException;
 import io.github.theimbichner.taskmanager.io.TaskStore;
 
 public class Orchestration {
+   private Orchestration() {}
+
    public static Either<TaskAccessException, SetList<String>> getTasksFromTable(
       Table table,
       Instant timestamp
@@ -28,6 +31,30 @@ public class Orchestration {
       return result
          .flatMap(taskStore.getTables()::save)
          .map(Table::getAllTaskIds);
+   }
+
+   public static Either<TaskAccessException, Table> modifyTable(
+      Table table,
+      TableDelta delta
+   ) {
+      TaskStore taskStore = table.getTaskStore();
+      Either<TaskAccessException, Storable> result = Either.right(null);
+
+      for (String s : table.getAllTaskIds().asList()) {
+         result = result
+            .flatMap(x -> taskStore.getTasks().getById(s))
+            .flatMap(task -> task.withModification(delta.asTaskDelta(task.getProperties())))
+            .flatMap(task -> taskStore.getTasks().save(task));
+      }
+
+      for (String s : table.getAllGeneratorIds().asList()) {
+         result = result
+            .flatMap(x -> taskStore.getGenerators().getById(s))
+            .map(g -> g.adjustToSchema(delta.getSchema()))
+            .flatMap(generator -> taskStore.getGenerators().save(generator));
+      }
+
+      return result.flatMap(x -> taskStore.getTables().save(table.withModification(delta)));
    }
 
    public static Either<TaskAccessException, Generator> modifyGenerator(

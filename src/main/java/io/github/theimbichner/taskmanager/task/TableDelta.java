@@ -30,9 +30,4 @@ public class TableDelta {
       PropertyMap deltaProperties = schema.asPropertiesDelta(baseProperties);
       return new TaskDelta(deltaProperties, null, null, null);
    }
-
-   public GeneratorDelta asGeneratorDelta(PropertyMap baseProperties) {
-      PropertyMap deltaProperties = schema.asPropertiesDelta(baseProperties);
-      return new GeneratorDelta(deltaProperties, null, null, null, null);
-   }
 }
