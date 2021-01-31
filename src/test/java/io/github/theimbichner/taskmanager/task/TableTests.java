@@ -36,7 +36,7 @@ public class TableTests {
    @Test
    void testNewTable() {
       Instant before = Instant.now();
-      Table table = Table.createTable();
+      Table table = Table.newTable();
       Instant after = Instant.now();
 
       assertThat(table.getName()).isEqualTo("");
@@ -54,7 +54,7 @@ public class TableTests {
 
    @Test
    void testWithModification() {
-      Table table = Table.createTable();
+      Table table = Table.newTable();
 
       Instant before = Instant.now();
       table = table.withModification(new TableDelta(
@@ -94,7 +94,7 @@ public class TableTests {
 
    @Test
    void testWithModificationEmpty() {
-      Table table = Table.createTable();
+      Table table = Table.newTable();
       DateTime dateLastModified = table.getDateLastModified();
 
       table = table.withModification(new TableDelta(Schema.empty(), null));
@@ -105,7 +105,7 @@ public class TableTests {
 
    @Test
    void testLinkUnlinkTasks() {
-      Table table = Table.createTable();
+      Table table = Table.newTable();
 
       assertThat(table.getAllTaskIds().asList()).isEmpty();
 
@@ -127,7 +127,7 @@ public class TableTests {
 
    @Test
    void testLinkUnlinkGenerators() {
-      Table table = Table.createTable();
+      Table table = Table.newTable();
       assertThat(table.getAllGeneratorIds().asList()).isEmpty();
 
       table = table.withGenerator("alpha");
@@ -148,10 +148,10 @@ public class TableTests {
 
    @Test
    void testToFromJson() {
-      Table table = Table.createTable();
+      Table table = Table.newTable();
       table.setTaskStore(taskStore);
 
-      Generator generator = Generator.createGenerator(table, "", getDatePattern(7));
+      Generator generator = Generator.newGenerator(table, "", getDatePattern(7));
       taskStore.getGenerators().save(generator).get();
       String generatorId = generator.getId();
 
@@ -182,7 +182,7 @@ public class TableTests {
 
    @Test
    void testToFromJsonNoTasks() {
-      Table table = Table.createTable();
+      Table table = Table.newTable();
       JSONObject json = table.toJson();
       Table newTable = Table.fromJson(json);
 

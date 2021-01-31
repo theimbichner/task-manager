@@ -41,8 +41,12 @@ public class GeneratorTests {
 
    @Test
    void testNewGenerator() {
+      Table table = data.getTable();
+      String field = data.getGenerationField();
+      DatePattern pattern = data.getGenerationDatePattern();
+
       Instant before = Instant.now();
-      Generator generator = data.createDefaultGenerator();
+      Generator generator = Generator.newGenerator(table, field, pattern);
       Instant after = Instant.now();
 
       assertThat(generator.getName()).isEqualTo("");
@@ -60,7 +64,7 @@ public class GeneratorTests {
          .isEqualTo(generator.getDateCreated().getEnd());
       assertThat(generator.getDateLastModified().getStart())
          .isEqualTo(generator.getDateCreated().getStart())
-         .isEqualTo(generator.getDateLastModified().getStart());
+         .isEqualTo(generator.getDateLastModified().getEnd());
 
       assertThat(generator.getGenerationDatePattern())
          .isEqualTo(data.getGenerationDatePattern());

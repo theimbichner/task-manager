@@ -149,7 +149,7 @@ public class Table implements Storable {
       return taskStore;
    }
 
-   public static Table createTable() {
+   static Table newTable() {
       return new Table(new Builder(UUID.randomUUID().toString()));
    }
 

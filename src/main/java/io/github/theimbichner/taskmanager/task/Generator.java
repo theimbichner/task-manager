@@ -250,7 +250,7 @@ public class Generator implements Storable {
       return taskStore;
    }
 
-   public static Generator createGenerator(Table table, String field, DatePattern pattern) {
+   static Generator newGenerator(Table table, String field, DatePattern pattern) {
       Builder result = new Builder(UUID.randomUUID().toString(), table.getId(), field, pattern);
       result.templateProperties = table.getSchema().getDefaultProperties();
       result.templateProperties = result.templateProperties.put(field, Property.empty());

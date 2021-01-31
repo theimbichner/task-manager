@@ -1,7 +1,6 @@
 package io.github.theimbichner.taskmanager.task;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
 
 import io.vavr.control.Either;
@@ -155,14 +154,11 @@ public class Task implements Storable {
       return taskStore;
    }
 
-   public static Task createTask(Table table) {
+   static Task newTask(Table table) {
       Builder result = new Builder(UUID.randomUUID().toString(), table.getId());
       result.properties = table.getSchema().getDefaultProperties();
-      // TODO replace with method in orchestration that checks left
-      if (table.getTaskStore() != null) {
-         table.getTaskStore().getTables().save(table.withTasks(List.of(result.id))).get();
-      }
       result.taskStore = table.getTaskStore();
+
       return new Task(result);
    }
 
