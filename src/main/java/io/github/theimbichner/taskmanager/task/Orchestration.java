@@ -8,10 +8,46 @@ import io.vavr.Tuple2;
 import io.vavr.control.Either;
 
 import io.github.theimbichner.taskmanager.collection.SetList;
+import io.github.theimbichner.taskmanager.io.Storable;
 import io.github.theimbichner.taskmanager.io.TaskAccessException;
 import io.github.theimbichner.taskmanager.io.TaskStore;
+import io.github.theimbichner.taskmanager.time.DatePattern;
+
+// TODO verify that orchestration correctly saves updates in every method
 
 public class Orchestration {
+   private Orchestration() {}
+
+   public static Either<TaskAccessException, Table> createTable(TaskStore taskStore) {
+      Table table = Table.newTable();
+      table.setTaskStore(taskStore);
+      return taskStore.getTables().save(table);
+   }
+
+   public static Either<TaskAccessException, Task> createTask(Table table) {
+      TaskStore taskStore = table.getTaskStore();
+
+      Task task = Task.newTask(table);
+      Table updatedTable = table.withTasks(List.of(task.getId()));
+
+      return taskStore.getTables().save(updatedTable)
+         .flatMap(x -> taskStore.getTasks().save(task));
+   }
+
+   public static Either<TaskAccessException, Generator> createGenerator(
+      Table table,
+      String field,
+      DatePattern pattern
+   ) {
+      TaskStore taskStore = table.getTaskStore();
+
+      Generator generator = Generator.newGenerator(table, field, pattern);
+      Table updatedTable = table.withGenerator(generator.getId());
+
+      return taskStore.getTables().save(updatedTable)
+         .flatMap(x -> taskStore.getGenerators().save(generator));
+   }
+
    public static Either<TaskAccessException, SetList<String>> getTasksFromTable(
       Table table,
       Instant timestamp
@@ -28,6 +64,30 @@ public class Orchestration {
       return result
          .flatMap(taskStore.getTables()::save)
          .map(Table::getAllTaskIds);
+   }
+
+   public static Either<TaskAccessException, Table> modifyTable(
+      Table table,
+      TableDelta delta
+   ) {
+      TaskStore taskStore = table.getTaskStore();
+      Either<TaskAccessException, Storable> result = Either.right(null);
+
+      for (String s : table.getAllTaskIds().asList()) {
+         result = result
+            .flatMap(x -> taskStore.getTasks().getById(s))
+            .flatMap(task -> task.withModification(delta.asTaskDelta(task.getProperties())))
+            .flatMap(task -> taskStore.getTasks().save(task));
+      }
+
+      for (String s : table.getAllGeneratorIds().asList()) {
+         result = result
+            .flatMap(x -> taskStore.getGenerators().getById(s))
+            .map(g -> g.adjustToSchema(delta.getSchema()))
+            .flatMap(generator -> taskStore.getGenerators().save(generator));
+      }
+
+      return result.flatMap(x -> taskStore.getTables().save(table.withModification(delta)));
    }
 
    public static Either<TaskAccessException, Generator> modifyGenerator(
@@ -49,7 +109,7 @@ public class Orchestration {
          });
    }
 
-   public static Either<TaskAccessException, Task> modifyTask(Task task, TaskDelta delta) {
+   private static Either<TaskAccessException, Task> modifyTask(Task task, TaskDelta delta) {
       TaskStore taskStore = task.getTaskStore();
       return task.withModification(delta)
          .flatMap(t -> taskStore.getTasks().save(t));
@@ -80,6 +140,8 @@ public class Orchestration {
     * cause the modification timestamp to update on those tasks?
     */
    public static Either<TaskAccessException, Task> modifySeries(Task task, GeneratorDelta delta) {
+      TaskStore taskStore = task.getTaskStore();
+
       return task.getGenerator()
          .map(g -> g.getOrElse(() -> {
             String msg = "Cannot modify series on non series task";
@@ -87,7 +149,7 @@ public class Orchestration {
          }))
          .flatMap(g -> removeTasksFromGeneratorBefore(g, task.getId()))
          .flatMap(g -> modifyGenerator(g, delta))
-         .map(g -> task);
+         .flatMap(g -> taskStore.getTasks().getById(task.getId()));
    }
 
    private static Either<TaskAccessException, Generator> removeTasksFromGeneratorBefore(
@@ -112,7 +174,7 @@ public class Orchestration {
       return result.map(x -> split._1);
    }
 
-   public static Either<TaskAccessException, List<String>> runGenerator(
+   private static Either<TaskAccessException, List<String>> runGenerator(
       Generator generator,
       Instant timestamp
    ) {

@@ -1,44 +1,33 @@
 package io.github.theimbichner.taskmanager.task;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
 
-import io.github.theimbichner.taskmanager.task.property.Property;
 import io.github.theimbichner.taskmanager.task.property.PropertyMap;
-import io.github.theimbichner.taskmanager.task.property.TypeDescriptor;
+import io.github.theimbichner.taskmanager.task.property.Schema;
 
 public class TableDelta {
-   private final Map<String, TypeDescriptor> properties;
+   private final Schema schema;
    private final String name;
 
-   public TableDelta(Map<String, TypeDescriptor> properties, String name) {
-      this.properties = Map.copyOf(properties);
+   public TableDelta(Schema schema, String name) {
+      this.schema = schema;
       this.name = name;
    }
 
-   public Map<String, TypeDescriptor> getProperties() {
-      return properties;
+   public Schema getSchema() {
+      return schema;
    }
 
    public Optional<String> getName() {
       return Optional.ofNullable(name);
    }
 
-   private PropertyMap getTaskProperties() {
-      Map<String, Property> result = new HashMap<>();
-      for (String s : properties.keySet()) {
-         result.put(s, properties.get(s) == null ? null : properties.get(s).getDefaultValue());
-      }
-
-      return PropertyMap.fromJava(result);
+   public boolean isEmpty() {
+      return name == null && schema.isEmpty();
    }
 
-   public TaskDelta asTaskDelta() {
-      return new TaskDelta(getTaskProperties(), null, null, null);
-   }
-
-   public GeneratorDelta asGeneratorDelta() {
-      return new GeneratorDelta(getTaskProperties(), null, null, null, null);
+   public TaskDelta asTaskDelta(PropertyMap baseProperties) {
+      PropertyMap deltaProperties = schema.asPropertiesDelta(baseProperties);
+      return new TaskDelta(deltaProperties, null, null, null);
    }
 }

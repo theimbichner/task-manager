@@ -1,10 +1,6 @@
 package io.github.theimbichner.taskmanager.task;
 
-import java.util.Map;
 import java.util.UUID;
-
-import io.vavr.Tuple2;
-import io.vavr.collection.HashMap;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -12,9 +8,7 @@ import org.json.JSONObject;
 import io.github.theimbichner.taskmanager.collection.SetList;
 import io.github.theimbichner.taskmanager.io.Storable;
 import io.github.theimbichner.taskmanager.io.TaskStore;
-import io.github.theimbichner.taskmanager.task.property.Property;
-import io.github.theimbichner.taskmanager.task.property.PropertyMap;
-import io.github.theimbichner.taskmanager.task.property.TypeDescriptor;
+import io.github.theimbichner.taskmanager.task.property.Schema;
 import io.github.theimbichner.taskmanager.time.DateTime;
 import io.github.theimbichner.taskmanager.time.ModifyRecord;
 
@@ -32,7 +26,7 @@ public class Table implements Storable {
       private ModifyRecord modifyRecord;
       private SetList<String> taskIds;
       private SetList<String> generatorIds;
-      private HashMap<String, TypeDescriptor> schema;
+      private Schema schema;
 
       private TaskStore taskStore;
 
@@ -42,7 +36,7 @@ public class Table implements Storable {
          modifyRecord = ModifyRecord.createdNow();
          taskIds = SetList.empty();
          generatorIds = SetList.empty();
-         schema = HashMap.empty();
+         schema = Schema.empty();
 
          taskStore = null;
       }
@@ -64,7 +58,7 @@ public class Table implements Storable {
    private final ModifyRecord modifyRecord;
    private final SetList<String> taskIds;
    private final SetList<String> generatorIds;
-   private final HashMap<String, TypeDescriptor> schema;
+   private final Schema schema;
 
    private TaskStore taskStore;
 
@@ -94,6 +88,19 @@ public class Table implements Storable {
 
    public DateTime getDateLastModified() {
       return new DateTime(modifyRecord.getDateLastModified());
+   }
+
+   public Table withModification(TableDelta delta) {
+      if (delta.isEmpty()) {
+         return this;
+      }
+
+      Builder result = new Builder(this);
+      result.name = delta.getName().orElse(name);
+      result.schema = schema.merge(delta.getSchema());
+      result.modifyRecord = modifyRecord.updatedNow();
+
+      return new Table(result);
    }
 
    SetList<String> getAllTaskIds() {
@@ -128,6 +135,10 @@ public class Table implements Storable {
       return new Table(result);
    }
 
+   public Schema getSchema() {
+      return schema;
+   }
+
    @Override
    public void setTaskStore(TaskStore taskStore) {
       this.taskStore = taskStore;
@@ -138,15 +149,7 @@ public class Table implements Storable {
       return taskStore;
    }
 
-   public PropertyMap getDefaultProperties() {
-      Map<String, Property> result = new java.util.HashMap<>();
-      for (Tuple2<String, TypeDescriptor> entry : schema) {
-         result.put(entry._1, entry._2.getDefaultValue());
-      }
-      return PropertyMap.fromJava(result);
-   }
-
-   public static Table createTable() {
+   static Table newTable() {
       return new Table(new Builder(UUID.randomUUID().toString()));
    }
 
@@ -157,12 +160,7 @@ public class Table implements Storable {
       modifyRecord.writeIntoJson(json);
       json.put("tasks", taskIds.asList());
       json.put("generators", generatorIds.asList());
-
-      JSONObject schemaJson = new JSONObject();
-      for (Tuple2<String, TypeDescriptor> entry : schema) {
-         schemaJson.put(entry._1, entry._2.toJson());
-      }
-      json.put("schema", schemaJson);
+      json.put("schema", schema.toJson());
 
       return json;
    }
@@ -184,10 +182,7 @@ public class Table implements Storable {
          result.generatorIds = result.generatorIds.add(generatorsJson.getString(i));
       }
 
-      JSONObject schemaJson = json.getJSONObject("schema");
-      for (String s : schemaJson.keySet()) {
-         result.schema.put(s, TypeDescriptor.fromJson(schemaJson.getJSONObject(s)));
-      }
+      result.schema = Schema.fromJson(json.getJSONObject("schema"));
 
       return new Table(result);
    }

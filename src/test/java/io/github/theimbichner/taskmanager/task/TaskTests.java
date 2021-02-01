@@ -29,7 +29,7 @@ public class TaskTests {
    @Test
    void testNewTask() {
       Instant before = Instant.now();
-      Task task = data.createDefaultTask();
+      Task task = Task.newTask(data.getTable());
       Instant after = Instant.now();
 
       assertThat(task.getName()).isEqualTo("");

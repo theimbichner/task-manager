@@ -4,6 +4,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
+import io.vavr.collection.HashMap;
+
 import org.json.JSONObject;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -11,7 +13,10 @@ import org.junit.jupiter.api.Test;
 
 import io.github.theimbichner.taskmanager.io.InMemoryDataStore;
 import io.github.theimbichner.taskmanager.io.TaskStore;
+import io.github.theimbichner.taskmanager.task.property.Schema;
+import io.github.theimbichner.taskmanager.task.property.TypeDescriptor;
 import io.github.theimbichner.taskmanager.time.DatePattern;
+import io.github.theimbichner.taskmanager.time.DateTime;
 import io.github.theimbichner.taskmanager.time.UniformDatePattern;
 
 import static org.assertj.core.api.Assertions.*;
@@ -31,7 +36,7 @@ public class TableTests {
    @Test
    void testNewTable() {
       Instant before = Instant.now();
-      Table table = Table.createTable();
+      Table table = Table.newTable();
       Instant after = Instant.now();
 
       assertThat(table.getName()).isEqualTo("");
@@ -43,11 +48,64 @@ public class TableTests {
       assertThat(table.getDateLastModified().getStart())
          .isEqualTo(table.getDateCreated().getStart())
          .isEqualTo(table.getDateLastModified().getEnd());
+
+      assertThat(table.getSchema().isEmpty()).isTrue();
+   }
+
+   @Test
+   void testWithModification() {
+      Table table = Table.newTable();
+
+      Instant before = Instant.now();
+      table = table.withModification(new TableDelta(
+         Schema.empty()
+            .withColumn("alpha", TypeDescriptor.fromTypeName("String"))
+            .withColumn("beta", TypeDescriptor.fromTypeName("DateTime")),
+         null));
+      assertThat(table.getDateLastModified().getStart()).isAfterOrEqualTo(before);
+      assertThat(table.getName()).isEqualTo("");
+      assertThat(table.getSchema().asMap().mapValues(x -> x.getTypeName()))
+         .isEqualTo(HashMap.of(
+            "alpha", "String",
+            "beta", "DateTime"));
+
+      before = Instant.now();
+      table = table.withModification(new TableDelta(
+         Schema.empty()
+            .withoutColumn("alpha")
+            .withColumnRenamed("beta", "gamma"),
+         "name 1"));
+      assertThat(table.getDateLastModified().getStart()).isAfterOrEqualTo(before);
+      assertThat(table.getName()).isEqualTo("name 1");
+      assertThat(table.getSchema().asMap().mapValues(x -> x.getTypeName()))
+         .isEqualTo(HashMap.of(
+            "gamma", "DateTime"));
+
+      before = Instant.now();
+      table = table.withModification(new TableDelta(
+         Schema.empty(),
+         "name 2"));
+      assertThat(table.getDateLastModified().getStart()).isAfterOrEqualTo(before);
+      assertThat(table.getName()).isEqualTo("name 2");
+      assertThat(table.getSchema().asMap().mapValues(x -> x.getTypeName()))
+         .isEqualTo(HashMap.of(
+            "gamma", "DateTime"));
+   }
+
+   @Test
+   void testWithModificationEmpty() {
+      Table table = Table.newTable();
+      DateTime dateLastModified = table.getDateLastModified();
+
+      table = table.withModification(new TableDelta(Schema.empty(), null));
+      assertThat(table.getDateLastModified()).isEqualTo(dateLastModified);
+      assertThat(table.getName()).isEqualTo("");
+      assertThat(table.getSchema().isEmpty()).isTrue();
    }
 
    @Test
    void testLinkUnlinkTasks() {
-      Table table = Table.createTable();
+      Table table = Table.newTable();
 
       assertThat(table.getAllTaskIds().asList()).isEmpty();
 
@@ -69,7 +127,7 @@ public class TableTests {
 
    @Test
    void testLinkUnlinkGenerators() {
-      Table table = Table.createTable();
+      Table table = Table.newTable();
       assertThat(table.getAllGeneratorIds().asList()).isEmpty();
 
       table = table.withGenerator("alpha");
@@ -90,10 +148,10 @@ public class TableTests {
 
    @Test
    void testToFromJson() {
-      Table table = Table.createTable();
+      Table table = Table.newTable();
       table.setTaskStore(taskStore);
 
-      Generator generator = Generator.createGenerator(table, "", getDatePattern(7));
+      Generator generator = Generator.newGenerator(table, "", getDatePattern(7));
       taskStore.getGenerators().save(generator).get();
       String generatorId = generator.getId();
 
@@ -119,15 +177,17 @@ public class TableTests {
 
       assertThat(newTable.getAllTaskIds().asList()).isEqualTo(List.of("alpha", "beta"));
       assertThat(newTable.getAllGeneratorIds().asList()).isEqualTo(List.of(generatorId));
+      assertThat(newTable.getSchema().isEmpty()).isTrue();
    }
 
    @Test
    void testToFromJsonNoTasks() {
-      Table table = Table.createTable();
+      Table table = Table.newTable();
       JSONObject json = table.toJson();
       Table newTable = Table.fromJson(json);
 
       assertThat(newTable.getAllTaskIds().asList()).isEmpty();
       assertThat(newTable.getAllGeneratorIds().asList()).isEmpty();
+      assertThat(newTable.getSchema().isEmpty()).isTrue();
    }
 }

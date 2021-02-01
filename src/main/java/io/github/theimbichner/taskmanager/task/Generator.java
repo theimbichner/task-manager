@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
+import io.vavr.control.Option;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -14,7 +15,9 @@ import org.json.JSONObject;
 import io.github.theimbichner.taskmanager.collection.SetList;
 import io.github.theimbichner.taskmanager.io.Storable;
 import io.github.theimbichner.taskmanager.io.TaskStore;
+import io.github.theimbichner.taskmanager.task.property.Property;
 import io.github.theimbichner.taskmanager.task.property.PropertyMap;
+import io.github.theimbichner.taskmanager.task.property.Schema;
 import io.github.theimbichner.taskmanager.time.DateTime;
 import io.github.theimbichner.taskmanager.time.DatePattern;
 import io.github.theimbichner.taskmanager.time.ModifyRecord;
@@ -30,7 +33,7 @@ public class Generator implements Storable {
       private PropertyMap templateProperties;
       private long templateDuration;
       private Instant generationLastTimestamp;
-      private final String generationField;
+      private String generationField;
       private final DatePattern generationDatePattern;
       private SetList<String> taskIds;
 
@@ -183,6 +186,27 @@ public class Generator implements Storable {
       return new Generator(result);
    }
 
+   Generator adjustToSchema(Schema schemaDelta) {
+      if (schemaDelta.isEmpty()) {
+         return this;
+      }
+
+      Builder result = new Builder(this);
+
+      Option<String> newName = schemaDelta.findNewNameOf(generationField);
+      PropertyMap propertyDelta = schemaDelta.asPropertiesDelta(templateProperties);
+
+      if (newName.isEmpty() && propertyDelta.asMap().containsKey(generationField)) {
+         throw new IllegalArgumentException("Schema change would wipe out generation field");
+      }
+
+      result.generationField = newName.getOrElse(generationField);
+      result.templateProperties = templateProperties.merge(propertyDelta);
+      result.modifyRecord = modifyRecord.updatedNow();
+
+      return new Generator(result);
+   }
+
    // TODO update modification timestamp here?
    Tuple2<Generator, List<String>> withoutTasksBefore(String taskId) {
       if (!taskIds.contains(taskId)) {
@@ -226,9 +250,10 @@ public class Generator implements Storable {
       return taskStore;
    }
 
-   public static Generator createGenerator(Table table, String field, DatePattern pattern) {
+   static Generator newGenerator(Table table, String field, DatePattern pattern) {
       Builder result = new Builder(UUID.randomUUID().toString(), table.getId(), field, pattern);
-      result.templateProperties = table.getDefaultProperties();
+      result.templateProperties = table.getSchema().getDefaultProperties();
+      result.templateProperties = result.templateProperties.put(field, Property.empty());
       result.taskStore = table.getTaskStore();
 
       return new Generator(result);

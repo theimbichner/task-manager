@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.time.Duration;
 import java.util.Comparator;
+import java.util.UUID;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
@@ -18,6 +19,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import io.github.theimbichner.taskmanager.task.Generator;
+import io.github.theimbichner.taskmanager.task.Orchestration;
 import io.github.theimbichner.taskmanager.task.Table;
 import io.github.theimbichner.taskmanager.task.Task;
 import io.github.theimbichner.taskmanager.time.DatePattern;
@@ -67,17 +69,17 @@ public class TaskStoreTests {
 
    // TODO actually modify the task/table/generators
    static Stream<Arguments> provideTaskGeneratorTable() {
-      Table table = Table.createTable();
+      Table table = Orchestration.createTable(taskStore).get();
       Table overwriteTable = Table.fromJson(table.toJson());
 
-      Task task = Task.createTask(table);
+      Task task = Orchestration.createTask(table).get();
       Task overwriteTask = Task.fromJson(task.toJson());
 
       String field = "";
       DatePattern datePattern = new UniformDatePattern(
          Instant.ofEpochSecond(0),
          Duration.ofSeconds(100));
-      Generator generator = Generator.createGenerator(table, field, datePattern);
+      Generator generator = Orchestration.createGenerator(table, field, datePattern).get();
       Generator overwriteGenerator = Generator.fromJson(generator.toJson());
 
       return Stream.of(
@@ -86,21 +88,24 @@ public class TaskStoreTests {
             overwriteTask,
             taskStore.getTasks(),
             TASK_COMPARE,
-            (Supplier<Task>) () -> Task.createTask(table),
+            (Supplier<Task>) () -> Orchestration.createTask(table).get(),
             TaskStore.MAXIMUM_TASKS_CACHED),
          Arguments.of(
             generator,
             overwriteGenerator,
             taskStore.getGenerators(),
             GENERATOR_COMPARE,
-            (Supplier<Generator>) () -> Generator.createGenerator(table, field, datePattern),
+            (Supplier<Generator>) () -> Orchestration.createGenerator(
+               table,
+               field,
+               datePattern).get(),
             TaskStore.MAXIMUM_GENERATORS_CACHED),
          Arguments.of(
             table,
             overwriteTable,
             taskStore.getTables(),
             TABLE_COMPARE,
-            (Supplier<Table>) Table::createTable,
+            (Supplier<Table>) () -> Orchestration.createTable(taskStore).get(),
             TaskStore.MAXIMUM_TABLES_CACHED));
    }
 
@@ -185,7 +190,7 @@ public class TaskStoreTests {
       DataStore<T> dataStore,
       Comparator<T> comparator
    ) {
-      assertThat(dataStore.getById(t.getId()).getLeft())
+      assertThat(dataStore.getById(UUID.randomUUID().toString()).getLeft())
          .isInstanceOf(TaskAccessException.class);
    }
 
