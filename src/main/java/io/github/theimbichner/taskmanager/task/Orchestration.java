@@ -109,10 +109,20 @@ public class Orchestration {
          });
    }
 
-   private static Either<TaskAccessException, Task> modifyTask(Task task, TaskDelta delta) {
+   /* TODO should the call to unlinkGenerator on earlier tasks in the series
+    * cause the modification timestamp to update on those tasks?
+    */
+   public static Either<TaskAccessException, Task> modifySeries(Task task, GeneratorDelta delta) {
       TaskStore taskStore = task.getTaskStore();
-      return task.withModification(delta)
-         .flatMap(t -> taskStore.getTasks().save(t));
+
+      return task.getGenerator()
+         .map(g -> g.getOrElse(() -> {
+            String msg = "Cannot modify series on non series task";
+            throw new IllegalStateException(msg);
+         }))
+         .flatMap(g -> removeTasksFromGeneratorBefore(g, task.getId()))
+         .flatMap(g -> modifyGenerator(g, delta))
+         .flatMap(g -> taskStore.getTasks().getById(task.getId()));
    }
 
    public static Either<TaskAccessException, Task> modifyAndSeverTask(Task task, TaskDelta delta) {
@@ -136,20 +146,10 @@ public class Orchestration {
          .flatMap(taskStore.getTasks()::save);
    }
 
-   /* TODO should the call to unlinkGenerator on earlier tasks in the series
-    * cause the modification timestamp to update on those tasks?
-    */
-   public static Either<TaskAccessException, Task> modifySeries(Task task, GeneratorDelta delta) {
+   private static Either<TaskAccessException, Task> modifyTask(Task task, TaskDelta delta) {
       TaskStore taskStore = task.getTaskStore();
-
-      return task.getGenerator()
-         .map(g -> g.getOrElse(() -> {
-            String msg = "Cannot modify series on non series task";
-            throw new IllegalStateException(msg);
-         }))
-         .flatMap(g -> removeTasksFromGeneratorBefore(g, task.getId()))
-         .flatMap(g -> modifyGenerator(g, delta))
-         .flatMap(g -> taskStore.getTasks().getById(task.getId()));
+      return task.withModification(delta)
+         .flatMap(t -> taskStore.getTasks().save(t));
    }
 
    private static Either<TaskAccessException, Generator> removeTasksFromGeneratorBefore(
@@ -179,6 +179,7 @@ public class Orchestration {
       Instant timestamp
    ) {
       TaskStore taskStore = generator.getTaskStore();
+      // TODO why is this named split
       Tuple2<Generator, List<Task>> split = generator.withTasksUntil(timestamp);
 
       return taskStore.getGenerators()

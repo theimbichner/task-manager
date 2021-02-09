@@ -16,7 +16,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import io.github.theimbichner.taskmanager.collection.SetList;
-import io.github.theimbichner.taskmanager.io.TaskStore;
 import io.github.theimbichner.taskmanager.task.property.Property;
 import io.github.theimbichner.taskmanager.task.property.PropertyMap;
 import io.github.theimbichner.taskmanager.task.property.Schema;
@@ -71,126 +70,6 @@ public class OrchestrationTests {
 
    private static DatePattern getDatePattern(int step) {
       return new UniformDatePattern(Instant.now().plusSeconds(1), Duration.ofSeconds(step));
-   }
-
-   @Test
-   void testCreateTable() {
-      Instant before = Instant.now();
-      Table table = Orchestration.createTable(data.getTaskStore()).get();
-      Instant after = Instant.now();
-
-      assertThat(table.getName()).isEqualTo("");
-
-      assertThat(table.getDateCreated().getStart())
-         .isAfterOrEqualTo(before)
-         .isBeforeOrEqualTo(after)
-         .isEqualTo(table.getDateCreated().getEnd());
-      assertThat(table.getDateLastModified().getStart())
-         .isEqualTo(table.getDateCreated().getStart())
-         .isEqualTo(table.getDateLastModified().getEnd());
-
-      assertThat(table.getSchema().isEmpty()).isTrue();
-
-      assertThat(table.getTaskStore()).isSameAs(data.getTaskStore());
-
-      Table savedTable = data.getTaskStore().getTables().getById(table.getId()).get();
-      assertThat(savedTable).usingComparator(TABLE_COMPARE).isEqualTo(table);
-   }
-
-   @Test
-   void testCreateTask() {
-      Table table = Orchestration.createTable(data.getTaskStore()).get();
-
-      Instant before = Instant.now();
-      Task task = Orchestration.createTask(table).get();
-      Instant after = Instant.now();
-
-      assertThat(task.getName()).isEqualTo("");
-
-      assertThat(task.getDateCreated().getStart())
-         .isAfterOrEqualTo(before)
-         .isBeforeOrEqualTo(after)
-         .isEqualTo(task.getDateCreated().getEnd());
-      assertThat(task.getDateLastModified().getStart())
-         .isEqualTo(task.getDateCreated().getStart())
-         .isEqualTo(task.getDateLastModified().getEnd());
-
-      assertThat(task.getMarkup()).isEqualTo("");
-      assertThat(task.getGeneratorId()).isNull();
-      assertThat(task.getProperties().asMap()).isEmpty();
-
-      Task savedTask = data.getTaskStore().getTasks().getById(task.getId()).get();
-      assertThat(savedTask).usingComparator(TASK_COMPARE).isEqualTo(task);
-
-      Table savedTable = data.getTaskStore().getTables().getById(table.getId()).get();
-      assertThat(savedTable.getAllTaskIds().asList()).contains(task.getId());
-   }
-
-   @Test
-   void testCreateGenerator() {
-      Table table = Orchestration.createTable(data.getTaskStore()).get();
-
-      String field = data.getGenerationField();
-      DatePattern pattern = data.getGenerationDatePattern();
-
-      Instant before = Instant.now();
-      Generator generator = Orchestration.createGenerator(table, field, pattern).get();
-      Instant after = Instant.now();
-
-      assertThat(generator.getName()).isEqualTo("");
-      assertThat(generator.getTemplateName()).isEqualTo("");
-      assertThat(generator.getTemplateMarkup()).isEqualTo("");
-      assertThat(generator.getTemplateDuration()).isEqualTo(0);
-      assertThat(generator.getTemplateTableId()).isEqualTo(table.getId());
-      assertThat(generator.getTemplateProperties().asMap()).isEqualTo(generationFieldMap.asMap());
-      assertThat(generator.getGenerationField()).isEqualTo(field);
-      assertThat(generator.getTaskIds().asList()).isEmpty();
-
-      assertThat(generator.getDateCreated().getStart())
-         .isAfterOrEqualTo(before)
-         .isBeforeOrEqualTo(after)
-         .isEqualTo(generator.getDateCreated().getStart());
-      assertThat(generator.getDateLastModified().getStart())
-         .isEqualTo(generator.getDateCreated().getStart())
-         .isEqualTo(generator.getDateLastModified().getEnd());
-
-      assertThat(generator.getGenerationDatePattern()).isEqualTo(pattern);
-
-      Generator savedGenerator = data.getTaskStore().getGenerators()
-         .getById(generator.getId())
-         .get();
-      assertThat(savedGenerator).usingComparator(GENERATOR_COMPARE).isEqualTo(generator);
-
-      Table savedTable = data.getTaskStore().getTables().getById(table.getId()).get();
-      assertThat(savedTable.getAllGeneratorIds().asList()).contains(generator.getId());
-   }
-
-   @Test
-   void testGetTasksFromTable() {
-      TaskStore taskStore = data.getTaskStore();
-
-      Table table = Orchestration.createTable(taskStore).get();
-
-      Instant start = Instant.now();
-      Instant end = start.plusSeconds(600);
-      String field = data.getGenerationField();
-
-      int numTasks = 0;
-      List<DatePattern> datePatterns = List.of(getDatePattern(7), getDatePattern(13));
-      for (DatePattern pattern : datePatterns) {
-         Orchestration.createGenerator(table, field, pattern).get();
-         table = taskStore.getTables().getById(table.getId()).get();
-
-         numTasks += pattern.getDates(start, end).size();
-      }
-
-      assertThat(Orchestration.getTasksFromTable(table, start).get().asList()).isEmpty();
-      table = taskStore.getTables().getById(table.getId()).get();
-
-      assertThat(Orchestration.getTasksFromTable(table, end).get().asList()).hasSize(numTasks);
-      table = taskStore.getTables().getById(table.getId()).get();
-
-      assertThat(Orchestration.getTasksFromTable(table, start).get().asList()).hasSize(numTasks);
    }
 
    @Test
@@ -532,7 +411,6 @@ public class OrchestrationTests {
    }
 
    // TODO add tests where generateTasks timestamp lies exactly on timestamp returned by getDates
-   // TODO add test where the same timestamp is used twice in a row
    /*
    @Test
    void testRunGenerator() {
