@@ -410,52 +410,6 @@ public class OrchestrationTests {
       }
    }
 
-   // TODO add tests where generateTasks timestamp lies exactly on timestamp returned by getDates
-   /*
-   @Test
-   void testRunGenerator() {
-      Generator generator = data.createDefaultGenerator();
-      DatePattern datePattern = data.getGenerationDatePattern();
-      String generationField = data.getGenerationField();
-      Instant start = generator.getDateCreated().getStart();
-      Instant firstInstant = Instant.now().plusSeconds(100);
-      Instant secondInstant = Instant.now().plusSeconds(350);
-
-      List<Instant> dates = datePattern.getDates(start, firstInstant);
-      List<String> firstResult = Orchestration.runGenerator(generator, firstInstant).get();
-      generator = data.getTaskStore().getGenerators().getById(generator.getId()).get();
-      assertThat(firstResult).hasSameSizeAs(dates);
-      for (String s : firstResult) {
-         Task task = data.getTaskStore().getTasks().getById(s).get();
-         Property dateProperty = task.getProperties().asMap().get(generationField).get();
-         Instant date = ((DateTime) dateProperty.get()).getStart();
-         assertThat(task.getGeneratorId()).isEqualTo(generator.getId());
-         assertThat(dates).contains(date);
-      }
-      assertThat(generator.getTaskIds().asList()).containsAll(firstResult);
-
-      dates = datePattern.getDates(firstInstant, secondInstant);
-      List<String> secondResult = Orchestration.runGenerator(generator, secondInstant).get();
-      generator = data.getTaskStore().getGenerators().getById(generator.getId()).get();
-      assertThat(secondResult).hasSameSizeAs(dates);
-      for (String s : secondResult) {
-         Task task = data.getTaskStore().getTasks().getById(s).get();
-         Property dateProperty = task.getProperties().asMap().get(generationField).get();
-         Instant date = ((DateTime) dateProperty.get()).getStart();
-         assertThat(task.getGeneratorId()).isEqualTo(generator.getId());
-         assertThat(dates).contains(date);
-      }
-      assertThat(generator.getTaskIds().asList()).containsAll(firstResult);
-      assertThat(generator.getTaskIds().asList()).containsAll(secondResult);
-
-      List<String> prevTasks = generator.getTaskIds().asList();
-      List<String> thirdResult = Orchestration.runGenerator(generator, firstInstant).get();
-      generator = data.getTaskStore().getGenerators().getById(generator.getId()).get();
-      assertThat(thirdResult).isEmpty();
-      assertThat(generator.getTaskIds().asList()).isEqualTo(prevTasks);
-   }
-   */
-
    // TODO test that modifySeries returned value is the same as saved value
    @ParameterizedTest
    @MethodSource("provideGenerators")
