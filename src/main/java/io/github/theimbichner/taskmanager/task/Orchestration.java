@@ -15,6 +15,8 @@ import io.github.theimbichner.taskmanager.time.DatePattern;
 
 // TODO verify that orchestration correctly saves updates in every method
 
+// TODO don't save items when unnecessary
+
 public class Orchestration {
    private Orchestration() {}
 
