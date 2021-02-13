@@ -128,6 +128,7 @@ public class Orchestration {
    }
 
    public static Either<TaskAccessException, Task> modifyAndSeverTask(Task task, TaskDelta delta) {
+      // TODO should the task still sever if the delta is empty?
       if (delta.isEmpty()) {
          return Either.right(task);
       }
