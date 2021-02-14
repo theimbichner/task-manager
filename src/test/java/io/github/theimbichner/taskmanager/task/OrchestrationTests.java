@@ -2,20 +2,16 @@ package io.github.theimbichner.taskmanager.task;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Comparator;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Stream;
+import java.util.stream.Collectors;
 
-import io.vavr.collection.HashMap;
-import io.vavr.collection.HashSet;
-
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
 
 import io.github.theimbichner.taskmanager.collection.SetList;
+import io.github.theimbichner.taskmanager.io.InMemoryDataStore;
 import io.github.theimbichner.taskmanager.io.TaskStore;
 import io.github.theimbichner.taskmanager.task.property.Property;
 import io.github.theimbichner.taskmanager.task.property.PropertyMap;
@@ -29,594 +25,729 @@ import static org.assertj.core.api.Assertions.*;
 import static org.assertj.vavr.api.VavrAssertions.*;
 
 public class OrchestrationTests {
-   static final Comparator<Task> TASK_COMPARE = (x, y) -> {
-      return x.toJson().similar(y.toJson()) ? 0 : 1;
-   };
-   static final Comparator<Generator> GENERATOR_COMPARE = (x, y) -> {
-      return x.toJson().similar(y.toJson()) ? 0 : 1;
-   };
-   static final Comparator<Table> TABLE_COMPARE = (x, y) -> {
-      return x.toJson().similar(y.toJson()) ? 0 : 1;
-   };
+   private TaskStore taskStore;
 
-   static DataProvider data;
-   static PropertyMap generationFieldMap;
+   private String dataTableId;
+   private String dataTaskId;
+   private String dataGeneratorId;
+   private SetList<String> generatedTaskIds;
+   private SetList<String> allTaskIds;
+   private String priorTaskId;
+   private String middleTaskId;
+   private String subsequentTaskId;
 
-   @BeforeAll
-   static void beforeAll() {
-      data = new DataProvider();
-      generationFieldMap = PropertyMap.empty()
-         .put(data.getGenerationField(), Property.empty());
-   }
+   private Instant patternStart;
+   private Duration patternStep;
+   private DatePattern pattern;
 
-   private static Stream<Task> provideTasks() {
-      return Stream.of(
-         data.createDefaultTask(),
-         data.createModifiedTask(),
-         data.createDefaultTaskWithGenerator(),
-         data.createModifiedTaskWithGenerator());
-   }
+   private Instant lastGenerationTimestamp;
 
-   private static Stream<Task> provideGeneratorTasks() {
-      return Stream.of(
-         data.createDefaultTaskWithGenerator(),
-         data.createModifiedTaskWithGenerator());
-   }
+   private TableDelta tableDelta;
+   private TaskDelta taskDelta;
+   private GeneratorDelta generatorDelta;
 
-   private static Stream<Generator> provideGenerators() {
-      return Stream.of(
-         data.createDefaultGenerator(),
-         data.createModifiedGenerator());
-   }
+   @BeforeEach
+   void beforeEach() {
+      taskStore = InMemoryDataStore.createTaskStore();
 
-   private static DatePattern getDatePattern(int step) {
-      return new UniformDatePattern(Instant.now().plusSeconds(1), Duration.ofSeconds(step));
+      patternStart = LocalDate.now(ZoneOffset.UTC)
+         .plusDays(2)
+         .atStartOfDay(ZoneOffset.UTC)
+         .toInstant();
+      patternStep = Duration.parse("PT17M36.5S");
+      pattern = new UniformDatePattern(patternStart, patternStep);
+
+      Table table = Orchestration.createTable(taskStore).get();
+      dataTableId = table.getId();
+
+      TableDelta dataTableDelta = new TableDelta(
+         Schema.empty()
+            .withColumn("alpha", TypeDescriptor.fromTypeName("DateTime"))
+            .withColumn("beta", TypeDescriptor.fromTypeName("String")),
+         null);
+      Orchestration.modifyTable(table, dataTableDelta);
+      table = taskStore.getTables().getById(dataTableId).get();
+
+      Task task = Orchestration.createTask(table).get();
+      dataTaskId = task.getId();
+      table = taskStore.getTables().getById(dataTableId).get();
+
+      Generator generator = Orchestration.createGenerator(
+         table,
+         "alpha",
+         pattern).get();
+      dataGeneratorId = generator.getId();
+      table = taskStore.getTables().getById(dataTableId).get();
+
+      lastGenerationTimestamp = patternStart.plus(Duration.parse("PT45M"));
+      allTaskIds = Orchestration.getTasksFromTable(
+         table,
+         lastGenerationTimestamp).get();
+      generatedTaskIds = allTaskIds.remove(dataTaskId);
+
+      priorTaskId = getGeneratedTaskId(patternStart);
+      middleTaskId = getGeneratedTaskId(patternStart.plus(patternStep));
+      subsequentTaskId = getGeneratedTaskId(
+         patternStart.plus(patternStep.multipliedBy(2)));
+
+      tableDelta = new TableDelta(
+         Schema.empty().withoutColumn("beta"),
+         null);
+      taskDelta = new TaskDelta(
+         PropertyMap.empty().put("beta", Property.DELETE),
+         null,
+         null,
+         null);
+      generatorDelta = new GeneratorDelta(
+         PropertyMap.empty().put("beta", Property.DELETE),
+         null,
+         null,
+         null,
+         null);
    }
 
    @Test
    void testCreateTable() {
-      Instant before = Instant.now();
-      Table table = Orchestration.createTable(data.getTaskStore()).get();
-      Instant after = Instant.now();
+      Table table = Orchestration.createTable(taskStore).get();
 
-      assertThat(table.getName()).isEqualTo("");
+      assertThat(table)
+         .usingComparator(TestComparators::compareTablesIgnoringId)
+         .isEqualTo(Table.newTable());
+   }
 
-      assertThat(table.getDateCreated().getStart())
-         .isAfterOrEqualTo(before)
-         .isBeforeOrEqualTo(after)
-         .isEqualTo(table.getDateCreated().getEnd());
-      assertThat(table.getDateLastModified().getStart())
-         .isEqualTo(table.getDateCreated().getStart())
-         .isEqualTo(table.getDateLastModified().getEnd());
+   @Test
+   void testCreateTableIsSaved() {
+      Table table = Orchestration.createTable(taskStore).get();
+      Table savedTable = taskStore.getTables().getById(table.getId()).get();
 
-      assertThat(table.getSchema().isEmpty()).isTrue();
+      assertThat(table)
+         .usingComparator(TestComparators::compareTables)
+         .isEqualTo(savedTable);
+   }
 
-      assertThat(table.getTaskStore()).isSameAs(data.getTaskStore());
+   @Test
+   void testModifyEmptyTable() {
+      Table table = Orchestration.createTable(taskStore).get();
+      TableDelta delta = new TableDelta(
+         Schema.empty()
+            .withColumn("alpha", TypeDescriptor.fromTypeName("DateTime"))
+            .withColumn("beta", TypeDescriptor.fromTypeName("String")),
+         "Renamed table");
 
-      Table savedTable = data.getTaskStore().getTables().getById(table.getId()).get();
-      assertThat(savedTable).usingComparator(TABLE_COMPARE).isEqualTo(table);
+      Table modifiedTable = Orchestration.modifyTable(table, delta).get();
+
+      assertThat(modifiedTable)
+         .usingComparator(TestComparators::compareTablesIgnoringId)
+         .isEqualTo(table.withModification(delta));
+   }
+
+   @Test
+   void testModifyEmptyTableIsSaved() {
+      Table table = Orchestration.createTable(taskStore).get();
+      TableDelta delta = new TableDelta(
+         Schema.empty()
+            .withColumn("alpha", TypeDescriptor.fromTypeName("DateTime"))
+            .withColumn("beta", TypeDescriptor.fromTypeName("String")),
+         "Renamed table");
+
+      table = Orchestration.modifyTable(table, delta).get();
+
+      Table savedTable = taskStore.getTables().getById(table.getId()).get();
+      assertThat(table)
+         .usingComparator(TestComparators::compareTables)
+         .isEqualTo(savedTable);
    }
 
    @Test
    void testCreateTask() {
-      Table table = Orchestration.createTable(data.getTaskStore()).get();
+      Table table = taskStore.getTables().getById(dataTableId).get();
 
-      Instant before = Instant.now();
       Task task = Orchestration.createTask(table).get();
-      Instant after = Instant.now();
+      assertThat(task)
+         .usingComparator(TestComparators::compareTasksIgnoringId)
+         .isEqualTo(Task.newTask(table));
+   }
 
-      assertThat(task.getName()).isEqualTo("");
+   @Test
+   void testCreateTaskResultIsSaved() {
+      Table table = taskStore.getTables().getById(dataTableId).get();
 
-      assertThat(task.getDateCreated().getStart())
-         .isAfterOrEqualTo(before)
-         .isBeforeOrEqualTo(after)
-         .isEqualTo(task.getDateCreated().getEnd());
-      assertThat(task.getDateLastModified().getStart())
-         .isEqualTo(task.getDateCreated().getStart())
-         .isEqualTo(task.getDateLastModified().getEnd());
+      Task task = Orchestration.createTask(table).get();
+      Task savedTask = taskStore.getTasks().getById(task.getId()).get();
 
-      assertThat(task.getMarkup()).isEqualTo("");
-      assertThat(task.getGeneratorId()).isNull();
-      assertThat(task.getProperties().asMap()).isEmpty();
+      assertThat(task)
+         .usingComparator(TestComparators::compareTasks)
+         .isEqualTo(savedTask);
+   }
 
-      Task savedTask = data.getTaskStore().getTasks().getById(task.getId()).get();
-      assertThat(savedTask).usingComparator(TASK_COMPARE).isEqualTo(task);
+   @Test
+   void testCreateTaskTableIsSaved() {
+      Table table = taskStore.getTables().getById(dataTableId).get();
 
-      Table savedTable = data.getTaskStore().getTables().getById(table.getId()).get();
+      Task task = Orchestration.createTask(table).get();
+
+      Table savedTable = taskStore.getTables().getById(table.getId()).get();
       assertThat(savedTable.getAllTaskIds().asList()).contains(task.getId());
    }
 
    @Test
    void testCreateGenerator() {
-      Table table = Orchestration.createTable(data.getTaskStore()).get();
+      Table table = taskStore.getTables().getById(dataTableId).get();
 
-      String field = data.getGenerationField();
-      DatePattern pattern = data.getGenerationDatePattern();
-
-      Instant before = Instant.now();
-      Generator generator = Orchestration.createGenerator(table, field, pattern).get();
-      Instant after = Instant.now();
-
-      assertThat(generator.getName()).isEqualTo("");
-      assertThat(generator.getTemplateName()).isEqualTo("");
-      assertThat(generator.getTemplateMarkup()).isEqualTo("");
-      assertThat(generator.getTemplateDuration()).isEqualTo(0);
-      assertThat(generator.getTemplateTableId()).isEqualTo(table.getId());
-      assertThat(generator.getTemplateProperties().asMap()).isEqualTo(generationFieldMap.asMap());
-      assertThat(generator.getGenerationField()).isEqualTo(field);
-      assertThat(generator.getTaskIds().asList()).isEmpty();
-
-      assertThat(generator.getDateCreated().getStart())
-         .isAfterOrEqualTo(before)
-         .isBeforeOrEqualTo(after)
-         .isEqualTo(generator.getDateCreated().getStart());
-      assertThat(generator.getDateLastModified().getStart())
-         .isEqualTo(generator.getDateCreated().getStart())
-         .isEqualTo(generator.getDateLastModified().getEnd());
-
-      assertThat(generator.getGenerationDatePattern()).isEqualTo(pattern);
-
-      Generator savedGenerator = data.getTaskStore().getGenerators()
-         .getById(generator.getId())
-         .get();
-      assertThat(savedGenerator).usingComparator(GENERATOR_COMPARE).isEqualTo(generator);
-
-      Table savedTable = data.getTaskStore().getTables().getById(table.getId()).get();
-      assertThat(savedTable.getAllGeneratorIds().asList()).contains(generator.getId());
+      Generator generator = Orchestration.createGenerator(
+         table,
+         "alpha",
+         pattern).get();
+      assertThat(generator)
+         .usingComparator(TestComparators::compareGeneratorsIgnoringId)
+         .isEqualTo(Generator.newGenerator(table, "alpha", pattern));
    }
 
    @Test
-   void testGetTasksFromTable() {
-      TaskStore taskStore = data.getTaskStore();
+   void testCreateGeneratorResultIsSaved() {
+      Table table = taskStore.getTables().getById(dataTableId).get();
 
-      Table table = Orchestration.createTable(taskStore).get();
+      Generator generator = Orchestration.createGenerator(
+         table,
+         "alpha",
+         pattern).get();
+      Generator savedGenerator = taskStore
+         .getGenerators()
+         .getById(generator.getId())
+         .get();
+      assertThat(generator)
+         .usingComparator(TestComparators::compareGenerators)
+         .isEqualTo(savedGenerator);
+   }
 
-      Instant start = Instant.now();
-      Instant end = start.plusSeconds(600);
-      String field = data.getGenerationField();
+   @Test
+   void testCreateGeneratorTableIsSaved() {
+      Table table = taskStore.getTables().getById(dataTableId).get();
 
-      int numTasks = 0;
-      List<DatePattern> datePatterns = List.of(getDatePattern(7), getDatePattern(13));
-      for (DatePattern pattern : datePatterns) {
-         Orchestration.createGenerator(table, field, pattern).get();
-         table = taskStore.getTables().getById(table.getId()).get();
+      Generator generator = Orchestration.createGenerator(
+         table,
+         "alpha",
+         pattern).get();
 
-         numTasks += pattern.getDates(start, end).size();
+      Table savedTable = taskStore.getTables().getById(table.getId()).get();
+      assertThat(savedTable.getAllGeneratorIds().asList())
+         .contains(generator.getId());
+   }
+
+   @Test
+   void testGetTasksFromTableTimestamps() {
+      List<Instant> actualStartTimes = generatedTaskIds
+         .asList()
+         .stream()
+         .map(id -> taskStore.getTasks().getById(id).get())
+         .map(task -> task.getProperties().asMap().get("alpha").get())
+         .map(property -> ((DateTime) property.get()).getStart())
+         .collect(Collectors.toList());
+      List<Instant> expectedStartTimes = List.of(
+         patternStart,
+         patternStart.plus(patternStep),
+         patternStart.plus(patternStep.multipliedBy(2)));
+
+      assertThat(actualStartTimes)
+         .containsExactlyInAnyOrderElementsOf(expectedStartTimes);
+   }
+
+   @Test
+   void testGetTasksFromTableTasksAreSaved() {
+      Generator generator = taskStore
+         .getGenerators()
+         .getById(dataGeneratorId)
+         .get();
+
+      for (String id : generatedTaskIds.asList()) {
+         Task task = taskStore.getTasks().getById(id).get();
+         Property timestamp = task.getProperties().asMap().get("alpha").get();
+         Instant start = ((DateTime) timestamp.get()).getStart();
+
+         Task expectedTask = Task.newSeriesTask(generator, start);
+         assertThat(task)
+            .usingComparator(TestComparators::compareTasksIgnoringId)
+            .isEqualTo(expectedTask);
       }
+   }
 
-      assertThat(Orchestration.getTasksFromTable(table, start).get().asList()).isEmpty();
-      table = taskStore.getTables().getById(table.getId()).get();
+   @Test
+   void testGetTasksFromTableGeneratorIsSaved() {
+      Generator savedGenerator = taskStore
+         .getGenerators()
+         .getById(dataGeneratorId)
+         .get();
+      assertThat(savedGenerator.getTaskIds().asList())
+         .containsExactlyInAnyOrderElementsOf(generatedTaskIds.asList());
+   }
 
-      assertThat(Orchestration.getTasksFromTable(table, end).get().asList()).hasSize(numTasks);
-      table = taskStore.getTables().getById(table.getId()).get();
+   @Test
+   void testGetTasksFromTableGeneratorTimestampIsSaved() {
+      Table table = taskStore.getTables().getById(dataTableId).get();
+      SetList<String> result = Orchestration.getTasksFromTable(
+         table,
+         lastGenerationTimestamp).get();
 
-      assertThat(Orchestration.getTasksFromTable(table, start).get().asList()).hasSize(numTasks);
+      assertThat(result.asList())
+         .containsExactlyInAnyOrderElementsOf(allTaskIds.asList());
+   }
+
+   @Test
+   void testGetTasksFromTableTableIsSaved() {
+      Table savedTable = taskStore.getTables().getById(dataTableId).get();
+      assertThat(savedTable.getAllTaskIds().asList())
+         .containsExactlyInAnyOrderElementsOf(allTaskIds.asList());
    }
 
    @Test
    void testModifyTable() {
-      DateTime dateTime = new DateTime();
+      Table table = taskStore.getTables().getById(dataTableId).get();
 
-      Table table = Orchestration.createTable(data.getTaskStore()).get();
+      Table result = Orchestration.modifyTable(table, tableDelta).get();
 
-      Schema baseSchema = Schema.empty()
-         .withColumn("alpha", TypeDescriptor.fromTypeName("String"))
-         .withColumn("beta", TypeDescriptor.fromTypeName("DateTime"))
-         .withColumn("gamma", TypeDescriptor.fromTypeName("Boolean"));
-      table = table.withModification(new TableDelta(baseSchema, null));
-      data.getTaskStore().getTables().save(table).get();
-
-      Task task = Orchestration.createTask(table).get();
-      PropertyMap taskProperties = PropertyMap.fromJava(Map.of(
-         "beta", Property.of(dateTime)));
-      // TODO use Orchestration to modify task
-      task = task.withModification(new TaskDelta(taskProperties, null, null, null)).get();
-      data.getTaskStore().getTasks().save(task).get();
-      table = data.getTaskStore().getTables().getById(table.getId()).get();
-
-      Generator generator = Orchestration.createGenerator(table, "beta", getDatePattern(4)).get();
-      PropertyMap generatorProperties = PropertyMap.fromJava(Map.of(
-         "alpha", Property.of("abcde"),
-         "gamma", Property.of(true)));
-      // TODO use Orchestration to modify generator
-      generator = generator.withModification(new GeneratorDelta(
-         generatorProperties,
-         null,
-         null,
-         null,
-         data.getDuration()));
-      data.getTaskStore().getGenerators().save(generator).get();
-      table = data.getTaskStore().getTables().getById(table.getId()).get();
-
-      Orchestration.getTasksFromTable(table, Instant.now().plusSeconds(600)).get();
-
-      Schema deltaSchema = Schema.empty()
-         .withColumn("delta", TypeDescriptor.fromTypeName("EnumList"))
-         .withoutColumn("alpha")
-         .withColumnRenamed("beta", "epsilon");
-      Instant before = Instant.now();
-      Orchestration.modifyTable(table, new TableDelta(deltaSchema, "new name"));
-      table = data.getTaskStore().getTables().getById(table.getId()).get();
-
-      assertThat(table.getDateLastModified().getStart()).isAfterOrEqualTo(before);
-      assertThat(table.getName()).isEqualTo("new name");
-      assertThat(table.getSchema().asMap().mapValues(x -> x.getTypeName())).isEqualTo(HashMap.of(
-         "gamma", "Boolean",
-         "delta", "EnumList",
-         "epsilon", "DateTime"));
-
-      task = data.getTaskStore().getTasks().getById(task.getId()).get();
-      assertThat(task.getProperties().asMap()).isEqualTo(HashMap.of(
-         "gamma", Property.of(false),
-         "delta", Property.of(SetList.empty()),
-         "epsilon", Property.of(dateTime)));
-
-      generator = data.getTaskStore().getGenerators().getById(generator.getId()).get();
-      assertThat(generator.getTemplateProperties().asMap()).isEqualTo(HashMap.of(
-         "gamma", Property.of(true),
-         "delta", Property.of(SetList.empty()),
-         "epsilon", Property.empty()));
-      assertThat(generator.getGenerationField()).isEqualTo("epsilon");
-
-      for (String s : table.getAllTaskIds().asList()) {
-         if (s.equals(task.getId())) {
-            continue;
-         }
-
-         Task generatorTask = data.getTaskStore().getTasks().getById(s).get();
-         Property generationProperty = generatorTask.getProperties().asMap().get("epsilon").get();
-         assertThat(generatorTask.getProperties().asMap()).isEqualTo(HashMap.of(
-            "gamma", Property.of(true),
-            "delta", Property.of(SetList.empty()),
-            "epsilon", generationProperty));
-
-         DateTime generationDateTime = (DateTime) generationProperty.get();
-         assertThat(generationDateTime.getEnd())
-            .isEqualTo(generationDateTime.getStart().plusSeconds(data.getDuration()));
-      }
-   }
-
-   /*
-   @ParameterizedTest
-   @MethodSource("provideTasks")
-   void testModifyTask(Task task) {
-      Instant beforeModify = Instant.now();
-      Orchestration.modifyTask(task, data.getTaskDelta()).get();
-      task = data.getTaskStore().getTasks().getById(task.getId()).get();
-
-      assertThat(task.getDateLastModified().getStart())
-         .isAfterOrEqualTo(beforeModify)
-         .isEqualTo(task.getDateLastModified().getEnd());
-
-      assertThat(task.getName()).isEqualTo(data.getTemplateName());
-      assertThat(task.getMarkup()).isEqualTo(data.getMarkup());
-      assertThat(task.getProperties().asMap())
-         .containsAllEntriesOf(data.getProperties().asMap());
-   }
-   */
-
-   @ParameterizedTest
-   @MethodSource("provideGeneratorTasks")
-   void testModifyAndSeverTask(Task task) {
-      Instant beforeModify = Instant.now();
-      Orchestration.modifyAndSeverTask(task, data.getTaskDelta());
-      task = data.getTaskStore().getTasks().getById(task.getId()).get();
-
-      assertThat(task.getGeneratorId()).isNull();
-
-      assertThat(task.getDateLastModified().getStart())
-         .isAfterOrEqualTo(beforeModify)
-         .isEqualTo(task.getDateLastModified().getEnd());
-
-      assertThat(task.getName()).isEqualTo(data.getTemplateName());
-      assertThat(task.getMarkup()).isEqualTo(data.getMarkup());
-      assertThat(task.getProperties().asMap())
-         .containsAllEntriesOf(data.getProperties().asMap());
-   }
-
-   /*
-   @ParameterizedTest
-   @MethodSource("provideTasks")
-   void testModifyTaskEmpty(Task task) {
-      DateTime oldDateLastModified = task.getDateLastModified();
-      String oldName = task.getName();
-      String oldMarkup = task.getMarkup();
-      PropertyMap oldProperties = task.getProperties();
-
-      TaskDelta delta = new TaskDelta(PropertyMap.empty(), null, null, null);
-      Orchestration.modifyTask(task, delta).get();
-      task = data.getTaskStore().getTasks().getById(task.getId()).get();
-
-      assertThat(task.getDateLastModified().getStart())
-         .isEqualTo(oldDateLastModified.getStart());
-      assertThat(task.getDateLastModified().getEnd())
-         .isEqualTo(oldDateLastModified.getEnd());
-
-      assertThat(task.getName()).isEqualTo(oldName);
-      assertThat(task.getMarkup()).isEqualTo(oldMarkup);
-      assertThat(task.getProperties().asMap()).isEqualTo(oldProperties.asMap());
-   }
-   */
-
-   @ParameterizedTest
-   @MethodSource("provideTasks")
-   void testModifyAndSeverTaskEmpty(Task task) {
-      DateTime oldDateLastModified = task.getDateLastModified();
-      String oldName = task.getName();
-      String oldMarkup = task.getMarkup();
-      PropertyMap oldProperties = task.getProperties();
-
-      TaskDelta delta = new TaskDelta(PropertyMap.empty(), null, null, null);
-      Orchestration.modifyAndSeverTask(task, delta).get();
-      task = data.getTaskStore().getTasks().getById(task.getId()).get();
-
-      assertThat(task.getDateLastModified().getStart())
-         .isEqualTo(oldDateLastModified.getStart());
-      assertThat(task.getDateLastModified().getEnd())
-         .isEqualTo(oldDateLastModified.getEnd());
-
-      assertThat(task.getName()).isEqualTo(oldName);
-      assertThat(task.getMarkup()).isEqualTo(oldMarkup);
-      assertThat(task.getProperties().asMap()).isEqualTo(oldProperties.asMap());
-   }
-
-   @ParameterizedTest
-   @MethodSource("provideTasks")
-   void testModifyAndSeverTaskPartial(Task task) {
-      String oldName = task.getName();
-      String oldMarkup = task.getMarkup();
-
-      Instant beforeModify = Instant.now();
-      TaskDelta delta = new TaskDelta(data.getProperties(), null, null, null);
-      Orchestration.modifyAndSeverTask(task, delta);
-      task = data.getTaskStore().getTasks().getById(task.getId()).get();
-
-      assertThat(task.getDateLastModified().getStart())
-         .isAfterOrEqualTo(beforeModify)
-         .isEqualTo(task.getDateLastModified().getEnd());
-
-      assertThat(task.getName()).isEqualTo(oldName);
-      assertThat(task.getMarkup()).isEqualTo(oldMarkup);
+      assertThat(result)
+         .usingComparator(TestComparators::compareTablesIgnoringId)
+         .isEqualTo(table.withModification(tableDelta));
    }
 
    @Test
-   void testModifyAndSeverTaskUpdateProperties() {
-      Task task = data.createModifiedTask();
-      TaskDelta delta = new TaskDelta(data.getUpdateProperties(), null, null, null);
-      Orchestration.modifyAndSeverTask(task, delta).get();
-      task = data.getTaskStore().getTasks().getById(task.getId()).get();
+   void testModifyTableTableIsSaved() {
+      Table table = taskStore.getTables().getById(dataTableId).get();
 
-      assertThat(task.getProperties().asMap().keySet()).isEqualTo(HashSet.of("alpha", "gamma"));
-      assertThat(task.getProperties().asMap().get("alpha")).contains(Property.empty());
-   }
+      table = Orchestration.modifyTable(table, tableDelta).get();
+      Table savedTable = taskStore.getTables().getById(dataTableId).get();
 
-   @ParameterizedTest
-   @MethodSource("provideTasks")
-   void testModifyAndSeverTaskInvalid(Task task) {
-      TaskDelta delta = data.getFullTaskDelta();
-      assertThatExceptionOfType(IllegalArgumentException.class)
-         .isThrownBy(() -> Orchestration.modifyAndSeverTask(task, delta));
-   }
-
-   /*
-   @ParameterizedTest
-   @MethodSource("provideGeneratorTasks")
-   void testModifyTaskUpdateDuration(Task task) {
-      String generationField = data.getGenerationField();
-      DateTime initial = (DateTime) task.getProperties().asMap().get(generationField).get().get();
-      Instant expectedEnd = initial.getStart().plusSeconds(data.getDuration());
-
-      Orchestration.modifyTask(task, data.getFullTaskDelta()).get();
-      task = data.getTaskStore().getTasks().getById(task.getId()).get();
-
-      DateTime dateTime = (DateTime) task.getProperties().asMap().get(generationField).get().get();
-      assertThat(dateTime.getStart()).isEqualTo(initial.getStart());
-      assertThat(dateTime.getEnd()).isEqualTo(expectedEnd);
-   }
-   */
-
-   @ParameterizedTest
-   @MethodSource("provideGenerators")
-   void testModifyGeneratorFull(Generator generator) {
-      Instant beforeModify = Instant.now();
-      Orchestration.modifyGenerator(generator, data.getFullGeneratorDelta()).get();
-      generator = data.getTaskStore().getGenerators().getById(generator.getId()).get();
-
-      assertThat(generator.getDateLastModified().getStart())
-         .isAfterOrEqualTo(beforeModify)
-         .isEqualTo(generator.getDateLastModified().getEnd());
-
-      assertThat(generator.getName()).isEqualTo(data.getName());
-      assertThat(generator.getTemplateName()).isEqualTo(data.getTemplateName());
-      assertThat(generator.getTemplateMarkup()).isEqualTo(data.getMarkup());
-      assertThat(generator.getTemplateDuration()).isEqualTo(data.getDuration());
-      assertThat(generator.getTemplateProperties().asMap())
-         .isEqualTo(data.getProperties().merge(generationFieldMap).asMap());
-   }
-
-   @ParameterizedTest
-   @MethodSource("provideGenerators")
-   void testModifyGeneratorEmpty(Generator generator) {
-      DateTime oldDateLastModified = generator.getDateLastModified();
-      String oldName = generator.getName();
-      String oldTemplateName = generator.getTemplateName();
-      String oldTemplateMarkup = generator.getTemplateMarkup();
-      long oldTemplateDuration = generator.getTemplateDuration();
-      PropertyMap oldTemplateProperties = generator.getTemplateProperties();
-
-      GeneratorDelta delta = new GeneratorDelta(PropertyMap.empty(), null, null, null, null);
-      Orchestration.modifyGenerator(generator, delta).get();
-      generator = data.getTaskStore().getGenerators().getById(generator.getId()).get();
-
-      assertThat(generator.getDateLastModified().getStart())
-         .isEqualTo(oldDateLastModified.getStart());
-      assertThat(generator.getDateLastModified().getEnd())
-         .isEqualTo(oldDateLastModified.getEnd());
-
-      assertThat(generator.getName()).isEqualTo(oldName);
-      assertThat(generator.getTemplateName()).isEqualTo(oldTemplateName);
-      assertThat(generator.getTemplateMarkup()).isEqualTo(oldTemplateMarkup);
-      assertThat(generator.getTemplateDuration()).isEqualTo(oldTemplateDuration);
-
-      assertThat(generator.getTemplateProperties().asMap())
-         .isEqualTo(oldTemplateProperties.asMap());
-   }
-
-   @ParameterizedTest
-   @MethodSource("provideGenerators")
-   void testModifyGeneratorPartial(Generator generator) {
-      String oldName = generator.getName();
-      String oldTemplateName = generator.getTemplateName();
-      String oldTemplateMarkup = generator.getTemplateMarkup();
-      long oldTemplateDuration = generator.getTemplateDuration();
-
-      GeneratorDelta delta = new GeneratorDelta(data.getProperties(), null, null, null, null);
-      Instant beforeModify = Instant.now();
-      Orchestration.modifyGenerator(generator, delta).get();
-      generator = data.getTaskStore().getGenerators().getById(generator.getId()).get();
-
-      assertThat(generator.getDateLastModified().getStart())
-         .isAfterOrEqualTo(beforeModify)
-         .isEqualTo(generator.getDateLastModified().getEnd());
-
-      assertThat(generator.getName()).isEqualTo(oldName);
-      assertThat(generator.getTemplateName()).isEqualTo(oldTemplateName);
-      assertThat(generator.getTemplateMarkup()).isEqualTo(oldTemplateMarkup);
-      assertThat(generator.getTemplateDuration()).isEqualTo(oldTemplateDuration);
-      assertThat(generator.getTemplateProperties().asMap())
-         .isEqualTo(data.getProperties().merge(generationFieldMap).asMap());
+      assertThat(table)
+         .usingComparator(TestComparators::compareTables)
+         .isEqualTo(savedTable);
    }
 
    @Test
-   void testModifyGeneratorUpdateProperties() {
-      Generator generator = data.createModifiedGenerator();
-      GeneratorDelta delta = new GeneratorDelta(
-         data.getUpdateProperties(),
-         null,
-         null,
-         null,
-         null);
-      Orchestration.modifyGenerator(generator, delta).get();
-      generator = data.getTaskStore().getGenerators().getById(generator.getId()).get();
+   void testModfyTableGeneratorIsSaved() {
+      Generator generator = taskStore
+         .getGenerators()
+         .getById(dataGeneratorId)
+         .get();
 
-      assertThat(generator.getTemplateProperties().asMap()).isEqualTo(HashMap.of(
-         "", Property.empty(),
-         "alpha", Property.empty(),
-         "gamma", Property.of(new DateTime(Instant.ofEpochSecond(12345)))));
+      Table table = taskStore.getTables().getById(dataTableId).get();
+
+      Orchestration.modifyTable(table, tableDelta).get();
+      Generator savedGenerator = taskStore
+         .getGenerators()
+         .getById(dataGeneratorId)
+         .get();
+
+      assertThat(savedGenerator)
+         .usingComparator(TestComparators::compareGeneratorsIgnoringId)
+         .isEqualTo(generator.adjustToSchema(tableDelta.getSchema()));
    }
 
    @Test
-   void testModifyGeneratorWithTasks() {
-      String generationField = data.getGenerationField();
-      Generator generator = data.createDefaultGenerator();
+   void testModifyTableTasksAreSaved() {
+      List<Task> expectedTasks = allTaskIds
+         .asList()
+         .stream()
+         .map(id -> taskStore.getTasks().getById(id).get())
+         .map(task -> task.withModification(taskDelta).get())
+         .collect(Collectors.toList());
 
-      Instant timestamp = Instant.now().plusSeconds(600);
-      Orchestration.getTasksFromTable(data.getTable(), timestamp).get();
-      generator = data.getTaskStore().getGenerators().getById(generator.getId()).get();
-      List<String> tasks = generator.getTaskIds().asList();
+      Table table = taskStore.getTables().getById(dataTableId).get();
 
-      Orchestration.modifyGenerator(generator, data.getFullGeneratorDelta()).get();
-      generator = data.getTaskStore().getGenerators().getById(generator.getId()).get();
-      assertThat(generator.getTaskIds().asList()).isEqualTo(tasks);
+      Orchestration.modifyTable(table, tableDelta).get();
 
-      for (String s : tasks) {
-         Task task = data.getTaskStore().getTasks().getById(s).get();
-         assertThat(task.getName()).isEqualTo(data.getTemplateName());
-         assertThat(task.getMarkup()).isEqualTo(data.getMarkup());
-         assertThat(task.getProperties().asMap())
-            .containsAllEntriesOf(data.getProperties().asMap());
-         DateTime date = (DateTime) task.getProperties().asMap().get(generationField).get().get();
-         assertThat(date.getEnd())
-            .isEqualTo(date.getStart().plusSeconds(data.getDuration()));
-      }
-   }
+      List<Task> actualTasks = allTaskIds
+         .asList()
+         .stream()
+         .map(id -> taskStore.getTasks().getById(id).get())
+         .collect(Collectors.toList());
 
-   // TODO add tests where generateTasks timestamp lies exactly on timestamp returned by getDates
-   // TODO add test where the same timestamp is used twice in a row
-   /*
-   @Test
-   void testRunGenerator() {
-      Generator generator = data.createDefaultGenerator();
-      DatePattern datePattern = data.getGenerationDatePattern();
-      String generationField = data.getGenerationField();
-      Instant start = generator.getDateCreated().getStart();
-      Instant firstInstant = Instant.now().plusSeconds(100);
-      Instant secondInstant = Instant.now().plusSeconds(350);
-
-      List<Instant> dates = datePattern.getDates(start, firstInstant);
-      List<String> firstResult = Orchestration.runGenerator(generator, firstInstant).get();
-      generator = data.getTaskStore().getGenerators().getById(generator.getId()).get();
-      assertThat(firstResult).hasSameSizeAs(dates);
-      for (String s : firstResult) {
-         Task task = data.getTaskStore().getTasks().getById(s).get();
-         Property dateProperty = task.getProperties().asMap().get(generationField).get();
-         Instant date = ((DateTime) dateProperty.get()).getStart();
-         assertThat(task.getGeneratorId()).isEqualTo(generator.getId());
-         assertThat(dates).contains(date);
-      }
-      assertThat(generator.getTaskIds().asList()).containsAll(firstResult);
-
-      dates = datePattern.getDates(firstInstant, secondInstant);
-      List<String> secondResult = Orchestration.runGenerator(generator, secondInstant).get();
-      generator = data.getTaskStore().getGenerators().getById(generator.getId()).get();
-      assertThat(secondResult).hasSameSizeAs(dates);
-      for (String s : secondResult) {
-         Task task = data.getTaskStore().getTasks().getById(s).get();
-         Property dateProperty = task.getProperties().asMap().get(generationField).get();
-         Instant date = ((DateTime) dateProperty.get()).getStart();
-         assertThat(task.getGeneratorId()).isEqualTo(generator.getId());
-         assertThat(dates).contains(date);
-      }
-      assertThat(generator.getTaskIds().asList()).containsAll(firstResult);
-      assertThat(generator.getTaskIds().asList()).containsAll(secondResult);
-
-      List<String> prevTasks = generator.getTaskIds().asList();
-      List<String> thirdResult = Orchestration.runGenerator(generator, firstInstant).get();
-      generator = data.getTaskStore().getGenerators().getById(generator.getId()).get();
-      assertThat(thirdResult).isEmpty();
-      assertThat(generator.getTaskIds().asList()).isEqualTo(prevTasks);
-   }
-   */
-
-   // TODO test that modifySeries returned value is the same as saved value
-   @ParameterizedTest
-   @MethodSource("provideGenerators")
-   void testModifySeries(Generator generator) {
-      String generationField = data.getGenerationField();
-
-      Instant instant = Instant.now().plusSeconds(600);
-      Orchestration.getTasksFromTable(data.getTable(), instant).get();
-
-      generator = data.getTaskStore().getGenerators().getById(generator.getId()).get();
-      List<String> tasks = generator.getTaskIds().asList();
-      int index = tasks.size() / 2;
-      Task targetTask = data.getTaskStore().getTasks().getById(tasks.get(index)).get();
-
-      Orchestration.modifySeries(targetTask, data.getFullGeneratorDelta()).get();
-
-      for (int i = 0; i < tasks.size(); i++) {
-         Task task = data.getTaskStore().getTasks().getById(tasks.get(i)).get();
-         if (i < index) {
-            assertThat(task.getGeneratorId()).isNull();
-         }
-         else {
-            assertThat(task.getGeneratorId()).isEqualTo(generator.getId());
-            assertThat(task.getName()).isEqualTo(data.getTemplateName());
-            assertThat(task.getMarkup()).isEqualTo(data.getMarkup());
-            assertThat(task.getProperties().asMap().remove(generationField))
-               .isEqualTo(data.getProperties().asMap());
-            assertThat(task.getProperties().asMap().containsKey(generationField)).isTrue();
-         }
-      }
-
-      generator = data.getTaskStore().getGenerators().getById(generator.getId()).get();
-      assertThat(generator.getTaskIds().asList()).isEqualTo(tasks.subList(index, tasks.size()));
+      assertThat(actualTasks)
+         .usingElementComparator(TestComparators::compareTasksIgnoringId)
+         .isEqualTo(expectedTasks);
    }
 
    @Test
-   void testModifySeriesInvalid() {
-      Task task = data.createModifiedTask();
+   void testModifyGenerator() {
+      Generator generator = taskStore
+         .getGenerators()
+         .getById(dataGeneratorId)
+         .get();
+
+      Generator result = Orchestration.modifyGenerator(
+         generator,
+         generatorDelta).get();
+
+      assertThat(result)
+         .usingComparator(TestComparators::compareGeneratorsIgnoringId)
+         .isEqualTo(generator.withModification(generatorDelta));
+   }
+
+   @Test
+   void testModifyGeneratorGeneratorIsSaved() {
+      Generator generator = taskStore
+         .getGenerators()
+         .getById(dataGeneratorId)
+         .get();
+
+      generator = Orchestration.modifyGenerator(
+         generator,
+         generatorDelta).get();
+      Generator savedGenerator = taskStore
+         .getGenerators()
+         .getById(dataGeneratorId)
+         .get();
+
+      assertThat(generator)
+         .usingComparator(TestComparators::compareGenerators)
+         .isEqualTo(savedGenerator);
+   }
+
+   @Test
+   void testModifyGeneratorTasksAreSaved() {
+      List<Task> expectedTasks = generatedTaskIds
+         .asList()
+         .stream()
+         .map(id -> taskStore.getTasks().getById(id).get())
+         .map(task -> task.withModification(taskDelta).get())
+         .collect(Collectors.toList());
+
+      Generator generator = taskStore
+         .getGenerators()
+         .getById(dataGeneratorId)
+         .get();
+
+      Orchestration.modifyGenerator(generator, generatorDelta).get();
+
+      List<Task> actualTasks = generatedTaskIds
+         .asList()
+         .stream()
+         .map(id -> taskStore.getTasks().getById(id).get())
+         .collect(Collectors.toList());
+      assertThat(actualTasks)
+         .usingElementComparator(TestComparators::compareTasksIgnoringId)
+         .isEqualTo(expectedTasks);
+   }
+
+   @Test
+   void testModifyGeneratorStandaloneTaskIsUnchanged() {
+      Task expectedTask = taskStore.getTasks().getById(dataTaskId).get();
+
+      Generator generator = taskStore
+         .getGenerators()
+         .getById(dataGeneratorId)
+         .get();
+
+      Orchestration.modifyGenerator(generator, generatorDelta).get();
+
+      Task actualTask = taskStore.getTasks().getById(dataTaskId).get();
+      assertThat(actualTask)
+         .usingComparator(TestComparators::compareTasks)
+         .isEqualTo(expectedTask);
+   }
+
+   @Test
+   void testModifyGeneratorTableIsUnchanged() {
+      Table expectedTable = taskStore.getTables().getById(dataTableId).get();
+
+      Generator generator = taskStore
+         .getGenerators()
+         .getById(dataGeneratorId)
+         .get();
+
+      Orchestration.modifyGenerator(generator, generatorDelta).get();
+
+      Table actualTable = taskStore.getTables().getById(dataTableId).get();
+      assertThat(actualTable)
+         .usingComparator(TestComparators::compareTables)
+         .isEqualTo(expectedTable);
+   }
+
+   @Test
+   void testModifyAndSeverTaskStandalone() {
+      Task task = taskStore.getTasks().getById(dataTaskId).get();
+
+      Task result = Orchestration.modifyAndSeverTask(task, taskDelta).get();
+
+      assertThat(result)
+         .usingComparator(TestComparators::compareTasksIgnoringId)
+         .isEqualTo(task.withModification(taskDelta).get());
+   }
+
+   @Test
+   void testModifyAndSeverTaskStandaloneIsSaved() {
+      Task task = taskStore.getTasks().getById(dataTaskId).get();
+
+      task = Orchestration.modifyAndSeverTask(task, taskDelta).get();
+      Task savedTask = taskStore.getTasks().getById(dataTaskId).get();
+
+      assertThat(task)
+         .usingComparator(TestComparators::compareTasks)
+         .isEqualTo(savedTask);
+   }
+
+   @Test
+   void testModifyAndSeverTaskStandaloneGeneratorIsUnchanged() {
+      Generator expectedGenerator = taskStore
+         .getGenerators()
+         .getById(dataGeneratorId)
+         .get();
+
+      Task task = taskStore.getTasks().getById(dataTaskId).get();
+      Orchestration.modifyAndSeverTask(task, taskDelta).get();
+
+      Generator actualGenerator = taskStore
+         .getGenerators()
+         .getById(dataGeneratorId)
+         .get();
+
+      assertThat(actualGenerator)
+         .usingComparator(TestComparators::compareGenerators)
+         .isEqualTo(expectedGenerator);
+   }
+
+   @Test
+   void testModifyAndSeverTaskStandaloneGeneratedTasksAreUnchanged() {
+      List<Task> expectedTasks = generatedTaskIds
+         .asList()
+         .stream()
+         .map(id -> taskStore.getTasks().getById(id).get())
+         .collect(Collectors.toList());
+
+      Task task = taskStore.getTasks().getById(dataTaskId).get();
+      Orchestration.modifyAndSeverTask(task, taskDelta).get();
+
+      List<Task> actualTasks = generatedTaskIds
+         .asList()
+         .stream()
+         .map(id -> taskStore.getTasks().getById(id).get())
+         .collect(Collectors.toList());
+
+      assertThat(actualTasks)
+         .usingElementComparator(TestComparators::compareTasks)
+         .isEqualTo(expectedTasks);
+   }
+
+   @Test
+   void testModifyAndSeverTaskStandaloneTableIsUnchanged() {
+      Table expectedTable = taskStore.getTables().getById(dataTableId).get();
+
+      Task task = taskStore.getTasks().getById(dataTaskId).get();
+      Orchestration.modifyAndSeverTask(task, taskDelta).get();
+
+      Table actualTable = taskStore.getTables().getById(dataTableId).get();
+
+      assertThat(actualTable)
+         .usingComparator(TestComparators::compareTables)
+         .isEqualTo(expectedTable);
+   }
+
+   @Test
+   void testModifyAndSeverTaskSeries() {
+      Task task = getTask(middleTaskId);
+      Task expectedTask = task
+         .withoutGenerator()
+         .withModification(taskDelta)
+         .get();
+
+      Task result = Orchestration.modifyAndSeverTask(task, taskDelta).get();
+
+      assertThat(result)
+         .usingComparator(TestComparators::compareTasksIgnoringId)
+         .isEqualTo(expectedTask);
+   }
+
+   @Test
+   void testModifyAndSeverTaskSeriesIsSaved() {
+      Task task = getTask(middleTaskId);
+      task = Orchestration.modifyAndSeverTask(task, taskDelta).get();
+
+      Task savedTask = getTask(middleTaskId);
+
+      assertThat(task)
+         .usingComparator(TestComparators::compareTasks)
+         .isEqualTo(savedTask);
+   }
+
+   @Test
+   void testModifyAndSeverTaskSeriesOtherTasksAreUnchanged() {
+      List<Task> expectedTasks = allTaskIds
+         .asList()
+         .stream()
+         .filter(id -> !id.equals(middleTaskId))
+         .map(this::getTask)
+         .collect(Collectors.toList());
+
+      Task task = getTask(middleTaskId);
+      Orchestration.modifyAndSeverTask(task, taskDelta).get();
+
+      List<Task> actualTasks = allTaskIds
+         .asList()
+         .stream()
+         .filter(id -> !id.equals(middleTaskId))
+         .map(this::getTask)
+         .collect(Collectors.toList());
+
+      assertThat(actualTasks)
+         .usingElementComparator(TestComparators::compareTasks)
+         .isEqualTo(expectedTasks);
+   }
+
+   @Test
+   void testModifyAndSeverTaskSeriesGeneratorIsSaved() {
+      Generator expectedGenerator = getGenerator(dataGeneratorId)
+         .withoutTask(middleTaskId);
+
+      Task task = getTask(middleTaskId);
+      Orchestration.modifyAndSeverTask(task, taskDelta).get();
+
+      Generator actualGenerator = getGenerator(dataGeneratorId);
+
+      assertThat(actualGenerator)
+         .usingComparator(TestComparators::compareGeneratorsIgnoringId)
+         .isEqualTo(expectedGenerator);
+   }
+
+   @Test
+   void testModifyAndSeverTaskTableIsUnchanged() {
+      Table expectedTable = getTable(dataTableId);
+
+      Task task = getTask(middleTaskId);
+      Orchestration.modifyAndSeverTask(task, taskDelta).get();
+
+      Table actualTable = getTable(dataTableId);
+
+      assertThat(actualTable)
+         .usingComparator(TestComparators::compareTables)
+         .isEqualTo(expectedTable);
+   }
+
+   @Test
+   void testModifySeries() {
+      Task task = getTask(middleTaskId);
+      Task result = Orchestration.modifySeries(task, generatorDelta).get();
+
+      assertThat(result)
+         .usingComparator(TestComparators::compareTasksIgnoringId)
+         .isEqualTo(task.withModification(generatorDelta.asTaskDelta()).get());
+   }
+
+   @Test
+   void testModifySeriesIsSaved() {
+      Task task = getTask(middleTaskId);
+      task = Orchestration.modifySeries(task, generatorDelta).get();
+
+      Task savedTask = getTask(middleTaskId);
+
+      assertThat(task)
+         .usingComparator(TestComparators::compareTasks)
+         .isEqualTo(savedTask);
+   }
+
+   @Test
+   void testModifySeriesPriorTaskIsSaved() {
+      Task expectedTask = getTask(priorTaskId).withoutGenerator();
+
+      Task task = getTask(middleTaskId);
+      Orchestration.modifySeries(task, generatorDelta).get();
+
+      Task actualTask = getTask(priorTaskId);
+
+      assertThat(actualTask)
+         .usingComparator(TestComparators::compareTasks)
+         .isEqualTo(expectedTask);
+   }
+
+   @Test
+   void testModifySeriesSubsequentTaskIsSaved() {
+      Task expectedTask = getTask(subsequentTaskId)
+         .withModification(generatorDelta.asTaskDelta()).get();
+
+      Task task = getTask(middleTaskId);
+      Orchestration.modifySeries(task, generatorDelta).get();
+
+      Task actualTask = getTask(subsequentTaskId);
+
+      assertThat(actualTask)
+         .usingComparator(TestComparators::compareTasksIgnoringId)
+         .isEqualTo(expectedTask);
+   }
+
+   @Test
+   void testModifySeriesGeneratorIsSaved() {
+      Generator expectedGenerator = getGenerator(dataGeneratorId)
+         .withoutTask(priorTaskId)
+         .withModification(generatorDelta);
+
+      Task task = getTask(middleTaskId);
+      Orchestration.modifySeries(task, generatorDelta).get();
+
+      Generator actualGenerator = getGenerator(dataGeneratorId);
+
+      assertThat(actualGenerator)
+         .usingComparator(TestComparators::compareGeneratorsIgnoringId)
+         .isEqualTo(expectedGenerator);
+   }
+
+   @Test
+   void testModifySeriesStandaloneTaskIsUnchanged() {
+      Task expectedTask = getTask(dataTaskId);
+
+      Task task = getTask(middleTaskId);
+      Orchestration.modifySeries(task, generatorDelta).get();
+
+      Task actualTask = getTask(dataTaskId);
+
+      assertThat(actualTask)
+         .usingComparator(TestComparators::compareTasks)
+         .isEqualTo(expectedTask);
+   }
+
+   @Test
+   void testModifySeriesTableIsUnchanged() {
+      Table expectedTable = getTable(dataTableId);
+
+      Task task = getTask(middleTaskId);
+      Orchestration.modifySeries(task, generatorDelta).get();
+
+      Table actualTable = getTable(dataTableId);
+
+      assertThat(actualTable)
+         .usingComparator(TestComparators::compareTables)
+         .isEqualTo(expectedTable);
+   }
+
+   @Test
+   void testModifySeriesStandaloneTaskIsInvalid() {
+      Task task = getTask(dataTaskId);
+
       assertThatExceptionOfType(IllegalStateException.class)
-         .isThrownBy(() -> Orchestration.modifySeries(task, data.getFullGeneratorDelta()));
+         .isThrownBy(() -> Orchestration.modifySeries(task, generatorDelta));
+   }
+
+   private Table getTable(String id) {
+      return taskStore.getTables().getById(id).get();
+   }
+
+   private Task getTask(String id) {
+      return taskStore.getTasks().getById(id).get();
+   }
+
+   private Generator getGenerator(String id) {
+      return taskStore.getGenerators().getById(id).get();
+   }
+
+   private String getGeneratedTaskId(Instant timestamp) {
+      return generatedTaskIds
+         .asList()
+         .stream()
+         .map(id -> taskStore.getTasks().getById(id).get())
+         .filter(t -> {
+            Property property = t.getProperties().asMap().get("alpha").get();
+            Instant startTime = ((DateTime) property.get()).getStart();
+            return startTime.equals(timestamp);
+         })
+         .findAny()
+         .get()
+         .getId();
    }
 }
