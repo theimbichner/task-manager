@@ -2,7 +2,6 @@ package io.github.theimbichner.taskmanager.task;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import io.vavr.Tuple;
@@ -22,26 +21,26 @@ import io.github.theimbichner.taskmanager.time.DateTime;
 import io.github.theimbichner.taskmanager.time.DatePattern;
 import io.github.theimbichner.taskmanager.time.ModifyRecord;
 
-public class Generator implements Storable {
+public class Generator implements Storable<ItemId<Generator>> {
    private static class Builder {
-      private final String id;
+      private final ItemId<Generator> id;
       private String name;
       private ModifyRecord modifyRecord;
       private String templateName;
       private String templateMarkup;
-      private final String templateTableId;
+      private final ItemId<Table> templateTableId;
       private PropertyMap templateProperties;
       private long templateDuration;
       private Instant generationLastTimestamp;
       private String generationField;
       private final DatePattern generationDatePattern;
-      private SetList<String> taskIds;
+      private SetList<ItemId<Task>> taskIds;
 
       private TaskStore taskStore;
 
       private Builder(
-         String id,
-         String templateTableId,
+         ItemId<Generator> id,
+         ItemId<Table> templateTableId,
          String generationField,
          DatePattern generationDatePattern
       ) {
@@ -79,18 +78,18 @@ public class Generator implements Storable {
       }
    }
 
-   private final String id;
+   private final ItemId<Generator> id;
    private final String name;
    private final ModifyRecord modifyRecord;
    private final String templateName;
    private final String templateMarkup;
-   private final String templateTableId;
+   private final ItemId<Table> templateTableId;
    private final PropertyMap templateProperties;
    private final long templateDuration;
    private final Instant generationLastTimestamp;
    private final String generationField;
    private final DatePattern generationDatePattern;
-   private final SetList<String> taskIds;
+   private final SetList<ItemId<Task>> taskIds;
 
    private TaskStore taskStore;
 
@@ -112,7 +111,7 @@ public class Generator implements Storable {
    }
 
    @Override
-   public String getId() {
+   public ItemId<Generator> getId() {
       return id;
    }
 
@@ -136,7 +135,7 @@ public class Generator implements Storable {
       return templateMarkup;
    }
 
-   public String getTemplateTableId() {
+   public ItemId<Table> getTemplateTableId() {
       return templateTableId;
    }
 
@@ -156,11 +155,11 @@ public class Generator implements Storable {
       return generationDatePattern;
    }
 
-   SetList<String> getTaskIds() {
+   SetList<ItemId<Task>> getTaskIds() {
       return taskIds;
    }
 
-   Generator withoutTask(String id) {
+   Generator withoutTask(ItemId<Task> id) {
       Builder result = new Builder(this);
       result.taskIds = taskIds.remove(id);
       return new Generator(result);
@@ -208,14 +207,14 @@ public class Generator implements Storable {
    }
 
    // TODO update modification timestamp here?
-   Tuple2<Generator, List<String>> withoutTasksBefore(String taskId) {
+   Tuple2<Generator, List<ItemId<Task>>> withoutTasksBefore(ItemId<Task> taskId) {
       if (!taskIds.contains(taskId)) {
          throw new IllegalArgumentException("Task not found in generator");
       }
 
-      Tuple2<List<String>, List<String>> split = taskIds.split(taskId);
+      Tuple2<List<ItemId<Task>>, List<ItemId<Task>>> split = taskIds.split(taskId);
       Builder result = new Builder(this);
-      result.taskIds = SetList.<String>empty().addAll(split._2);
+      result.taskIds = SetList.<ItemId<Task>>empty().addAll(split._2);
 
       return Tuple.of(new Generator(result), split._1);
    }
@@ -231,7 +230,7 @@ public class Generator implements Storable {
          .stream()
          .map(instant -> Task.newSeriesTask(this, instant))
          .collect(Collectors.toList());
-      List<String> ids = tasks.stream().map(Task::getId).collect(Collectors.toList());
+      List<ItemId<Task>> ids = tasks.stream().map(Task::getId).collect(Collectors.toList());
 
       Builder result = new Builder(this);
       result.generationLastTimestamp = timestamp;
@@ -251,7 +250,7 @@ public class Generator implements Storable {
    }
 
    static Generator newGenerator(Table table, String field, DatePattern pattern) {
-      Builder result = new Builder(UUID.randomUUID().toString(), table.getId(), field, pattern);
+      Builder result = new Builder(ItemId.randomId(), table.getId(), field, pattern);
       result.templateProperties = table.getSchema().getDefaultProperties();
       result.templateProperties = result.templateProperties.put(field, Property.empty());
       result.taskStore = table.getTaskStore();
@@ -260,26 +259,32 @@ public class Generator implements Storable {
    }
 
    public JSONObject toJson() {
+      List<String> stringTaskIds = taskIds
+         .asList()
+         .stream()
+         .map(ItemId::toString)
+         .collect(Collectors.toList());
+
       JSONObject json = new JSONObject();
-      json.put("id", id);
+      json.put("id", id.toString());
       json.put("name", name);
       modifyRecord.writeIntoJson(json);
       json.put("templateName", templateName);
       json.put("templateMarkup", templateMarkup);
-      json.put("templateTable", templateTableId);
+      json.put("templateTable", templateTableId.toString());
       json.put("templateDuration", templateDuration);
       json.put("generationLastTimestamp", generationLastTimestamp.toString());
       json.put("generationField", generationField);
       json.put("generationDatePattern", generationDatePattern.toJson());
-      json.put("tasks", taskIds.asList());
+      json.put("tasks", stringTaskIds);
       json.put("templateProperties", templateProperties.toJson());
 
       return json;
    }
 
    public static Generator fromJson(JSONObject json) {
-      String id = json.getString("id");
-      String templateTableId = json.getString("templateTable");
+      ItemId<Generator> id = ItemId.of(json.getString("id"));
+      ItemId<Table> templateTableId = ItemId.of(json.getString("templateTable"));
       String generationField = json.getString("generationField");
       JSONObject jsonDatePattern = json.getJSONObject("generationDatePattern");
       DatePattern generationDatePattern = DatePattern.fromJson(jsonDatePattern);
@@ -295,7 +300,8 @@ public class Generator implements Storable {
 
       JSONArray tasksJson = json.getJSONArray("tasks");
       for (int i = 0; i < tasksJson.length(); i++) {
-         result.taskIds = result.taskIds.add(tasksJson.getString(i));
+         ItemId<Task> taskId = ItemId.of(tasksJson.getString(i));
+         result.taskIds = result.taskIds.add(taskId);
       }
 
       return new Generator(result);

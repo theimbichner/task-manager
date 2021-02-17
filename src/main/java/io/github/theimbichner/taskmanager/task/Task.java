@@ -1,7 +1,6 @@
 package io.github.theimbichner.taskmanager.task;
 
 import java.time.Instant;
-import java.util.UUID;
 
 import io.vavr.control.Either;
 import io.vavr.control.Option;
@@ -16,19 +15,19 @@ import io.github.theimbichner.taskmanager.task.property.PropertyMap;
 import io.github.theimbichner.taskmanager.time.DateTime;
 import io.github.theimbichner.taskmanager.time.ModifyRecord;
 
-public class Task implements Storable {
+public class Task implements Storable<ItemId<Task>> {
    private static class Builder {
-      private final String id;
-      private final String tableId;
+      private final ItemId<Task> id;
+      private final ItemId<Table> tableId;
       private String name;
       private ModifyRecord modifyRecord;
       private String markup;
-      private String generatorId;
+      private ItemId<Generator> generatorId;
       private PropertyMap properties;
 
       private TaskStore taskStore;
 
-      private Builder(String id, String tableId) {
+      private Builder(ItemId<Task> id, ItemId<Table> tableId) {
          this.id = id;
          this.tableId = tableId;
          name = "";
@@ -53,12 +52,12 @@ public class Task implements Storable {
       }
    }
 
-   private final String id;
-   private final String tableId;
+   private final ItemId<Task> id;
+   private final ItemId<Table> tableId;
    private final String name;
    private final ModifyRecord modifyRecord;
    private final String markup;
-   private final String generatorId;
+   private final ItemId<Generator> generatorId;
    private final PropertyMap properties;
 
    private TaskStore taskStore;
@@ -76,7 +75,7 @@ public class Task implements Storable {
    }
 
    @Override
-   public String getId() {
+   public ItemId<Task> getId() {
       return id;
    }
 
@@ -96,7 +95,7 @@ public class Task implements Storable {
       return markup;
    }
 
-   public String getGeneratorId() {
+   public ItemId<Generator> getGeneratorId() {
       return generatorId;
    }
 
@@ -155,7 +154,7 @@ public class Task implements Storable {
    }
 
    static Task newTask(Table table) {
-      Builder result = new Builder(UUID.randomUUID().toString(), table.getId());
+      Builder result = new Builder(ItemId.randomId(), table.getId());
       result.properties = table.getSchema().getDefaultProperties();
       result.taskStore = table.getTaskStore();
 
@@ -163,7 +162,7 @@ public class Task implements Storable {
    }
 
    static Task newSeriesTask(Generator generator, Instant startTime) {
-      Builder result = new Builder(UUID.randomUUID().toString(), generator.getTemplateTableId());
+      Builder result = new Builder(ItemId.randomId(), generator.getTemplateTableId());
       result.name = generator.getTemplateName();
       result.markup = generator.getTemplateMarkup();
       result.generatorId = generator.getId();
@@ -178,26 +177,31 @@ public class Task implements Storable {
 
    public JSONObject toJson() {
       JSONObject json = new JSONObject();
-      json.put("id", id);
-      json.put("table", tableId);
+      json.put("id", id.toString());
+      json.put("table", tableId.toString());
       json.put("name", name);
       modifyRecord.writeIntoJson(json);
       json.put("markup", markup);
-      json.put("generator", generatorId == null ? JSONObject.NULL : generatorId);
+      if (generatorId == null) {
+         json.put("generator", JSONObject.NULL);
+      }
+      else {
+         json.put("generator", generatorId.toString());
+      }
       json.put("properties", properties.toJson());
 
       return json;
    }
 
    public static Task fromJson(JSONObject json) {
-      String id = json.getString("id");
-      String tableId = json.getString("table");
+      ItemId<Task> id = ItemId.of(json.getString("id"));
+      ItemId<Table> tableId = ItemId.of(json.getString("table"));
       Builder result = new Builder(id, tableId);
 
       result.name = json.getString("name");
       result.modifyRecord = ModifyRecord.readFromJson(json);
       result.markup = json.getString("markup");
-      result.generatorId = json.isNull("generator") ? null : json.getString("generator");
+      result.generatorId = json.isNull("generator") ? null : ItemId.of(json.getString("generator"));
       result.properties = PropertyMap.fromJson(json.getJSONObject("properties"));
 
       return new Task(result);

@@ -1,6 +1,7 @@
 package io.github.theimbichner.taskmanager.task;
 
-import java.util.UUID;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -19,18 +20,18 @@ import io.github.theimbichner.taskmanager.time.ModifyRecord;
  * Date Last Modified
  */
 
-public class Table implements Storable {
+public class Table implements Storable<ItemId<Table>> {
    private static class Builder {
-      private final String id;
+      private final ItemId<Table> id;
       private String name;
       private ModifyRecord modifyRecord;
-      private SetList<String> taskIds;
-      private SetList<String> generatorIds;
+      private SetList<ItemId<Task>> taskIds;
+      private SetList<ItemId<Generator>> generatorIds;
       private Schema schema;
 
       private TaskStore taskStore;
 
-      private Builder(String id) {
+      private Builder(ItemId<Table> id) {
          this.id = id;
          name = "";
          modifyRecord = ModifyRecord.createdNow();
@@ -53,11 +54,11 @@ public class Table implements Storable {
       }
    }
 
-   private final String id;
+   private final ItemId<Table> id;
    private final String name;
    private final ModifyRecord modifyRecord;
-   private final SetList<String> taskIds;
-   private final SetList<String> generatorIds;
+   private final SetList<ItemId<Task>> taskIds;
+   private final SetList<ItemId<Generator>> generatorIds;
    private final Schema schema;
 
    private TaskStore taskStore;
@@ -74,7 +75,7 @@ public class Table implements Storable {
    }
 
    @Override
-   public String getId() {
+   public ItemId<Table> getId() {
       return id;
    }
 
@@ -103,33 +104,33 @@ public class Table implements Storable {
       return new Table(result);
    }
 
-   SetList<String> getAllTaskIds() {
+   SetList<ItemId<Task>> getAllTaskIds() {
       return taskIds;
    }
 
-   Table withTasks(Iterable<String> ids) {
+   Table withTasks(Iterable<ItemId<Task>> ids) {
       Builder result = new Builder(this);
       result.taskIds = taskIds.addAll(ids);
       return new Table(result);
    }
 
-   Table withoutTask(String id) {
+   Table withoutTask(ItemId<Task> id) {
       Builder result = new Builder(this);
       result.taskIds = taskIds.remove(id);
       return new Table(result);
    }
 
-   public SetList<String> getAllGeneratorIds() {
+   public SetList<ItemId<Generator>> getAllGeneratorIds() {
       return generatorIds;
    }
 
-   Table withGenerator(String id) {
+   Table withGenerator(ItemId<Generator> id) {
       Builder result = new Builder(this);
       result.generatorIds = generatorIds.add(id);
       return new Table(result);
    }
 
-   Table withoutGenerator(String id) {
+   Table withoutGenerator(ItemId<Generator> id) {
       Builder result = new Builder(this);
       result.generatorIds = generatorIds.remove(id);
       return new Table(result);
@@ -150,23 +151,34 @@ public class Table implements Storable {
    }
 
    static Table newTable() {
-      return new Table(new Builder(UUID.randomUUID().toString()));
+      return new Table(new Builder(ItemId.randomId()));
    }
 
    public JSONObject toJson() {
+      List<String> stringTaskIds = taskIds
+         .asList()
+         .stream()
+         .map(ItemId::toString)
+         .collect(Collectors.toList());
+      List<String> stringGeneratorIds = generatorIds
+         .asList()
+         .stream()
+         .map(ItemId::toString)
+         .collect(Collectors.toList());
+
       JSONObject json = new JSONObject();
-      json.put("id", id);
+      json.put("id", id.toString());
       json.put("name", name);
       modifyRecord.writeIntoJson(json);
-      json.put("tasks", taskIds.asList());
-      json.put("generators", generatorIds.asList());
+      json.put("tasks", stringTaskIds);
+      json.put("generators", stringGeneratorIds);
       json.put("schema", schema.toJson());
 
       return json;
    }
 
    public static Table fromJson(JSONObject json) {
-      String id = json.getString("id");
+      ItemId<Table> id = ItemId.of(json.getString("id"));
       Builder result = new Builder(id);
 
       result.name = json.getString("name");
@@ -174,12 +186,14 @@ public class Table implements Storable {
 
       JSONArray tasksJson = json.getJSONArray("tasks");
       for (int i = 0; i < tasksJson.length(); i++) {
-         result.taskIds = result.taskIds.add(tasksJson.getString(i));
+         ItemId<Task> taskId = ItemId.of(tasksJson.getString(i));
+         result.taskIds = result.taskIds.add(taskId);
       }
 
       JSONArray generatorsJson = json.getJSONArray("generators");
       for (int i = 0; i < generatorsJson.length(); i++) {
-         result.generatorIds = result.generatorIds.add(generatorsJson.getString(i));
+         ItemId<Generator> generatorId = ItemId.of(generatorsJson.getString(i));
+         result.generatorIds = result.generatorIds.add(generatorId);
       }
 
       result.schema = Schema.fromJson(json.getJSONObject("schema"));

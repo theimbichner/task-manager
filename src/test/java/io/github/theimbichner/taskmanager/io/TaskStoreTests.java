@@ -7,7 +7,6 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.time.Duration;
 import java.util.Comparator;
-import java.util.UUID;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
@@ -19,6 +18,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import io.github.theimbichner.taskmanager.task.Generator;
+import io.github.theimbichner.taskmanager.task.ItemId;
 import io.github.theimbichner.taskmanager.task.Orchestration;
 import io.github.theimbichner.taskmanager.task.Table;
 import io.github.theimbichner.taskmanager.task.Task;
@@ -69,17 +69,18 @@ public class TaskStoreTests {
 
    // TODO actually modify the task/table/generators
    static Stream<Arguments> provideTaskGeneratorTable() {
-      Table table = Orchestration.createTable(taskStore).get();
+      Orchestration orchestrator = new Orchestration(taskStore);
+      Table table = orchestrator.createTable().get();
       Table overwriteTable = Table.fromJson(table.toJson());
 
-      Task task = Orchestration.createTask(table).get();
+      Task task = orchestrator.createTask(table.getId()).get();
       Task overwriteTask = Task.fromJson(task.toJson());
 
       String field = "";
       DatePattern datePattern = new UniformDatePattern(
          Instant.ofEpochSecond(0),
          Duration.ofSeconds(100));
-      Generator generator = Orchestration.createGenerator(table, field, datePattern).get();
+      Generator generator = orchestrator.createGenerator(table.getId(), field, datePattern).get();
       Generator overwriteGenerator = Generator.fromJson(generator.toJson());
 
       return Stream.of(
@@ -88,15 +89,15 @@ public class TaskStoreTests {
             overwriteTask,
             taskStore.getTasks(),
             TASK_COMPARE,
-            (Supplier<Task>) () -> Orchestration.createTask(table).get(),
+            (Supplier<Task>) () -> orchestrator.createTask(table.getId()).get(),
             TaskStore.MAXIMUM_TASKS_CACHED),
          Arguments.of(
             generator,
             overwriteGenerator,
             taskStore.getGenerators(),
             GENERATOR_COMPARE,
-            (Supplier<Generator>) () -> Orchestration.createGenerator(
-               table,
+            (Supplier<Generator>) () -> orchestrator.createGenerator(
+               table.getId(),
                field,
                datePattern).get(),
             TaskStore.MAXIMUM_GENERATORS_CACHED),
@@ -105,16 +106,16 @@ public class TaskStoreTests {
             overwriteTable,
             taskStore.getTables(),
             TABLE_COMPARE,
-            (Supplier<Table>) () -> Orchestration.createTable(taskStore).get(),
+            (Supplier<Table>) () -> orchestrator.createTable().get(),
             TaskStore.MAXIMUM_TABLES_CACHED));
    }
 
    @ParameterizedTest
    @MethodSource("provideTaskGeneratorTable")
-   <T extends Storable> void testWriteRead(
+   <T extends Storable<ItemId<T>>> void testWriteRead(
       T t,
       T overwrite,
-      DataStore<T> dataStore,
+      DataStore<ItemId<T>, T> dataStore,
       Comparator<T> comparator
    ) {
       dataStore.save(t).get();
@@ -125,10 +126,10 @@ public class TaskStoreTests {
 
    @ParameterizedTest
    @MethodSource("provideTaskGeneratorTable")
-   <T extends Storable> void testWriteOverwriteRead(
+   <T extends Storable<ItemId<T>>> void testWriteOverwriteRead(
       T t,
       T overwrite,
-      DataStore<T> dataStore,
+      DataStore<ItemId<T>, T> dataStore,
       Comparator<T> comparator
    ) {
       dataStore.save(t).get();
@@ -140,10 +141,10 @@ public class TaskStoreTests {
 
    @ParameterizedTest
    @MethodSource("provideTaskGeneratorTable")
-   <T extends Storable> void testWriteDeleteRead(
+   <T extends Storable<ItemId<T>>> void testWriteDeleteRead(
       T t,
       T overwrite,
-      DataStore<T> dataStore,
+      DataStore<ItemId<T>, T> dataStore,
       Comparator<T> comparator
    ) {
       dataStore.save(t).get();
@@ -154,10 +155,10 @@ public class TaskStoreTests {
 
    @ParameterizedTest
    @MethodSource("provideTaskGeneratorTable")
-   <T extends Storable> void testWriteDeleteDelete(
+   <T extends Storable<ItemId<T>>> void testWriteDeleteDelete(
       T t,
       T overwrite,
-      DataStore<T> dataStore,
+      DataStore<ItemId<T>, T> dataStore,
       Comparator<T> comparator
    ) {
       dataStore.save(t).get();
@@ -168,10 +169,10 @@ public class TaskStoreTests {
 
    @ParameterizedTest
    @MethodSource("provideTaskGeneratorTable")
-   <T extends Storable> void testWriteDeleteOverwriteRead(
+   <T extends Storable<ItemId<T>>> void testWriteDeleteOverwriteRead(
       T t,
       T overwrite,
-      DataStore<T> dataStore,
+      DataStore<ItemId<T>, T> dataStore,
       Comparator<T> comparator
    ) {
       dataStore.save(t).get();
@@ -184,22 +185,22 @@ public class TaskStoreTests {
 
    @ParameterizedTest
    @MethodSource("provideTaskGeneratorTable")
-   <T extends Storable> void testReadInvalid(
+   <T extends Storable<ItemId<T>>> void testReadInvalid(
       T t,
       T overwrite,
-      DataStore<T> dataStore,
+      DataStore<ItemId<T>, T> dataStore,
       Comparator<T> comparator
    ) {
-      assertThat(dataStore.getById(UUID.randomUUID().toString()).getLeft())
+      assertThat(dataStore.getById(ItemId.randomId()).getLeft())
          .isInstanceOf(TaskAccessException.class);
    }
 
    @ParameterizedTest
    @MethodSource("provideTaskGeneratorTable")
-   <T extends Storable> void testDeleteInvalid(
+   <T extends Storable<ItemId<T>>> void testDeleteInvalid(
       T t,
       T overwrite,
-      DataStore<T> dataStore,
+      DataStore<ItemId<T>, T> dataStore,
       Comparator<T> comparator
    ) {
       assertThat(dataStore.deleteById(t.getId()).getLeft())
@@ -208,10 +209,10 @@ public class TaskStoreTests {
 
    @ParameterizedTest
    @MethodSource("provideTaskGeneratorTable")
-   <T extends Storable> void testWriteUncacheRead(
+   <T extends Storable<ItemId<T>>> void testWriteUncacheRead(
       T t,
       T overwrite,
-      DataStore<T> dataStore,
+      DataStore<ItemId<T>, T> dataStore,
       Comparator<T> comparator,
       Supplier<T> supplier,
       int cacheSize
@@ -225,10 +226,10 @@ public class TaskStoreTests {
 
    @ParameterizedTest
    @MethodSource("provideTaskGeneratorTable")
-   <T extends Storable> void testWriteOverwriteUncacheRead(
+   <T extends Storable<ItemId<T>>> void testWriteOverwriteUncacheRead(
       T t,
       T overwrite,
-      DataStore<T> dataStore,
+      DataStore<ItemId<T>, T> dataStore,
       Comparator<T> comparator,
       Supplier<T> supplier,
       int cacheSize
@@ -243,10 +244,10 @@ public class TaskStoreTests {
 
    @ParameterizedTest
    @MethodSource("provideTaskGeneratorTable")
-   <T extends Storable> void testWriteUncacheOverwriteUncacheRead(
+   <T extends Storable<ItemId<T>>> void testWriteUncacheOverwriteUncacheRead(
       T t,
       T overwrite,
-      DataStore<T> dataStore,
+      DataStore<ItemId<T>, T> dataStore,
       Comparator<T> comparator,
       Supplier<T> supplier,
       int cacheSize
@@ -260,8 +261,8 @@ public class TaskStoreTests {
       assertThat(result.getTaskStore()).isEqualTo(taskStore);
    }
 
-   <T extends Storable> void uncache(
-      DataStore<T> dataStore,
+   <T extends Storable<ItemId<T>>> void uncache(
+      DataStore<ItemId<T>, T> dataStore,
       Supplier<T> supplier,
       int count
    ) {

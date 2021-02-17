@@ -26,15 +26,16 @@ import static org.assertj.vavr.api.VavrAssertions.*;
 
 public class OrchestrationTests {
    private TaskStore taskStore;
+   private Orchestration orchestrator;
 
-   private String dataTableId;
-   private String dataTaskId;
-   private String dataGeneratorId;
-   private SetList<String> generatedTaskIds;
-   private SetList<String> allTaskIds;
-   private String priorTaskId;
-   private String middleTaskId;
-   private String subsequentTaskId;
+   private ItemId<Table> dataTableId;
+   private ItemId<Task> dataTaskId;
+   private ItemId<Generator> dataGeneratorId;
+   private SetList<ItemId<Task>> generatedTaskIds;
+   private SetList<ItemId<Task>> allTaskIds;
+   private ItemId<Task> priorTaskId;
+   private ItemId<Task> middleTaskId;
+   private ItemId<Task> subsequentTaskId;
 
    private Instant patternStart;
    private Duration patternStep;
@@ -49,6 +50,7 @@ public class OrchestrationTests {
    @BeforeEach
    void beforeEach() {
       taskStore = InMemoryDataStore.createTaskStore();
+      orchestrator = new Orchestration(taskStore);
 
       patternStart = LocalDate.now(ZoneOffset.UTC)
          .plusDays(2)
@@ -57,31 +59,24 @@ public class OrchestrationTests {
       patternStep = Duration.parse("PT17M36.5S");
       pattern = new UniformDatePattern(patternStart, patternStep);
 
-      Table table = Orchestration.createTable(taskStore).get();
-      dataTableId = table.getId();
+      dataTableId = orchestrator.createTable().get().getId();
 
       TableDelta dataTableDelta = new TableDelta(
          Schema.empty()
             .withColumn("alpha", TypeDescriptor.fromTypeName("DateTime"))
             .withColumn("beta", TypeDescriptor.fromTypeName("String")),
          null);
-      Orchestration.modifyTable(table, dataTableDelta);
-      table = taskStore.getTables().getById(dataTableId).get();
+      orchestrator.modifyTable(dataTableId, dataTableDelta);
 
-      Task task = Orchestration.createTask(table).get();
-      dataTaskId = task.getId();
-      table = taskStore.getTables().getById(dataTableId).get();
-
-      Generator generator = Orchestration.createGenerator(
-         table,
+      dataTaskId = orchestrator.createTask(dataTableId).get().getId();
+      dataGeneratorId = orchestrator.createGenerator(
+         dataTableId,
          "alpha",
-         pattern).get();
-      dataGeneratorId = generator.getId();
-      table = taskStore.getTables().getById(dataTableId).get();
+         pattern).get().getId();
 
       lastGenerationTimestamp = patternStart.plus(Duration.parse("PT45M"));
-      allTaskIds = Orchestration.getTasksFromTable(
-         table,
+      allTaskIds = orchestrator.getTasksFromTable(
+         dataTableId,
          lastGenerationTimestamp).get();
       generatedTaskIds = allTaskIds.remove(dataTaskId);
 
@@ -108,7 +103,7 @@ public class OrchestrationTests {
 
    @Test
    void testCreateTable() {
-      Table table = Orchestration.createTable(taskStore).get();
+      Table table = orchestrator.createTable().get();
 
       assertThat(table)
          .usingComparator(TestComparators::compareTablesIgnoringId)
@@ -117,7 +112,7 @@ public class OrchestrationTests {
 
    @Test
    void testCreateTableIsSaved() {
-      Table table = Orchestration.createTable(taskStore).get();
+      Table table = orchestrator.createTable().get();
       Table savedTable = taskStore.getTables().getById(table.getId()).get();
 
       assertThat(table)
@@ -127,14 +122,14 @@ public class OrchestrationTests {
 
    @Test
    void testModifyEmptyTable() {
-      Table table = Orchestration.createTable(taskStore).get();
+      Table table = orchestrator.createTable().get();
       TableDelta delta = new TableDelta(
          Schema.empty()
             .withColumn("alpha", TypeDescriptor.fromTypeName("DateTime"))
             .withColumn("beta", TypeDescriptor.fromTypeName("String")),
          "Renamed table");
 
-      Table modifiedTable = Orchestration.modifyTable(table, delta).get();
+      Table modifiedTable = orchestrator.modifyTable(table.getId(), delta).get();
 
       assertThat(modifiedTable)
          .usingComparator(TestComparators::compareTablesIgnoringId)
@@ -143,14 +138,14 @@ public class OrchestrationTests {
 
    @Test
    void testModifyEmptyTableIsSaved() {
-      Table table = Orchestration.createTable(taskStore).get();
+      Table table = orchestrator.createTable().get();
       TableDelta delta = new TableDelta(
          Schema.empty()
             .withColumn("alpha", TypeDescriptor.fromTypeName("DateTime"))
             .withColumn("beta", TypeDescriptor.fromTypeName("String")),
          "Renamed table");
 
-      table = Orchestration.modifyTable(table, delta).get();
+      table = orchestrator.modifyTable(table.getId(), delta).get();
 
       Table savedTable = taskStore.getTables().getById(table.getId()).get();
       assertThat(table)
@@ -160,9 +155,9 @@ public class OrchestrationTests {
 
    @Test
    void testCreateTask() {
-      Table table = taskStore.getTables().getById(dataTableId).get();
+      Table table = getTable(dataTableId);
 
-      Task task = Orchestration.createTask(table).get();
+      Task task = orchestrator.createTask(dataTableId).get();
       assertThat(task)
          .usingComparator(TestComparators::compareTasksIgnoringId)
          .isEqualTo(Task.newTask(table));
@@ -170,10 +165,10 @@ public class OrchestrationTests {
 
    @Test
    void testCreateTaskResultIsSaved() {
-      Table table = taskStore.getTables().getById(dataTableId).get();
+      Table table = getTable(dataTableId);
 
-      Task task = Orchestration.createTask(table).get();
-      Task savedTask = taskStore.getTasks().getById(task.getId()).get();
+      Task task = orchestrator.createTask(dataTableId).get();
+      Task savedTask = getTask(task.getId());
 
       assertThat(task)
          .usingComparator(TestComparators::compareTasks)
@@ -182,20 +177,23 @@ public class OrchestrationTests {
 
    @Test
    void testCreateTaskTableIsSaved() {
-      Table table = taskStore.getTables().getById(dataTableId).get();
+      Table table = getTable(dataTableId);
 
-      Task task = Orchestration.createTask(table).get();
+      Task task = orchestrator.createTask(dataTableId).get();
+      Table expectedTable = table.withTasks(List.of(task.getId()));
 
-      Table savedTable = taskStore.getTables().getById(table.getId()).get();
-      assertThat(savedTable.getAllTaskIds().asList()).contains(task.getId());
+      Table savedTable = getTable(dataTableId);
+      assertThat(savedTable)
+         .usingComparator(TestComparators::compareTablesIgnoringId)
+         .isEqualTo(expectedTable);
    }
 
    @Test
    void testCreateGenerator() {
-      Table table = taskStore.getTables().getById(dataTableId).get();
+      Table table = getTable(dataTableId);
 
-      Generator generator = Orchestration.createGenerator(
-         table,
+      Generator generator = orchestrator.createGenerator(
+         dataTableId,
          "alpha",
          pattern).get();
       assertThat(generator)
@@ -205,16 +203,11 @@ public class OrchestrationTests {
 
    @Test
    void testCreateGeneratorResultIsSaved() {
-      Table table = taskStore.getTables().getById(dataTableId).get();
-
-      Generator generator = Orchestration.createGenerator(
-         table,
+      Generator generator = orchestrator.createGenerator(
+         dataTableId,
          "alpha",
          pattern).get();
-      Generator savedGenerator = taskStore
-         .getGenerators()
-         .getById(generator.getId())
-         .get();
+      Generator savedGenerator = getGenerator(generator.getId());
       assertThat(generator)
          .usingComparator(TestComparators::compareGenerators)
          .isEqualTo(savedGenerator);
@@ -222,16 +215,17 @@ public class OrchestrationTests {
 
    @Test
    void testCreateGeneratorTableIsSaved() {
-      Table table = taskStore.getTables().getById(dataTableId).get();
+      Table table = getTable(dataTableId);
 
-      Generator generator = Orchestration.createGenerator(
-         table,
+      Generator generator = orchestrator.createGenerator(
+         dataTableId,
          "alpha",
          pattern).get();
 
-      Table savedTable = taskStore.getTables().getById(table.getId()).get();
-      assertThat(savedTable.getAllGeneratorIds().asList())
-         .contains(generator.getId());
+      Table savedTable = getTable(dataTableId);
+      assertThat(savedTable)
+         .usingComparator(TestComparators::compareTables)
+         .isEqualTo(table.withGenerator(generator.getId()));
    }
 
    @Test
@@ -239,7 +233,7 @@ public class OrchestrationTests {
       List<Instant> actualStartTimes = generatedTaskIds
          .asList()
          .stream()
-         .map(id -> taskStore.getTasks().getById(id).get())
+         .map(this::getTask)
          .map(task -> task.getProperties().asMap().get("alpha").get())
          .map(property -> ((DateTime) property.get()).getStart())
          .collect(Collectors.toList());
@@ -254,13 +248,10 @@ public class OrchestrationTests {
 
    @Test
    void testGetTasksFromTableTasksAreSaved() {
-      Generator generator = taskStore
-         .getGenerators()
-         .getById(dataGeneratorId)
-         .get();
+      Generator generator = getGenerator(dataGeneratorId);
 
-      for (String id : generatedTaskIds.asList()) {
-         Task task = taskStore.getTasks().getById(id).get();
+      for (ItemId<Task> id : generatedTaskIds.asList()) {
+         Task task = getTask(id);
          Property timestamp = task.getProperties().asMap().get("alpha").get();
          Instant start = ((DateTime) timestamp.get()).getStart();
 
@@ -283,9 +274,8 @@ public class OrchestrationTests {
 
    @Test
    void testGetTasksFromTableGeneratorTimestampIsSaved() {
-      Table table = taskStore.getTables().getById(dataTableId).get();
-      SetList<String> result = Orchestration.getTasksFromTable(
-         table,
+      SetList<ItemId<Task>> result = orchestrator.getTasksFromTable(
+         dataTableId,
          lastGenerationTimestamp).get();
 
       assertThat(result.asList())
@@ -301,9 +291,9 @@ public class OrchestrationTests {
 
    @Test
    void testModifyTable() {
-      Table table = taskStore.getTables().getById(dataTableId).get();
+      Table table = getTable(dataTableId);
 
-      Table result = Orchestration.modifyTable(table, tableDelta).get();
+      Table result = orchestrator.modifyTable(dataTableId, tableDelta).get();
 
       assertThat(result)
          .usingComparator(TestComparators::compareTablesIgnoringId)
@@ -312,10 +302,10 @@ public class OrchestrationTests {
 
    @Test
    void testModifyTableTableIsSaved() {
-      Table table = taskStore.getTables().getById(dataTableId).get();
+      Table table = getTable(dataTableId);
 
-      table = Orchestration.modifyTable(table, tableDelta).get();
-      Table savedTable = taskStore.getTables().getById(dataTableId).get();
+      table = orchestrator.modifyTable(dataTableId, tableDelta).get();
+      Table savedTable = getTable(dataTableId);
 
       assertThat(table)
          .usingComparator(TestComparators::compareTables)
@@ -324,18 +314,10 @@ public class OrchestrationTests {
 
    @Test
    void testModfyTableGeneratorIsSaved() {
-      Generator generator = taskStore
-         .getGenerators()
-         .getById(dataGeneratorId)
-         .get();
+      Generator generator = getGenerator(dataGeneratorId);
 
-      Table table = taskStore.getTables().getById(dataTableId).get();
-
-      Orchestration.modifyTable(table, tableDelta).get();
-      Generator savedGenerator = taskStore
-         .getGenerators()
-         .getById(dataGeneratorId)
-         .get();
+      orchestrator.modifyTable(dataTableId, tableDelta).get();
+      Generator savedGenerator = getGenerator(dataGeneratorId);
 
       assertThat(savedGenerator)
          .usingComparator(TestComparators::compareGeneratorsIgnoringId)
@@ -347,18 +329,16 @@ public class OrchestrationTests {
       List<Task> expectedTasks = allTaskIds
          .asList()
          .stream()
-         .map(id -> taskStore.getTasks().getById(id).get())
+         .map(this::getTask)
          .map(task -> task.withModification(taskDelta).get())
          .collect(Collectors.toList());
 
-      Table table = taskStore.getTables().getById(dataTableId).get();
-
-      Orchestration.modifyTable(table, tableDelta).get();
+      orchestrator.modifyTable(dataTableId, tableDelta).get();
 
       List<Task> actualTasks = allTaskIds
          .asList()
          .stream()
-         .map(id -> taskStore.getTasks().getById(id).get())
+         .map(this::getTask)
          .collect(Collectors.toList());
 
       assertThat(actualTasks)
@@ -368,13 +348,10 @@ public class OrchestrationTests {
 
    @Test
    void testModifyGenerator() {
-      Generator generator = taskStore
-         .getGenerators()
-         .getById(dataGeneratorId)
-         .get();
+      Generator generator = getGenerator(dataGeneratorId);
 
-      Generator result = Orchestration.modifyGenerator(
-         generator,
+      Generator result = orchestrator.modifyGenerator(
+         dataGeneratorId,
          generatorDelta).get();
 
       assertThat(result)
@@ -384,18 +361,12 @@ public class OrchestrationTests {
 
    @Test
    void testModifyGeneratorGeneratorIsSaved() {
-      Generator generator = taskStore
-         .getGenerators()
-         .getById(dataGeneratorId)
-         .get();
+      Generator generator = getGenerator(dataGeneratorId);
 
-      generator = Orchestration.modifyGenerator(
-         generator,
+      generator = orchestrator.modifyGenerator(
+         dataGeneratorId,
          generatorDelta).get();
-      Generator savedGenerator = taskStore
-         .getGenerators()
-         .getById(dataGeneratorId)
-         .get();
+      Generator savedGenerator = getGenerator(dataGeneratorId);
 
       assertThat(generator)
          .usingComparator(TestComparators::compareGenerators)
@@ -407,21 +378,16 @@ public class OrchestrationTests {
       List<Task> expectedTasks = generatedTaskIds
          .asList()
          .stream()
-         .map(id -> taskStore.getTasks().getById(id).get())
+         .map(this::getTask)
          .map(task -> task.withModification(taskDelta).get())
          .collect(Collectors.toList());
 
-      Generator generator = taskStore
-         .getGenerators()
-         .getById(dataGeneratorId)
-         .get();
-
-      Orchestration.modifyGenerator(generator, generatorDelta).get();
+      orchestrator.modifyGenerator(dataGeneratorId, generatorDelta).get();
 
       List<Task> actualTasks = generatedTaskIds
          .asList()
          .stream()
-         .map(id -> taskStore.getTasks().getById(id).get())
+         .map(this::getTask)
          .collect(Collectors.toList());
       assertThat(actualTasks)
          .usingElementComparator(TestComparators::compareTasksIgnoringId)
@@ -430,16 +396,11 @@ public class OrchestrationTests {
 
    @Test
    void testModifyGeneratorStandaloneTaskIsUnchanged() {
-      Task expectedTask = taskStore.getTasks().getById(dataTaskId).get();
+      Task expectedTask = getTask(dataTaskId);
 
-      Generator generator = taskStore
-         .getGenerators()
-         .getById(dataGeneratorId)
-         .get();
+      orchestrator.modifyGenerator(dataGeneratorId, generatorDelta).get();
 
-      Orchestration.modifyGenerator(generator, generatorDelta).get();
-
-      Task actualTask = taskStore.getTasks().getById(dataTaskId).get();
+      Task actualTask = getTask(dataTaskId);
       assertThat(actualTask)
          .usingComparator(TestComparators::compareTasks)
          .isEqualTo(expectedTask);
@@ -447,16 +408,12 @@ public class OrchestrationTests {
 
    @Test
    void testModifyGeneratorTableIsUnchanged() {
-      Table expectedTable = taskStore.getTables().getById(dataTableId).get();
+      Table expectedTable = getTable(dataTableId);
 
-      Generator generator = taskStore
-         .getGenerators()
-         .getById(dataGeneratorId)
-         .get();
 
-      Orchestration.modifyGenerator(generator, generatorDelta).get();
+      orchestrator.modifyGenerator(dataGeneratorId, generatorDelta).get();
 
-      Table actualTable = taskStore.getTables().getById(dataTableId).get();
+      Table actualTable = getTable(dataTableId);
       assertThat(actualTable)
          .usingComparator(TestComparators::compareTables)
          .isEqualTo(expectedTable);
@@ -464,9 +421,9 @@ public class OrchestrationTests {
 
    @Test
    void testModifyAndSeverTaskStandalone() {
-      Task task = taskStore.getTasks().getById(dataTaskId).get();
+      Task task = getTask(dataTaskId);
 
-      Task result = Orchestration.modifyAndSeverTask(task, taskDelta).get();
+      Task result = orchestrator.modifyAndSeverTask(dataTaskId, taskDelta).get();
 
       assertThat(result)
          .usingComparator(TestComparators::compareTasksIgnoringId)
@@ -475,10 +432,10 @@ public class OrchestrationTests {
 
    @Test
    void testModifyAndSeverTaskStandaloneIsSaved() {
-      Task task = taskStore.getTasks().getById(dataTaskId).get();
+      Task task = getTask(dataTaskId);
 
-      task = Orchestration.modifyAndSeverTask(task, taskDelta).get();
-      Task savedTask = taskStore.getTasks().getById(dataTaskId).get();
+      task = orchestrator.modifyAndSeverTask(dataTaskId, taskDelta).get();
+      Task savedTask = getTask(dataTaskId);
 
       assertThat(task)
          .usingComparator(TestComparators::compareTasks)
@@ -487,18 +444,11 @@ public class OrchestrationTests {
 
    @Test
    void testModifyAndSeverTaskStandaloneGeneratorIsUnchanged() {
-      Generator expectedGenerator = taskStore
-         .getGenerators()
-         .getById(dataGeneratorId)
-         .get();
+      Generator expectedGenerator = getGenerator(dataGeneratorId);
 
-      Task task = taskStore.getTasks().getById(dataTaskId).get();
-      Orchestration.modifyAndSeverTask(task, taskDelta).get();
+      orchestrator.modifyAndSeverTask(dataTaskId, taskDelta).get();
 
-      Generator actualGenerator = taskStore
-         .getGenerators()
-         .getById(dataGeneratorId)
-         .get();
+      Generator actualGenerator = getGenerator(dataGeneratorId);
 
       assertThat(actualGenerator)
          .usingComparator(TestComparators::compareGenerators)
@@ -510,16 +460,15 @@ public class OrchestrationTests {
       List<Task> expectedTasks = generatedTaskIds
          .asList()
          .stream()
-         .map(id -> taskStore.getTasks().getById(id).get())
+         .map(this::getTask)
          .collect(Collectors.toList());
 
-      Task task = taskStore.getTasks().getById(dataTaskId).get();
-      Orchestration.modifyAndSeverTask(task, taskDelta).get();
+      orchestrator.modifyAndSeverTask(dataTaskId, taskDelta).get();
 
       List<Task> actualTasks = generatedTaskIds
          .asList()
          .stream()
-         .map(id -> taskStore.getTasks().getById(id).get())
+         .map(this::getTask)
          .collect(Collectors.toList());
 
       assertThat(actualTasks)
@@ -529,12 +478,11 @@ public class OrchestrationTests {
 
    @Test
    void testModifyAndSeverTaskStandaloneTableIsUnchanged() {
-      Table expectedTable = taskStore.getTables().getById(dataTableId).get();
+      Table expectedTable = getTable(dataTableId);
 
-      Task task = taskStore.getTasks().getById(dataTaskId).get();
-      Orchestration.modifyAndSeverTask(task, taskDelta).get();
+      orchestrator.modifyAndSeverTask(dataTaskId, taskDelta).get();
 
-      Table actualTable = taskStore.getTables().getById(dataTableId).get();
+      Table actualTable = getTable(dataTableId);
 
       assertThat(actualTable)
          .usingComparator(TestComparators::compareTables)
@@ -549,7 +497,7 @@ public class OrchestrationTests {
          .withModification(taskDelta)
          .get();
 
-      Task result = Orchestration.modifyAndSeverTask(task, taskDelta).get();
+      Task result = orchestrator.modifyAndSeverTask(middleTaskId, taskDelta).get();
 
       assertThat(result)
          .usingComparator(TestComparators::compareTasksIgnoringId)
@@ -559,7 +507,7 @@ public class OrchestrationTests {
    @Test
    void testModifyAndSeverTaskSeriesIsSaved() {
       Task task = getTask(middleTaskId);
-      task = Orchestration.modifyAndSeverTask(task, taskDelta).get();
+      task = orchestrator.modifyAndSeverTask(middleTaskId, taskDelta).get();
 
       Task savedTask = getTask(middleTaskId);
 
@@ -577,8 +525,7 @@ public class OrchestrationTests {
          .map(this::getTask)
          .collect(Collectors.toList());
 
-      Task task = getTask(middleTaskId);
-      Orchestration.modifyAndSeverTask(task, taskDelta).get();
+      orchestrator.modifyAndSeverTask(middleTaskId, taskDelta).get();
 
       List<Task> actualTasks = allTaskIds
          .asList()
@@ -597,8 +544,7 @@ public class OrchestrationTests {
       Generator expectedGenerator = getGenerator(dataGeneratorId)
          .withoutTask(middleTaskId);
 
-      Task task = getTask(middleTaskId);
-      Orchestration.modifyAndSeverTask(task, taskDelta).get();
+      orchestrator.modifyAndSeverTask(middleTaskId, taskDelta).get();
 
       Generator actualGenerator = getGenerator(dataGeneratorId);
 
@@ -611,8 +557,7 @@ public class OrchestrationTests {
    void testModifyAndSeverTaskTableIsUnchanged() {
       Table expectedTable = getTable(dataTableId);
 
-      Task task = getTask(middleTaskId);
-      Orchestration.modifyAndSeverTask(task, taskDelta).get();
+      orchestrator.modifyAndSeverTask(middleTaskId, taskDelta).get();
 
       Table actualTable = getTable(dataTableId);
 
@@ -624,7 +569,7 @@ public class OrchestrationTests {
    @Test
    void testModifySeries() {
       Task task = getTask(middleTaskId);
-      Task result = Orchestration.modifySeries(task, generatorDelta).get();
+      Task result = orchestrator.modifySeries(middleTaskId, generatorDelta).get();
 
       assertThat(result)
          .usingComparator(TestComparators::compareTasksIgnoringId)
@@ -634,7 +579,7 @@ public class OrchestrationTests {
    @Test
    void testModifySeriesIsSaved() {
       Task task = getTask(middleTaskId);
-      task = Orchestration.modifySeries(task, generatorDelta).get();
+      task = orchestrator.modifySeries(middleTaskId, generatorDelta).get();
 
       Task savedTask = getTask(middleTaskId);
 
@@ -647,8 +592,7 @@ public class OrchestrationTests {
    void testModifySeriesPriorTaskIsSaved() {
       Task expectedTask = getTask(priorTaskId).withoutGenerator();
 
-      Task task = getTask(middleTaskId);
-      Orchestration.modifySeries(task, generatorDelta).get();
+      orchestrator.modifySeries(middleTaskId, generatorDelta).get();
 
       Task actualTask = getTask(priorTaskId);
 
@@ -662,8 +606,7 @@ public class OrchestrationTests {
       Task expectedTask = getTask(subsequentTaskId)
          .withModification(generatorDelta.asTaskDelta()).get();
 
-      Task task = getTask(middleTaskId);
-      Orchestration.modifySeries(task, generatorDelta).get();
+      orchestrator.modifySeries(middleTaskId, generatorDelta).get();
 
       Task actualTask = getTask(subsequentTaskId);
 
@@ -678,8 +621,7 @@ public class OrchestrationTests {
          .withoutTask(priorTaskId)
          .withModification(generatorDelta);
 
-      Task task = getTask(middleTaskId);
-      Orchestration.modifySeries(task, generatorDelta).get();
+      orchestrator.modifySeries(middleTaskId, generatorDelta).get();
 
       Generator actualGenerator = getGenerator(dataGeneratorId);
 
@@ -692,8 +634,7 @@ public class OrchestrationTests {
    void testModifySeriesStandaloneTaskIsUnchanged() {
       Task expectedTask = getTask(dataTaskId);
 
-      Task task = getTask(middleTaskId);
-      Orchestration.modifySeries(task, generatorDelta).get();
+      orchestrator.modifySeries(middleTaskId, generatorDelta).get();
 
       Task actualTask = getTask(dataTaskId);
 
@@ -706,8 +647,7 @@ public class OrchestrationTests {
    void testModifySeriesTableIsUnchanged() {
       Table expectedTable = getTable(dataTableId);
 
-      Task task = getTask(middleTaskId);
-      Orchestration.modifySeries(task, generatorDelta).get();
+      orchestrator.modifySeries(middleTaskId, generatorDelta).get();
 
       Table actualTable = getTable(dataTableId);
 
@@ -718,25 +658,23 @@ public class OrchestrationTests {
 
    @Test
    void testModifySeriesStandaloneTaskIsInvalid() {
-      Task task = getTask(dataTaskId);
-
       assertThatExceptionOfType(IllegalStateException.class)
-         .isThrownBy(() -> Orchestration.modifySeries(task, generatorDelta));
+         .isThrownBy(() -> orchestrator.modifySeries(dataTaskId, generatorDelta));
    }
 
-   private Table getTable(String id) {
+   private Table getTable(ItemId<Table> id) {
       return taskStore.getTables().getById(id).get();
    }
 
-   private Task getTask(String id) {
+   private Task getTask(ItemId<Task> id) {
       return taskStore.getTasks().getById(id).get();
    }
 
-   private Generator getGenerator(String id) {
+   private Generator getGenerator(ItemId<Generator> id) {
       return taskStore.getGenerators().getById(id).get();
    }
 
-   private String getGeneratedTaskId(Instant timestamp) {
+   private ItemId<Task> getGeneratedTaskId(Instant timestamp) {
       return generatedTaskIds
          .asList()
          .stream()

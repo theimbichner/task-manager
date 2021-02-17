@@ -13,29 +13,30 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 
-public class JsonFileDataStore<T extends Storable> implements DataStore<T> {
+public class JsonFileDataStore<K, V extends Storable<K>> implements DataStore<K, V> {
    private static final String EXTENSION = ".json";
 
    private final File root;
-   private final Function<T, JSONObject> toJson;
-   private final Function<JSONObject, T> fromJson;
+   private final Function<V, JSONObject> toJson;
+   private final Function<JSONObject, V> fromJson;
 
    public JsonFileDataStore(
       File root,
-      Function<T, JSONObject> toJson,
-      Function<JSONObject, T> fromJson
+      Function<V, JSONObject> toJson,
+      Function<JSONObject, V> fromJson
    ) {
       this.root = root;
       this.toJson = toJson;
       this.fromJson = fromJson;
    }
 
-   private File getFile(String filename) {
+   private File getFile(K id) {
+      String filename = id.toString();
       return new File(root, filename + EXTENSION);
    }
 
    @Override
-   public Either<TaskAccessException, T> getById(String id) {
+   public Either<TaskAccessException, V> getById(K id) {
       try (FileInputStream stream = new FileInputStream(getFile(id))) {
          JSONTokener tokener = new JSONTokener(stream);
          JSONObject json = new JSONObject(tokener);
@@ -47,12 +48,12 @@ public class JsonFileDataStore<T extends Storable> implements DataStore<T> {
    }
 
    @Override
-   public Either<TaskAccessException, T> save(T t) {
-      String id = t.getId();
+   public Either<TaskAccessException, V> save(V value) {
+      K id = value.getId();
       root.mkdirs();
       try (PrintWriter writer = new PrintWriter(getFile(id))) {
-         toJson.apply(t).write(writer);
-         return Either.right(t);
+         toJson.apply(value).write(writer);
+         return Either.right(value);
       }
       catch (IOException|JSONException e) {
          return Either.left(new TaskAccessException(e));
@@ -60,7 +61,7 @@ public class JsonFileDataStore<T extends Storable> implements DataStore<T> {
    }
 
    @Override
-   public Either<TaskAccessException, Void> deleteById(String id) {
+   public Either<TaskAccessException, Void> deleteById(K id) {
       try {
          Files.delete(getFile(id).toPath());
          return Either.right(null);

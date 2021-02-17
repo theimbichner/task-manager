@@ -1,7 +1,7 @@
 package io.github.theimbichner.taskmanager.io;
 
-public interface Storable {
-   String getId();
+public interface Storable<K> {
+   K getId();
    void setTaskStore(TaskStore taskStore);
    TaskStore getTaskStore();
 }

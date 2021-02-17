@@ -6,8 +6,8 @@ import java.util.NoSuchElementException;
 
 import io.vavr.control.Either;
 
-public class InMemoryDataStore<T extends Storable> implements DataStore<T> {
-   private final Map<String, T> data = new HashMap<>();
+public class InMemoryDataStore<K, V extends Storable<K>> implements DataStore<K, V> {
+   private final Map<K, V> data = new HashMap<>();
 
    public static TaskStore createTaskStore() {
       return new TaskStore(
@@ -17,7 +17,7 @@ public class InMemoryDataStore<T extends Storable> implements DataStore<T> {
    }
 
    @Override
-   public Either<TaskAccessException, T> getById(String id) {
+   public Either<TaskAccessException, V> getById(K id) {
       if (!data.containsKey(id)) {
          return Either.left(new TaskAccessException(new NoSuchElementException()));
       }
@@ -25,13 +25,13 @@ public class InMemoryDataStore<T extends Storable> implements DataStore<T> {
    }
 
    @Override
-   public Either<TaskAccessException, T> save(T t) {
-      data.put(t.getId(), t);
-      return Either.right(t);
+   public Either<TaskAccessException, V> save(V value) {
+      data.put(value.getId(), value);
+      return Either.right(value);
    }
 
    @Override
-   public Either<TaskAccessException, Void> deleteById(String id) {
+   public Either<TaskAccessException, Void> deleteById(K id) {
       if (!data.containsKey(id)) {
          return Either.left(new TaskAccessException(new NoSuchElementException()));
       }

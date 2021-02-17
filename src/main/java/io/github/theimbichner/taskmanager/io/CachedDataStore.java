@@ -5,11 +5,11 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 
 import io.vavr.control.Either;
 
-public class CachedDataStore<T extends Storable> implements DataStore<T> {
-   private final Cache<String, T> cache;
-   private final DataStore<T> delegate;
+public class CachedDataStore<K, V extends Storable<K>> implements DataStore<K, V> {
+   private final Cache<K, V> cache;
+   private final DataStore<K, V> delegate;
 
-   public CachedDataStore(DataStore<T> dataStore, int maxSize) {
+   public CachedDataStore(DataStore<K, V> dataStore, int maxSize) {
       delegate = dataStore;
       cache = Caffeine.newBuilder()
          .maximumSize(maxSize)
@@ -17,22 +17,24 @@ public class CachedDataStore<T extends Storable> implements DataStore<T> {
    }
 
    @Override
-   public Either<TaskAccessException, T> getById(String id) {
-      T t = cache.getIfPresent(id);
-      if (t != null) {
-         return Either.right(t);
+   public Either<TaskAccessException, V> getById(K id) {
+      V value = cache.getIfPresent(id);
+      if (value != null) {
+         return Either.right(value);
       }
 
       return delegate.getById(id).peek(result -> cache.put(id, result));
    }
 
    @Override
-   public Either<TaskAccessException, T> save(T t) {
-      return delegate.save(t).peek(result -> cache.put(result.getId(), result));
+   public Either<TaskAccessException, V> save(V value) {
+      return delegate
+         .save(value)
+         .peek(result -> cache.put(result.getId(), result));
    }
 
    @Override
-   public Either<TaskAccessException, Void> deleteById(String id) {
+   public Either<TaskAccessException, Void> deleteById(K id) {
       cache.invalidate(id);
       return delegate.deleteById(id);
    }

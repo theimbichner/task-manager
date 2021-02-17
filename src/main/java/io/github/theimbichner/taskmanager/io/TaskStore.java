@@ -5,29 +5,30 @@ import java.io.File;
 import io.vavr.control.Either;
 
 import io.github.theimbichner.taskmanager.task.Generator;
+import io.github.theimbichner.taskmanager.task.ItemId;
 import io.github.theimbichner.taskmanager.task.Table;
 import io.github.theimbichner.taskmanager.task.Task;
 
 public class TaskStore {
-   private class TaskStoreLoader<T extends Storable> implements DataStore<T> {
-      private final DataStore<T> delegate;
+   private class TaskStoreLoader<K, V extends Storable<K>> implements DataStore<K, V> {
+      private final DataStore<K, V> delegate;
 
-      public TaskStoreLoader(DataStore<T> delegate) {
+      public TaskStoreLoader(DataStore<K, V> delegate) {
          this.delegate = delegate;
       }
 
       @Override
-      public Either<TaskAccessException, T> getById(String id) {
+      public Either<TaskAccessException, V> getById(K id) {
          return delegate.getById(id).peek(t -> t.setTaskStore(TaskStore.this));
       }
 
       @Override
-      public Either<TaskAccessException, T> save(T t) {
-         return delegate.save(t);
+      public Either<TaskAccessException, V> save(V value) {
+         return delegate.save(value);
       }
 
       @Override
-      public Either<TaskAccessException, Void> deleteById(String id) {
+      public Either<TaskAccessException, Void> deleteById(K id) {
          return delegate.deleteById(id);
       }
    }
@@ -40,29 +41,29 @@ public class TaskStore {
    private static final String GENERATORS_FOLDER_NAME = "generators";
    private static final String TABLES_FOLDER_NAME = "tables";
 
-   private final DataStore<Task> tasks;
-   private final DataStore<Generator> generators;
-   private final DataStore<Table> tables;
+   private final DataStore<ItemId<Task>, Task> tasks;
+   private final DataStore<ItemId<Generator>, Generator> generators;
+   private final DataStore<ItemId<Table>, Table> tables;
 
    public TaskStore(
-      DataStore<Task> tasks,
-      DataStore<Generator> generators,
-      DataStore<Table> tables
+      DataStore<ItemId<Task>, Task> tasks,
+      DataStore<ItemId<Generator>, Generator> generators,
+      DataStore<ItemId<Table>, Table> tables
    ) {
       this.tasks = new TaskStoreLoader<>(tasks);
       this.generators = new TaskStoreLoader<>(generators);
       this.tables = new TaskStoreLoader<>(tables);
    }
 
-   public DataStore<Task> getTasks() {
+   public DataStore<ItemId<Task>, Task> getTasks() {
       return tasks;
    }
 
-   public DataStore<Generator> getGenerators() {
+   public DataStore<ItemId<Generator>, Generator> getGenerators() {
       return generators;
    }
 
-   public DataStore<Table> getTables() {
+   public DataStore<ItemId<Table>, Table> getTables() {
       return tables;
    }
 

@@ -109,20 +109,20 @@ public class TableTests {
 
       assertThat(table.getAllTaskIds().asList()).isEmpty();
 
-      table = table.withTasks(List.of("alpha"));
-      assertThat(table.getAllTaskIds().asList()).isEqualTo(List.of("alpha"));
+      table = table.withTasks(List.of(ItemId.of("alpha")));
+      assertThat(table.getAllTaskIds().asList()).isEqualTo(List.of(ItemId.of("alpha")));
 
-      table = table.withTasks(List.of("beta"));
-      assertThat(table.getAllTaskIds().asList()).isEqualTo(List.of("alpha", "beta"));
+      table = table.withTasks(List.of(ItemId.of("beta")));
+      assertThat(table.getAllTaskIds().asList()).isEqualTo(List.of(ItemId.of("alpha"), ItemId.of("beta")));
 
-      table = table.withTasks(List.of("alpha"));
-      assertThat(table.getAllTaskIds().asList()).isEqualTo(List.of("alpha", "beta"));
+      table = table.withTasks(List.of(ItemId.of("alpha")));
+      assertThat(table.getAllTaskIds().asList()).isEqualTo(List.of(ItemId.of("alpha"), ItemId.of("beta")));
 
-      table = table.withoutTask("gamma");
-      assertThat(table.getAllTaskIds().asList()).isEqualTo(List.of("alpha", "beta"));
+      table = table.withoutTask(ItemId.of("gamma"));
+      assertThat(table.getAllTaskIds().asList()).isEqualTo(List.of(ItemId.of("alpha"), ItemId.of("beta")));
 
-      table = table.withoutTask("alpha");
-      assertThat(table.getAllTaskIds().asList()).isEqualTo(List.of("beta"));
+      table = table.withoutTask(ItemId.of("alpha"));
+      assertThat(table.getAllTaskIds().asList()).isEqualTo(List.of(ItemId.of("beta")));
    }
 
    @Test
@@ -130,20 +130,24 @@ public class TableTests {
       Table table = Table.newTable();
       assertThat(table.getAllGeneratorIds().asList()).isEmpty();
 
-      table = table.withGenerator("alpha");
-      assertThat(table.getAllGeneratorIds().asList()).isEqualTo(List.of("alpha"));
+      ItemId<Generator> alpha = ItemId.randomId();
+      ItemId<Generator> beta = ItemId.randomId();
+      ItemId<Generator> gamma = ItemId.randomId();
 
-      table = table.withGenerator("beta");
-      assertThat(table.getAllGeneratorIds().asList()).isEqualTo(List.of("alpha", "beta"));
+      table = table.withGenerator(alpha);
+      assertThat(table.getAllGeneratorIds().asList()).isEqualTo(List.of(alpha));
 
-      table = table.withGenerator("alpha");
-      assertThat(table.getAllGeneratorIds().asList()).isEqualTo(List.of("alpha", "beta"));
+      table = table.withGenerator(beta);
+      assertThat(table.getAllGeneratorIds().asList()).isEqualTo(List.of(alpha, beta));
 
-      table = table.withoutGenerator("gamma");
-      assertThat(table.getAllGeneratorIds().asList()).isEqualTo(List.of("alpha", "beta"));
+      table = table.withGenerator(alpha);
+      assertThat(table.getAllGeneratorIds().asList()).isEqualTo(List.of(alpha, beta));
 
-      table = table.withoutGenerator("alpha");
-      assertThat(table.getAllGeneratorIds().asList()).isEqualTo(List.of("beta"));
+      table = table.withoutGenerator(gamma);
+      assertThat(table.getAllGeneratorIds().asList()).isEqualTo(List.of(alpha, beta));
+
+      table = table.withoutGenerator(alpha);
+      assertThat(table.getAllGeneratorIds().asList()).isEqualTo(List.of(beta));
    }
 
    @Test
@@ -153,10 +157,14 @@ public class TableTests {
 
       Generator generator = Generator.newGenerator(table, "", getDatePattern(7));
       taskStore.getGenerators().save(generator).get();
-      String generatorId = generator.getId();
+      ItemId<Generator> generatorId = generator.getId();
+
+      List<ItemId<Task>> taskIds = List.of(
+         ItemId.of("alpha"),
+         ItemId.of("beta"));
 
       table = table
-         .withTasks(List.of("alpha", "beta"))
+         .withTasks(taskIds)
          .withGenerator(generatorId);
 
       JSONObject json = table.toJson();
@@ -175,7 +183,7 @@ public class TableTests {
       assertThat(newTable.getDateLastModified().getEnd())
          .isEqualTo(table.getDateLastModified().getEnd());
 
-      assertThat(newTable.getAllTaskIds().asList()).isEqualTo(List.of("alpha", "beta"));
+      assertThat(newTable.getAllTaskIds().asList()).isEqualTo(taskIds);
       assertThat(newTable.getAllGeneratorIds().asList()).isEqualTo(List.of(generatorId));
       assertThat(newTable.getSchema().isEmpty()).isTrue();
    }
