@@ -18,10 +18,15 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import io.github.theimbichner.taskmanager.task.Generator;
+import io.github.theimbichner.taskmanager.task.GeneratorDelta;
 import io.github.theimbichner.taskmanager.task.ItemId;
 import io.github.theimbichner.taskmanager.task.Orchestration;
 import io.github.theimbichner.taskmanager.task.Table;
+import io.github.theimbichner.taskmanager.task.TableDelta;
 import io.github.theimbichner.taskmanager.task.Task;
+import io.github.theimbichner.taskmanager.task.TaskDelta;
+import io.github.theimbichner.taskmanager.task.property.PropertyMap;
+import io.github.theimbichner.taskmanager.task.property.Schema;
 import io.github.theimbichner.taskmanager.time.DatePattern;
 import io.github.theimbichner.taskmanager.time.UniformDatePattern;
 
@@ -67,21 +72,38 @@ public class TaskStoreTests {
          .count() == 0;
    }
 
-   // TODO actually modify the task/table/generators
    static Stream<Arguments> provideTaskGeneratorTable() {
       Orchestration orchestrator = new Orchestration(taskStore);
+
+      TableDelta tableDelta = new TableDelta(Schema.empty(), "modified");
+      TaskDelta taskDelta = new TaskDelta(
+         PropertyMap.empty(),
+         "modified",
+         null,
+         null);
+      GeneratorDelta generatorDelta = new GeneratorDelta(
+         PropertyMap.empty(),
+         "modified",
+         null,
+         null,
+         null);
+
       Table table = orchestrator.createTable().get();
-      Table overwriteTable = Table.fromJson(table.toJson());
+      Table overwriteTable = orchestrator.modifyTable(table.getId(), tableDelta).get();
 
       Task task = orchestrator.createTask(table.getId()).get();
-      Task overwriteTask = Task.fromJson(task.toJson());
+      Task overwriteTask = orchestrator.modifyAndSeverTask(task.getId(), taskDelta).get();
 
       String field = "";
       DatePattern datePattern = new UniformDatePattern(
          Instant.ofEpochSecond(0),
          Duration.ofSeconds(100));
-      Generator generator = orchestrator.createGenerator(table.getId(), field, datePattern).get();
-      Generator overwriteGenerator = Generator.fromJson(generator.toJson());
+      Generator generator = orchestrator
+         .createGenerator(table.getId(), field, datePattern)
+         .get();
+      Generator overwriteGenerator = orchestrator
+         .modifyGenerator(generator.getId(), generatorDelta)
+         .get();
 
       return Stream.of(
          Arguments.of(
@@ -89,17 +111,22 @@ public class TaskStoreTests {
             overwriteTask,
             taskStore.getTasks(),
             TASK_COMPARE,
-            (Supplier<Task>) () -> orchestrator.createTask(table.getId()).get(),
+            (Supplier<Task>) () -> {
+               Table tempTable = orchestrator.createTable().get();
+               return orchestrator.createTask(tempTable.getId()).get();
+            },
             TaskStore.MAXIMUM_TASKS_CACHED),
          Arguments.of(
             generator,
             overwriteGenerator,
             taskStore.getGenerators(),
             GENERATOR_COMPARE,
-            (Supplier<Generator>) () -> orchestrator.createGenerator(
-               table.getId(),
-               field,
-               datePattern).get(),
+            (Supplier<Generator>) () -> {
+               Table tempTable = orchestrator.createTable().get();
+               return orchestrator
+                  .createGenerator(tempTable.getId(), field, datePattern)
+                  .get();
+            },
             TaskStore.MAXIMUM_GENERATORS_CACHED),
          Arguments.of(
             table,
