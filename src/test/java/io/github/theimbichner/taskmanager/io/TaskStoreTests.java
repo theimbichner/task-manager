@@ -25,6 +25,7 @@ import io.github.theimbichner.taskmanager.task.Table;
 import io.github.theimbichner.taskmanager.task.TableDelta;
 import io.github.theimbichner.taskmanager.task.Task;
 import io.github.theimbichner.taskmanager.task.TaskDelta;
+import io.github.theimbichner.taskmanager.task.TestComparators;
 import io.github.theimbichner.taskmanager.task.property.PropertyMap;
 import io.github.theimbichner.taskmanager.task.property.Schema;
 import io.github.theimbichner.taskmanager.time.DatePattern;
@@ -109,7 +110,7 @@ public class TaskStoreTests {
             task,
             overwriteTask,
             taskStore.getTasks(),
-            TASK_COMPARE,
+            (Comparator<Task>) TestComparators::compareTasks,
             (Supplier<Task>) () -> {
                Table tempTable = orchestrator.createTable().get();
                return orchestrator.createTask(tempTable.getId()).get();
@@ -119,7 +120,7 @@ public class TaskStoreTests {
             generator,
             overwriteGenerator,
             taskStore.getGenerators(),
-            GENERATOR_COMPARE,
+            (Comparator<Generator>) TestComparators::compareGenerators,
             (Supplier<Generator>) () -> {
                Table tempTable = orchestrator.createTable().get();
                return orchestrator
@@ -131,7 +132,7 @@ public class TaskStoreTests {
             table,
             overwriteTable,
             taskStore.getTables(),
-            TABLE_COMPARE,
+            (Comparator<Table>) TestComparators::compareTables,
             (Supplier<Table>) () -> orchestrator.createTable().get(),
             TaskStore.MAXIMUM_TABLES_CACHED));
    }
@@ -147,7 +148,6 @@ public class TaskStoreTests {
       dataStore.save(t).get();
       T result = dataStore.getById(t.getId()).get();
       assertThat(result).usingComparator(comparator).isEqualTo(t);
-      assertThat(result.getTaskStore()).isEqualTo(taskStore);
    }
 
    @ParameterizedTest
@@ -162,7 +162,6 @@ public class TaskStoreTests {
       dataStore.save(overwrite).get();
       T result = dataStore.getById(t.getId()).get();
       assertThat(result).usingComparator(comparator).isEqualTo(overwrite);
-      assertThat(result.getTaskStore()).isEqualTo(taskStore);
    }
 
    @ParameterizedTest
@@ -206,7 +205,6 @@ public class TaskStoreTests {
       dataStore.save(overwrite).get();
       T result = dataStore.getById(t.getId()).get();
       assertThat(result).usingComparator(comparator).isEqualTo(overwrite);
-      assertThat(result.getTaskStore()).isEqualTo(taskStore);
    }
 
    @ParameterizedTest
@@ -247,7 +245,6 @@ public class TaskStoreTests {
       uncache(dataStore, supplier, cacheSize);
       T result = dataStore.getById(t.getId()).get();
       assertThat(result).usingComparator(comparator).isEqualTo(t);
-      assertThat(result.getTaskStore()).isEqualTo(taskStore);
    }
 
    @ParameterizedTest
@@ -265,7 +262,6 @@ public class TaskStoreTests {
       uncache(dataStore, supplier, cacheSize);
       T result = dataStore.getById(t.getId()).get();
       assertThat(result).usingComparator(comparator).isEqualTo(overwrite);
-      assertThat(result.getTaskStore()).isEqualTo(taskStore);
    }
 
    @ParameterizedTest
@@ -284,7 +280,6 @@ public class TaskStoreTests {
       uncache(dataStore, supplier, cacheSize);
       T result = dataStore.getById(t.getId()).get();
       assertThat(result).usingComparator(comparator).isEqualTo(overwrite);
-      assertThat(result.getTaskStore()).isEqualTo(taskStore);
    }
 
    <T extends Storable<ItemId<T>>> void uncache(

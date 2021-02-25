@@ -29,8 +29,6 @@ public class Table implements Storable<ItemId<Table>> {
       private SetList<ItemId<Generator>> generatorIds;
       private Schema schema;
 
-      private TaskStore taskStore;
-
       private Builder(ItemId<Table> id) {
          this.id = id;
          name = "";
@@ -38,8 +36,6 @@ public class Table implements Storable<ItemId<Table>> {
          taskIds = SetList.empty();
          generatorIds = SetList.empty();
          schema = Schema.empty();
-
-         taskStore = null;
       }
 
       private Builder(Table table) {
@@ -49,8 +45,6 @@ public class Table implements Storable<ItemId<Table>> {
          taskIds = table.taskIds;
          generatorIds = table.generatorIds;
          schema = table.schema;
-
-         taskStore = table.taskStore;
       }
    }
 
@@ -61,8 +55,6 @@ public class Table implements Storable<ItemId<Table>> {
    private final SetList<ItemId<Generator>> generatorIds;
    private final Schema schema;
 
-   private TaskStore taskStore;
-
    private Table(Builder builder) {
       id = builder.id;
       name = builder.name;
@@ -70,8 +62,6 @@ public class Table implements Storable<ItemId<Table>> {
       taskIds = builder.taskIds;
       generatorIds = builder.generatorIds;
       schema = builder.schema;
-
-      taskStore = builder.taskStore;
    }
 
    @Override
@@ -138,16 +128,6 @@ public class Table implements Storable<ItemId<Table>> {
 
    public Schema getSchema() {
       return schema;
-   }
-
-   @Override
-   public void setTaskStore(TaskStore taskStore) {
-      this.taskStore = taskStore;
-   }
-
-   @Override
-   public TaskStore getTaskStore() {
-      return taskStore;
    }
 
    static Table newTable() {

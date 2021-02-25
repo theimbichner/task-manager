@@ -36,8 +36,6 @@ public class Generator implements Storable<ItemId<Generator>> {
       private final DatePattern generationDatePattern;
       private SetList<ItemId<Task>> taskIds;
 
-      private TaskStore taskStore;
-
       private Builder(
          ItemId<Generator> id,
          ItemId<Table> templateTableId,
@@ -56,8 +54,6 @@ public class Generator implements Storable<ItemId<Generator>> {
          this.generationField = generationField;
          this.generationDatePattern = generationDatePattern;
          taskIds = SetList.empty();
-
-         taskStore = null;
       }
 
       private Builder(Generator g) {
@@ -73,8 +69,6 @@ public class Generator implements Storable<ItemId<Generator>> {
          generationField = g.generationField;
          generationDatePattern = g.generationDatePattern;
          taskIds = g.taskIds;
-
-         taskStore = g.taskStore;
       }
    }
 
@@ -91,8 +85,6 @@ public class Generator implements Storable<ItemId<Generator>> {
    private final DatePattern generationDatePattern;
    private final SetList<ItemId<Task>> taskIds;
 
-   private TaskStore taskStore;
-
    private Generator(Builder builder) {
       id = builder.id;
       name = builder.name;
@@ -106,8 +98,6 @@ public class Generator implements Storable<ItemId<Generator>> {
       generationField = builder.generationField;
       generationDatePattern = builder.generationDatePattern;
       taskIds = builder.taskIds;
-
-      taskStore = builder.taskStore;
    }
 
    @Override
@@ -239,21 +229,10 @@ public class Generator implements Storable<ItemId<Generator>> {
       return Tuple.of(new Generator(result), tasks);
    }
 
-   @Override
-   public void setTaskStore(TaskStore taskStore) {
-      this.taskStore = taskStore;
-   }
-
-   @Override
-   public TaskStore getTaskStore() {
-      return taskStore;
-   }
-
    static Generator newGenerator(Table table, String field, DatePattern pattern) {
       Builder result = new Builder(ItemId.randomId(), table.getId(), field, pattern);
       result.templateProperties = table.getSchema().getDefaultProperties();
       result.templateProperties = result.templateProperties.put(field, Property.empty());
-      result.taskStore = table.getTaskStore();
 
       return new Generator(result);
    }

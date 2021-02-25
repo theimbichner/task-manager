@@ -2,37 +2,12 @@ package io.github.theimbichner.taskmanager.io;
 
 import java.io.File;
 
-import io.vavr.control.Either;
-
 import io.github.theimbichner.taskmanager.task.Generator;
 import io.github.theimbichner.taskmanager.task.ItemId;
 import io.github.theimbichner.taskmanager.task.Table;
 import io.github.theimbichner.taskmanager.task.Task;
 
 public class TaskStore {
-   private class TaskStoreLoader<K, V extends Storable<K>> implements DataStore<K, V> {
-      private final DataStore<K, V> delegate;
-
-      public TaskStoreLoader(DataStore<K, V> delegate) {
-         this.delegate = delegate;
-      }
-
-      @Override
-      public Either<TaskAccessException, V> getById(K id) {
-         return delegate.getById(id).peek(t -> t.setTaskStore(TaskStore.this));
-      }
-
-      @Override
-      public Either<TaskAccessException, V> save(V value) {
-         return delegate.save(value);
-      }
-
-      @Override
-      public Either<TaskAccessException, Void> deleteById(K id) {
-         return delegate.deleteById(id);
-      }
-   }
-
    public static final int MAXIMUM_TASKS_CACHED = 10_000;
    public static final int MAXIMUM_GENERATORS_CACHED = 1000;
    public static final int MAXIMUM_TABLES_CACHED = 1000;
@@ -50,9 +25,9 @@ public class TaskStore {
       DataStore<ItemId<Generator>, Generator> generators,
       DataStore<ItemId<Table>, Table> tables
    ) {
-      this.tasks = new TaskStoreLoader<>(tasks);
-      this.generators = new TaskStoreLoader<>(generators);
-      this.tables = new TaskStoreLoader<>(tables);
+      this.tasks = tasks;
+      this.generators = generators;
+      this.tables = tables;
    }
 
    public DataStore<ItemId<Task>, Task> getTasks() {

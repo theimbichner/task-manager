@@ -25,8 +25,6 @@ public class Task implements Storable<ItemId<Task>> {
       private ItemId<Generator> generatorId;
       private PropertyMap properties;
 
-      private TaskStore taskStore;
-
       private Builder(ItemId<Task> id, ItemId<Table> tableId) {
          this.id = id;
          this.tableId = tableId;
@@ -35,8 +33,6 @@ public class Task implements Storable<ItemId<Task>> {
          markup = "";
          generatorId = null;
          properties = PropertyMap.empty();
-
-         taskStore = null;
       }
 
       private Builder(Task task) {
@@ -47,8 +43,6 @@ public class Task implements Storable<ItemId<Task>> {
          markup = task.markup;
          generatorId = task.generatorId;
          properties = task.properties;
-
-         taskStore = task.taskStore;
       }
    }
 
@@ -60,8 +54,6 @@ public class Task implements Storable<ItemId<Task>> {
    private final ItemId<Generator> generatorId;
    private final PropertyMap properties;
 
-   private TaskStore taskStore;
-
    private Task(Builder builder) {
       id = builder.id;
       tableId = builder.tableId;
@@ -70,8 +62,6 @@ public class Task implements Storable<ItemId<Task>> {
       markup = builder.markup;
       generatorId = builder.generatorId;
       properties = builder.properties;
-
-      taskStore = builder.taskStore;
    }
 
    @Override
@@ -101,13 +91,6 @@ public class Task implements Storable<ItemId<Task>> {
 
    public PropertyMap getProperties() {
       return properties;
-   }
-
-   Either<TaskAccessException, Option<Generator>> getGenerator() {
-      if (generatorId == null) {
-         return Either.right(Option.none());
-      }
-      return taskStore.getGenerators().getById(generatorId).map(Option::some);
    }
 
    Task withModification(TaskDelta delta) {
@@ -141,20 +124,9 @@ public class Task implements Storable<ItemId<Task>> {
       return new Task(result);
    }
 
-   @Override
-   public void setTaskStore(TaskStore taskStore) {
-      this.taskStore = taskStore;
-   }
-
-   @Override
-   public TaskStore getTaskStore() {
-      return taskStore;
-   }
-
    static Task newTask(Table table) {
       Builder result = new Builder(ItemId.randomId(), table.getId());
       result.properties = table.getSchema().getDefaultProperties();
-      result.taskStore = table.getTaskStore();
 
       return new Task(result);
    }
@@ -169,7 +141,6 @@ public class Task implements Storable<ItemId<Task>> {
       result.properties = generator
          .getTemplateProperties()
          .put(generator.getGenerationField(), Property.of(date));
-      result.taskStore = generator.getTaskStore();
       return new Task(result);
    }
 

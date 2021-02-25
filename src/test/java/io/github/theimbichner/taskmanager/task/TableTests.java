@@ -1,6 +1,5 @@
 package io.github.theimbichner.taskmanager.task;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
@@ -15,9 +14,7 @@ import io.github.theimbichner.taskmanager.io.InMemoryDataStore;
 import io.github.theimbichner.taskmanager.io.TaskStore;
 import io.github.theimbichner.taskmanager.task.property.Schema;
 import io.github.theimbichner.taskmanager.task.property.TypeDescriptor;
-import io.github.theimbichner.taskmanager.time.DatePattern;
 import io.github.theimbichner.taskmanager.time.DateTime;
-import io.github.theimbichner.taskmanager.time.UniformDatePattern;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -27,10 +24,6 @@ public class TableTests {
    @BeforeAll
    static void beforeAll() {
       taskStore = InMemoryDataStore.createTaskStore();
-   }
-
-   private static DatePattern getDatePattern(int step) {
-      return new UniformDatePattern(Instant.now().plusSeconds(1), Duration.ofSeconds(step));
    }
 
    @Test
@@ -153,15 +146,12 @@ public class TableTests {
    @Test
    void testToFromJson() {
       Table table = Table.newTable();
-      table.setTaskStore(taskStore);
 
-      Generator generator = Generator.newGenerator(table, "", getDatePattern(7));
-      taskStore.getGenerators().save(generator).get();
-      ItemId<Generator> generatorId = generator.getId();
+      ItemId<Generator> generatorId = ItemId.randomId();
 
       List<ItemId<Task>> taskIds = List.of(
-         ItemId.of("alpha"),
-         ItemId.of("beta"));
+         ItemId.randomId(),
+         ItemId.randomId());
 
       table = table
          .withTasks(taskIds)
@@ -169,7 +159,6 @@ public class TableTests {
 
       JSONObject json = table.toJson();
       Table newTable = Table.fromJson(json);
-      newTable.setTaskStore(taskStore);
 
       assertThat(newTable.getId()).isEqualTo(table.getId());
       assertThat(newTable.getName()).isEqualTo(table.getName());

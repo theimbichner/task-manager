@@ -23,7 +23,6 @@ public class Orchestration {
 
    public Either<TaskAccessException, Table> createTable() {
       Table table = Table.newTable();
-      table.setTaskStore(taskStore);
       return taskStore.getTables().save(table);
    }
 
