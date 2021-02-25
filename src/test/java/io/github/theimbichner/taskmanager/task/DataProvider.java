@@ -121,16 +121,7 @@ public class DataProvider {
       return new TaskDelta(
          getProperties(),
          deltaTemplateName,
-         deltaTemplateMarkup,
-         null);
-   }
-
-   public TaskDelta getFullTaskDelta() {
-      return new TaskDelta(
-         getProperties(),
-         deltaTemplateName,
-         deltaTemplateMarkup,
-         deltaTemplateDuration);
+         deltaTemplateMarkup);
    }
 
    public Generator createDefaultGenerator() {

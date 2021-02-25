@@ -28,6 +28,6 @@ public class TableDelta {
 
    public TaskDelta asTaskDelta(PropertyMap baseProperties) {
       PropertyMap deltaProperties = schema.asPropertiesDelta(baseProperties);
-      return new TaskDelta(deltaProperties, null, null, null);
+      return new TaskDelta(deltaProperties, null, null);
    }
 }

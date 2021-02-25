@@ -76,7 +76,7 @@ public class Orchestration {
          for (ItemId<Task> id : table.getAllTaskIds().asList()) {
             result = result
                .flatMap(x -> taskStore.getTasks().getById(id))
-               .flatMap(task -> {
+               .map(task -> {
                   TaskDelta taskDelta = delta.asTaskDelta(task.getProperties());
                   return task.withModification(taskDelta);
                })
@@ -100,15 +100,13 @@ public class Orchestration {
       ItemId<Generator> generatorId,
       GeneratorDelta delta
    ) {
-      TaskDelta taskDelta = delta.asTaskDelta();
-
       return taskStore.getGenerators().getById(generatorId).flatMap(generator -> {
          List<Either<TaskAccessException, Task>> tasks = generator
             .getTaskIds()
             .asList()
             .stream()
             .map(taskId -> taskStore.getTasks().getById(taskId)
-               .flatMap(task -> task.withModification(taskDelta))
+               .map(task -> task.withSeriesModification(delta, generator))
                .flatMap(taskStore.getTasks()::save))
             .collect(Collectors.toList());
          return Either.sequenceRight(tasks)
@@ -166,7 +164,7 @@ public class Orchestration {
          }
 
          return severedTask
-            .flatMap(t -> t.withModification(delta))
+            .map(t -> t.withModification(delta))
             .flatMap(taskStore.getTasks()::save);
       });
    }

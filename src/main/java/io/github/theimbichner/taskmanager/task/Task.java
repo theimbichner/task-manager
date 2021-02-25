@@ -110,31 +110,29 @@ public class Task implements Storable<ItemId<Task>> {
       return taskStore.getGenerators().getById(generatorId).map(Option::some);
    }
 
-   Either<TaskAccessException, Task> withModification(TaskDelta delta) {
+   Task withModification(TaskDelta delta) {
       if (delta.isEmpty()) {
-         return Either.right(this);
+         return this;
       }
 
-      return getGenerator()
-         .map(generator -> {
-            Builder result = new Builder(this);
-            result.properties = properties.merge(delta.getProperties());
-            result.name = delta.getName().orElse(name);
-            result.markup = delta.getMarkup().orElse(markup);
+      Builder result = new Builder(this);
+      result.properties = properties.merge(delta.getProperties());
+      result.name = delta.getName().orElse(name);
+      result.markup = delta.getMarkup().orElse(markup);
 
-            if (delta.getDuration().isPresent()) {
-               if (generator.isEmpty()) {
-                  throw new IllegalArgumentException("Cannot set duration without generator");
-               }
-               String generationField = generator.get().getGenerationField();
-               DateTime date = (DateTime) properties.asMap().get(generationField).get().get();
-               DateTime newDate = date.withDuration(delta.getDuration().get());
-               result.properties = result.properties.put(generationField, Property.of(newDate));
-            }
+      result.modifyRecord = modifyRecord.updatedNow();
+      return new Task(result);
+   }
 
-            result.modifyRecord = modifyRecord.updatedNow();
-            return new Task(result);
-         });
+   Task withSeriesModification(GeneratorDelta delta, Generator generator) {
+      if (generator.getId() != generatorId) {
+         String message = "The provided generator must be the parent of this task";
+         throw new IllegalArgumentException(message);
+      }
+
+      String generationField = generator.getGenerationField();
+      TaskDelta taskDelta = delta.asTaskDelta(generationField, properties);
+      return withModification(taskDelta);
    }
 
    Task withoutGenerator() {

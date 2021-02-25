@@ -91,7 +91,6 @@ public class OrchestrationTests {
       taskDelta = new TaskDelta(
          PropertyMap.empty().put("beta", Property.DELETE),
          null,
-         null,
          null);
       generatorDelta = new GeneratorDelta(
          PropertyMap.empty().put("beta", Property.DELETE),
@@ -165,12 +164,10 @@ public class OrchestrationTests {
 
    @Test
    void testCreateTaskResultIsSaved() {
-      Table table = getTable(dataTableId);
+      Task result = orchestrator.createTask(dataTableId).get();
+      Task savedTask = getTask(result.getId());
 
-      Task task = orchestrator.createTask(dataTableId).get();
-      Task savedTask = getTask(task.getId());
-
-      assertThat(task)
+      assertThat(result)
          .usingComparator(TestComparators::compareTasks)
          .isEqualTo(savedTask);
    }
@@ -330,7 +327,7 @@ public class OrchestrationTests {
          .asList()
          .stream()
          .map(this::getTask)
-         .map(task -> task.withModification(taskDelta).get())
+         .map(task -> task.withModification(taskDelta))
          .collect(Collectors.toList());
 
       orchestrator.modifyTable(dataTableId, tableDelta).get();
@@ -375,11 +372,12 @@ public class OrchestrationTests {
 
    @Test
    void testModifyGeneratorTasksAreSaved() {
+      Generator generator = getGenerator(dataGeneratorId);
       List<Task> expectedTasks = generatedTaskIds
          .asList()
          .stream()
          .map(this::getTask)
-         .map(task -> task.withModification(taskDelta).get())
+         .map(task -> task.withSeriesModification(generatorDelta, generator))
          .collect(Collectors.toList());
 
       orchestrator.modifyGenerator(dataGeneratorId, generatorDelta).get();
@@ -427,7 +425,7 @@ public class OrchestrationTests {
 
       assertThat(result)
          .usingComparator(TestComparators::compareTasksIgnoringId)
-         .isEqualTo(task.withModification(taskDelta).get());
+         .isEqualTo(task.withModification(taskDelta));
    }
 
    @Test
@@ -494,8 +492,7 @@ public class OrchestrationTests {
       Task task = getTask(middleTaskId);
       Task expectedTask = task
          .withoutGenerator()
-         .withModification(taskDelta)
-         .get();
+         .withModification(taskDelta);
 
       Task result = orchestrator.modifyAndSeverTask(middleTaskId, taskDelta).get();
 
@@ -569,11 +566,12 @@ public class OrchestrationTests {
    @Test
    void testModifySeries() {
       Task task = getTask(middleTaskId);
+      Generator generator = getGenerator(dataGeneratorId);
       Task result = orchestrator.modifySeries(middleTaskId, generatorDelta).get();
 
       assertThat(result)
          .usingComparator(TestComparators::compareTasksIgnoringId)
-         .isEqualTo(task.withModification(generatorDelta.asTaskDelta()).get());
+         .isEqualTo(task.withSeriesModification(generatorDelta, generator));
    }
 
    @Test
@@ -603,8 +601,9 @@ public class OrchestrationTests {
 
    @Test
    void testModifySeriesSubsequentTaskIsSaved() {
+      Generator generator = getGenerator(dataGeneratorId);
       Task expectedTask = getTask(subsequentTaskId)
-         .withModification(generatorDelta.asTaskDelta()).get();
+         .withSeriesModification(generatorDelta, generator);
 
       orchestrator.modifySeries(middleTaskId, generatorDelta).get();
 

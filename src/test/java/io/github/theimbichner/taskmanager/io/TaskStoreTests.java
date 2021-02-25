@@ -79,7 +79,6 @@ public class TaskStoreTests {
       TaskDelta taskDelta = new TaskDelta(
          PropertyMap.empty(),
          "modified",
-         null,
          null);
       GeneratorDelta generatorDelta = new GeneratorDelta(
          PropertyMap.empty(),
