@@ -2,14 +2,9 @@ package io.github.theimbichner.taskmanager.task;
 
 import java.time.Instant;
 
-import io.vavr.control.Either;
-import io.vavr.control.Option;
-
 import org.json.JSONObject;
 
 import io.github.theimbichner.taskmanager.io.Storable;
-import io.github.theimbichner.taskmanager.io.TaskAccessException;
-import io.github.theimbichner.taskmanager.io.TaskStore;
 import io.github.theimbichner.taskmanager.task.property.Property;
 import io.github.theimbichner.taskmanager.task.property.PropertyMap;
 import io.github.theimbichner.taskmanager.time.DateTime;
