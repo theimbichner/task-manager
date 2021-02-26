@@ -2,7 +2,9 @@ package io.github.theimbichner.taskmanager.task;
 
 import java.util.Optional;
 
+import io.github.theimbichner.taskmanager.task.property.Property;
 import io.github.theimbichner.taskmanager.task.property.PropertyMap;
+import io.github.theimbichner.taskmanager.time.DateTime;
 
 public class GeneratorDelta {
    private final PropertyMap properties;
@@ -53,7 +55,21 @@ public class GeneratorDelta {
          && properties.asMap().isEmpty();
    }
 
-   public TaskDelta asTaskDelta() {
-      return new TaskDelta(properties, templateName, templateMarkup, templateDuration);
+   public TaskDelta asTaskDelta(String generationField, PropertyMap taskProperties) {
+      PropertyMap taskDeltaProperties = PropertyMap.empty();
+      if (properties != null) {
+         taskDeltaProperties = properties;
+      }
+      if (templateDuration != null) {
+         DateTime initialDateTime = (DateTime) taskProperties
+            .asMap()
+            .get(generationField)
+            .get()
+            .get();
+         DateTime newDateTime = initialDateTime.withDuration(templateDuration);
+         taskDeltaProperties = taskDeltaProperties
+            .put(generationField, Property.of(newDateTime));
+      }
+      return new TaskDelta(taskDeltaProperties, templateName, templateMarkup);
    }
 }

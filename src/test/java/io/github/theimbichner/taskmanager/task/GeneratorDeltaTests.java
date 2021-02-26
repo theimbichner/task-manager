@@ -1,22 +1,26 @@
 package io.github.theimbichner.taskmanager.task;
 
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import io.github.theimbichner.taskmanager.task.property.Property;
 import io.github.theimbichner.taskmanager.task.property.PropertyMap;
+import io.github.theimbichner.taskmanager.time.DateTime;
 
 import static org.assertj.core.api.Assertions.*;
 
 public class GeneratorDeltaTests {
    static PropertyMap properties;
-   static PropertyMap empty;
    static String name;
    static String templateName;
    static String templateMarkup;
    static Long templateDuration;
+
+   static DateTime dateTime;
+   static PropertyMap taskProperties;
 
    @BeforeAll
    static void beforeAll() {
@@ -25,16 +29,24 @@ public class GeneratorDeltaTests {
          "beta", Property.ofNumber("2"),
          "gamma", Property.ofNumber("3"),
          "delta", Property.ofNumber("4")));
-      empty = PropertyMap.empty();
       name = "epsilon";
       templateName = "zeta";
       templateMarkup = "eta";
       templateDuration = 123456L;
+
+      dateTime = new DateTime();
+      taskProperties = PropertyMap.fromJava(Map.of(
+         "epsilon", Property.of(dateTime)));
    }
 
    @Test
    void testEmpty() {
-      GeneratorDelta delta = new GeneratorDelta(empty, null, null, null, null);
+      GeneratorDelta delta = new GeneratorDelta(
+         PropertyMap.empty(),
+         null,
+         null,
+         null,
+         null);
       assertThat(delta.getProperties().asMap()).isEmpty();
       assertThat(delta.getName()).isEmpty();
       assertThat(delta.getTemplateName()).isEmpty();
@@ -46,7 +58,12 @@ public class GeneratorDeltaTests {
 
    @Test
    void testProperties() {
-      GeneratorDelta delta = new GeneratorDelta(properties, null, null, null, null);
+      GeneratorDelta delta = new GeneratorDelta(
+         properties,
+         null,
+         null,
+         null,
+         null);
       assertThat(delta.getProperties().asMap()).isEqualTo(properties.asMap());
       assertThat(delta.getName()).isEmpty();
       assertThat(delta.getTemplateName()).isEmpty();
@@ -58,7 +75,12 @@ public class GeneratorDeltaTests {
 
    @Test
    void testName() {
-      GeneratorDelta delta = new GeneratorDelta(empty, name, null, null, null);
+      GeneratorDelta delta = new GeneratorDelta(
+         PropertyMap.empty(),
+         name,
+         null,
+         null,
+         null);
       assertThat(delta.getProperties().asMap()).isEmpty();
       assertThat(delta.getName()).hasValue(name);
       assertThat(delta.getTemplateName()).isEmpty();
@@ -70,7 +92,12 @@ public class GeneratorDeltaTests {
 
    @Test
    void testTemplateName() {
-      GeneratorDelta delta = new GeneratorDelta(empty, null, templateName, null, null);
+      GeneratorDelta delta = new GeneratorDelta(
+         PropertyMap.empty(),
+         null,
+         templateName,
+         null,
+         null);
       assertThat(delta.getProperties().asMap()).isEmpty();
       assertThat(delta.getName()).isEmpty();
       assertThat(delta.getTemplateName()).hasValue(templateName);
@@ -82,7 +109,12 @@ public class GeneratorDeltaTests {
 
    @Test
    void testTemplateMarkup() {
-      GeneratorDelta delta = new GeneratorDelta(empty, null, null, templateMarkup, null);
+      GeneratorDelta delta = new GeneratorDelta(
+         PropertyMap.empty(),
+         null,
+         null,
+         templateMarkup,
+         null);
       assertThat(delta.getProperties().asMap()).isEmpty();
       assertThat(delta.getName()).isEmpty();
       assertThat(delta.getTemplateName()).isEmpty();
@@ -94,7 +126,12 @@ public class GeneratorDeltaTests {
 
    @Test
    void testTemplateDuration() {
-      GeneratorDelta delta = new GeneratorDelta(empty, null, null, null, templateDuration);
+      GeneratorDelta delta = new GeneratorDelta(
+         PropertyMap.empty(),
+         null,
+         null,
+         null,
+         templateDuration);
       assertThat(delta.getProperties().asMap()).isEmpty();
       assertThat(delta.getName()).isEmpty();
       assertThat(delta.getTemplateName()).isEmpty();
@@ -106,16 +143,85 @@ public class GeneratorDeltaTests {
 
    @Test
    void testAsTaskDelta() {
+      PropertyMap expectedDeltaProperties = properties
+        .put("epsilon", Property.of(dateTime.withDuration(templateDuration)));
+
       GeneratorDelta delta = new GeneratorDelta(
          properties,
          name,
          templateName,
          templateMarkup,
          templateDuration);
-      TaskDelta taskDelta = delta.asTaskDelta();
-      assertThat(taskDelta.getProperties().asMap()).isEqualTo(properties.asMap());
+      TaskDelta taskDelta = delta.asTaskDelta("epsilon", taskProperties);
+
+      assertThat(taskDelta.getProperties().asMap())
+         .isEqualTo(expectedDeltaProperties.asMap());
       assertThat(taskDelta.getName()).hasValue(templateName);
       assertThat(taskDelta.getMarkup()).hasValue(templateMarkup);
-      assertThat(taskDelta.getDuration()).hasValue(templateDuration);
+   }
+
+   @Test
+   void testAsTaskDeltaNoProperties() {
+      PropertyMap expectedDeltaProperties = PropertyMap.empty()
+        .put("epsilon", Property.of(dateTime.withDuration(templateDuration)));
+
+      GeneratorDelta delta = new GeneratorDelta(
+         null,
+         name,
+         templateName,
+         templateMarkup,
+         templateDuration);
+      TaskDelta taskDelta = delta.asTaskDelta("epsilon", taskProperties);
+
+      assertThat(taskDelta.getProperties().asMap())
+         .isEqualTo(expectedDeltaProperties.asMap());
+      assertThat(taskDelta.getName()).hasValue(templateName);
+      assertThat(taskDelta.getMarkup()).hasValue(templateMarkup);
+   }
+
+   @Test
+   void testAsTaskDeltaNoDuration() {
+      PropertyMap expectedDeltaProperties = properties;
+
+      GeneratorDelta delta = new GeneratorDelta(
+         properties,
+         name,
+         templateName,
+         templateMarkup,
+         null);
+      TaskDelta taskDelta = delta.asTaskDelta("epsilon", taskProperties);
+
+      assertThat(taskDelta.getProperties().asMap())
+         .isEqualTo(expectedDeltaProperties.asMap());
+      assertThat(taskDelta.getName()).hasValue(templateName);
+      assertThat(taskDelta.getMarkup()).hasValue(templateMarkup);
+   }
+
+   @Test
+   void testAsTaskDeltaNoPropertiesOrDuration() {
+      GeneratorDelta delta = new GeneratorDelta(
+         PropertyMap.empty(),
+         null,
+         null,
+         null,
+         null);
+      TaskDelta taskDelta = delta.asTaskDelta("epsilon", taskProperties);
+
+      assertThat(taskDelta.getProperties().asMap()).isEmpty();
+      assertThat(taskDelta.getName()).isEmpty();
+      assertThat(taskDelta.getMarkup()).isEmpty();
+      assertThat(taskDelta.isEmpty()).isTrue();
+   }
+
+   @Test
+   void testAsTaskDeltaInvalidTaskProperties() {
+      GeneratorDelta delta = new GeneratorDelta(
+         properties,
+         name,
+         templateName,
+         templateMarkup,
+         templateDuration);
+      assertThatExceptionOfType(NoSuchElementException.class)
+         .isThrownBy(() -> delta.asTaskDelta("alpha", taskProperties));
    }
 }

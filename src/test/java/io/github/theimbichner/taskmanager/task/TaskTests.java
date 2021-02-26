@@ -13,6 +13,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import io.github.theimbichner.taskmanager.task.property.Property;
 import io.github.theimbichner.taskmanager.task.property.PropertyMap;
+import io.github.theimbichner.taskmanager.time.DatePattern;
 import io.github.theimbichner.taskmanager.time.DateTime;
 
 import static org.assertj.core.api.Assertions.*;
@@ -71,7 +72,7 @@ public class TaskTests {
    @MethodSource("provideTasks")
    void testModify(Task task) {
       Instant beforeModify = Instant.now();
-      task = task.withModification(data.getTaskDelta()).get();
+      task = task.withModification(data.getTaskDelta());
 
       assertThat(task.getDateLastModified().getStart())
          .isAfterOrEqualTo(beforeModify)
@@ -86,8 +87,10 @@ public class TaskTests {
    @ParameterizedTest
    @MethodSource("provideTasks")
    void testModifyEmpty(Task task) {
-      TaskDelta delta = new TaskDelta(PropertyMap.empty(), null, null, null);
-      assertThat(task.withModification(delta).get()).isSameAs(task);
+      TaskDelta delta = new TaskDelta(PropertyMap.empty(), null, null);
+      assertThat(task.withModification(delta))
+         .usingComparator(TestComparators::compareTasks)
+         .isEqualTo(task);
    }
 
    @ParameterizedTest
@@ -97,8 +100,8 @@ public class TaskTests {
       String oldMarkup = task.getMarkup();
 
       Instant beforeModify = Instant.now();
-      TaskDelta delta = new TaskDelta(data.getProperties(), null, null, null);
-      task = task.withModification(delta).get();
+      TaskDelta delta = new TaskDelta(data.getProperties(), null, null);
+      task = task.withModification(delta);
 
       assertThat(task.getDateLastModified().getStart())
          .isAfterOrEqualTo(beforeModify)
@@ -111,44 +114,11 @@ public class TaskTests {
    @Test
    void testModifyUpdateProperties() {
       Task task = data.createModifiedTask();
-      TaskDelta delta = new TaskDelta(data.getUpdateProperties(), null, null, null);
-      task = task.withModification(delta).get();
+      TaskDelta delta = new TaskDelta(data.getUpdateProperties(), null, null);
+      task = task.withModification(delta);
 
       assertThat(task.getProperties().asMap().keySet()).isEqualTo(HashSet.of("alpha", "gamma"));
       assertThat(task.getProperties().asMap().get("alpha")).contains(Property.empty());
-   }
-
-   @Test
-   void testModifyInvalid() {
-      Task task = data.createModifiedTask();
-      assertThatExceptionOfType(IllegalArgumentException.class)
-         .isThrownBy(() -> task.withModification(data.getFullTaskDelta()));
-   }
-
-   @ParameterizedTest
-   @MethodSource("provideGeneratorTasks")
-   void testModifyUpdateDuration(Task task) {
-      String generationField = data.getGenerationField();
-      DateTime initial = (DateTime) task.getProperties().asMap().get(generationField).get().get();
-      Instant expectedEnd = initial.getStart().plusSeconds(data.getDuration());
-
-      task = task.withModification(data.getFullTaskDelta()).get();
-      DateTime dateTime = (DateTime) task.getProperties().asMap().get(generationField).get().get();
-
-      assertThat(dateTime.getStart()).isEqualTo(initial.getStart());
-      assertThat(dateTime.getEnd()).isEqualTo(expectedEnd);
-   }
-
-   @ParameterizedTest
-   @MethodSource("provideTasks")
-   void testGetGenerator(Task task) {
-      if (task.getGeneratorId() == null) {
-         assertThat(task.getGenerator().get()).isEmpty();
-      }
-      else {
-         assertThat(task.getGenerator().get())
-            .hasValueSatisfying(g -> assertThat(g.getId()).isEqualTo(task.getGeneratorId()));
-      }
    }
 
    @ParameterizedTest
@@ -189,5 +159,49 @@ public class TaskTests {
       expectedProperties = expectedProperties.put(generationField, Property.of(date));
 
       assertThat(task.getProperties().asMap()).isEqualTo(expectedProperties);
+   }
+
+   @Test
+   void testWithSeriesModification() {
+      Instant instant = Instant.now();
+      DatePattern pattern = data.getGenerationDatePattern();
+
+      Table table = Table.newTable();
+      Generator generator = Generator.newGenerator(table, "alpha", pattern);
+      Task task = Task.newSeriesTask(generator, instant);
+      GeneratorDelta delta = new GeneratorDelta(
+         PropertyMap.empty()
+            .put("alpha", Property.ofNumber("12345"))
+            .put("beta", Property.of("abcde")),
+         "generator name",
+         "task name",
+         "markup",
+         10L);
+
+      Task result = task.withSeriesModification(delta, generator);
+
+      assertThat(result.getProperties().asMap()).isEqualTo(HashMap.of(
+         "alpha", Property.of(new DateTime(instant, instant.plusSeconds(10))),
+         "beta", Property.of("abcde")));
+      assertThat(result.getName()).isEqualTo("task name");
+      assertThat(result.getMarkup()).isEqualTo("markup");
+   }
+
+   @Test
+   void testWithSeriesModificationInvalid() {
+      DatePattern pattern = data.getGenerationDatePattern();
+      GeneratorDelta delta = new GeneratorDelta(
+         PropertyMap.empty(),
+         null,
+         null,
+         null,
+         null);
+
+      Table table = Table.newTable();
+      Task task = Task.newTask(table);
+      Generator generator = Generator.newGenerator(table, "alpha", pattern);
+
+      assertThatExceptionOfType(IllegalArgumentException.class)
+         .isThrownBy(() -> task.withSeriesModification(delta, generator));
    }
 }

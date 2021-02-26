@@ -8,18 +8,15 @@ public class TaskDelta {
    private final PropertyMap properties;
    private final String name;
    private final String markup;
-   private final Long duration;
 
    public TaskDelta(
       PropertyMap properties,
       String name,
-      String markup,
-      Long duration
+      String markup
    ) {
       this.properties = properties;
       this.name = name;
       this.markup = markup;
-      this.duration = duration;
    }
 
    public PropertyMap getProperties() {
@@ -34,11 +31,7 @@ public class TaskDelta {
       return Optional.ofNullable(markup);
    }
 
-   public Optional<Long> getDuration() {
-      return Optional.ofNullable(duration);
-   }
-
    public boolean isEmpty() {
-      return name == null && markup == null && duration == null && properties.asMap().isEmpty();
+      return name == null && markup == null && properties.asMap().isEmpty();
    }
 }

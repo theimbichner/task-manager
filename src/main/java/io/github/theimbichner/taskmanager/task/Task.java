@@ -1,34 +1,26 @@
 package io.github.theimbichner.taskmanager.task;
 
 import java.time.Instant;
-import java.util.UUID;
-
-import io.vavr.control.Either;
-import io.vavr.control.Option;
 
 import org.json.JSONObject;
 
 import io.github.theimbichner.taskmanager.io.Storable;
-import io.github.theimbichner.taskmanager.io.TaskAccessException;
-import io.github.theimbichner.taskmanager.io.TaskStore;
 import io.github.theimbichner.taskmanager.task.property.Property;
 import io.github.theimbichner.taskmanager.task.property.PropertyMap;
 import io.github.theimbichner.taskmanager.time.DateTime;
 import io.github.theimbichner.taskmanager.time.ModifyRecord;
 
-public class Task implements Storable {
+public class Task implements Storable<ItemId<Task>> {
    private static class Builder {
-      private final String id;
-      private final String tableId;
+      private final ItemId<Task> id;
+      private final ItemId<Table> tableId;
       private String name;
       private ModifyRecord modifyRecord;
       private String markup;
-      private String generatorId;
+      private ItemId<Generator> generatorId;
       private PropertyMap properties;
 
-      private TaskStore taskStore;
-
-      private Builder(String id, String tableId) {
+      private Builder(ItemId<Task> id, ItemId<Table> tableId) {
          this.id = id;
          this.tableId = tableId;
          name = "";
@@ -36,8 +28,6 @@ public class Task implements Storable {
          markup = "";
          generatorId = null;
          properties = PropertyMap.empty();
-
-         taskStore = null;
       }
 
       private Builder(Task task) {
@@ -48,20 +38,16 @@ public class Task implements Storable {
          markup = task.markup;
          generatorId = task.generatorId;
          properties = task.properties;
-
-         taskStore = task.taskStore;
       }
    }
 
-   private final String id;
-   private final String tableId;
+   private final ItemId<Task> id;
+   private final ItemId<Table> tableId;
    private final String name;
    private final ModifyRecord modifyRecord;
    private final String markup;
-   private final String generatorId;
+   private final ItemId<Generator> generatorId;
    private final PropertyMap properties;
-
-   private TaskStore taskStore;
 
    private Task(Builder builder) {
       id = builder.id;
@@ -71,12 +57,10 @@ public class Task implements Storable {
       markup = builder.markup;
       generatorId = builder.generatorId;
       properties = builder.properties;
-
-      taskStore = builder.taskStore;
    }
 
    @Override
-   public String getId() {
+   public ItemId<Task> getId() {
       return id;
    }
 
@@ -96,7 +80,7 @@ public class Task implements Storable {
       return markup;
    }
 
-   public String getGeneratorId() {
+   public ItemId<Generator> getGeneratorId() {
       return generatorId;
    }
 
@@ -104,38 +88,29 @@ public class Task implements Storable {
       return properties;
    }
 
-   Either<TaskAccessException, Option<Generator>> getGenerator() {
-      if (generatorId == null) {
-         return Either.right(Option.none());
+   Task withModification(TaskDelta delta) {
+      if (delta.isEmpty()) {
+         return this;
       }
-      return taskStore.getGenerators().getById(generatorId).map(Option::some);
+
+      Builder result = new Builder(this);
+      result.properties = properties.merge(delta.getProperties());
+      result.name = delta.getName().orElse(name);
+      result.markup = delta.getMarkup().orElse(markup);
+
+      result.modifyRecord = modifyRecord.updatedNow();
+      return new Task(result);
    }
 
-   Either<TaskAccessException, Task> withModification(TaskDelta delta) {
-      if (delta.isEmpty()) {
-         return Either.right(this);
+   Task withSeriesModification(GeneratorDelta delta, Generator generator) {
+      if (generator.getId() != generatorId) {
+         String message = "The provided generator must be the parent of this task";
+         throw new IllegalArgumentException(message);
       }
 
-      return getGenerator()
-         .map(generator -> {
-            Builder result = new Builder(this);
-            result.properties = properties.merge(delta.getProperties());
-            result.name = delta.getName().orElse(name);
-            result.markup = delta.getMarkup().orElse(markup);
-
-            if (delta.getDuration().isPresent()) {
-               if (generator.isEmpty()) {
-                  throw new IllegalArgumentException("Cannot set duration without generator");
-               }
-               String generationField = generator.get().getGenerationField();
-               DateTime date = (DateTime) properties.asMap().get(generationField).get().get();
-               DateTime newDate = date.withDuration(delta.getDuration().get());
-               result.properties = result.properties.put(generationField, Property.of(newDate));
-            }
-
-            result.modifyRecord = modifyRecord.updatedNow();
-            return new Task(result);
-         });
+      String generationField = generator.getGenerationField();
+      TaskDelta taskDelta = delta.asTaskDelta(generationField, properties);
+      return withModification(taskDelta);
    }
 
    Task withoutGenerator() {
@@ -144,26 +119,15 @@ public class Task implements Storable {
       return new Task(result);
    }
 
-   @Override
-   public void setTaskStore(TaskStore taskStore) {
-      this.taskStore = taskStore;
-   }
-
-   @Override
-   public TaskStore getTaskStore() {
-      return taskStore;
-   }
-
    static Task newTask(Table table) {
-      Builder result = new Builder(UUID.randomUUID().toString(), table.getId());
+      Builder result = new Builder(ItemId.randomId(), table.getId());
       result.properties = table.getSchema().getDefaultProperties();
-      result.taskStore = table.getTaskStore();
 
       return new Task(result);
    }
 
    static Task newSeriesTask(Generator generator, Instant startTime) {
-      Builder result = new Builder(UUID.randomUUID().toString(), generator.getTemplateTableId());
+      Builder result = new Builder(ItemId.randomId(), generator.getTemplateTableId());
       result.name = generator.getTemplateName();
       result.markup = generator.getTemplateMarkup();
       result.generatorId = generator.getId();
@@ -172,32 +136,36 @@ public class Task implements Storable {
       result.properties = generator
          .getTemplateProperties()
          .put(generator.getGenerationField(), Property.of(date));
-      result.taskStore = generator.getTaskStore();
       return new Task(result);
    }
 
    public JSONObject toJson() {
       JSONObject json = new JSONObject();
-      json.put("id", id);
-      json.put("table", tableId);
+      json.put("id", id.toString());
+      json.put("table", tableId.toString());
       json.put("name", name);
       modifyRecord.writeIntoJson(json);
       json.put("markup", markup);
-      json.put("generator", generatorId == null ? JSONObject.NULL : generatorId);
+      if (generatorId == null) {
+         json.put("generator", JSONObject.NULL);
+      }
+      else {
+         json.put("generator", generatorId.toString());
+      }
       json.put("properties", properties.toJson());
 
       return json;
    }
 
    public static Task fromJson(JSONObject json) {
-      String id = json.getString("id");
-      String tableId = json.getString("table");
+      ItemId<Task> id = ItemId.of(json.getString("id"));
+      ItemId<Table> tableId = ItemId.of(json.getString("table"));
       Builder result = new Builder(id, tableId);
 
       result.name = json.getString("name");
       result.modifyRecord = ModifyRecord.readFromJson(json);
       result.markup = json.getString("markup");
-      result.generatorId = json.isNull("generator") ? null : json.getString("generator");
+      result.generatorId = json.isNull("generator") ? null : ItemId.of(json.getString("generator"));
       result.properties = PropertyMap.fromJson(json.getJSONObject("properties"));
 
       return new Task(result);

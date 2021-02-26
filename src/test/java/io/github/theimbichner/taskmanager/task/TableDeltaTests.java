@@ -83,13 +83,12 @@ public class TableDeltaTests {
       assertThat(taskDelta.getProperties().asMap()).isEqualTo(deltaProperties.asMap());
       assertThat(taskDelta.getName()).isEmpty();
       assertThat(taskDelta.getMarkup()).isEmpty();
-      assertThat(taskDelta.getDuration()).isEmpty();
    }
 
    @Test
    void testAsTaskDeltaNoProperties() {
       TableDelta tableDelta = new TableDelta(Schema.empty(), name);
       TaskDelta taskDelta = tableDelta.asTaskDelta(baseProperties);
-      assertThat(taskDelta.getProperties().asMap()).isEmpty();
+      assertThat(taskDelta.isEmpty()).isTrue();
    }
 }

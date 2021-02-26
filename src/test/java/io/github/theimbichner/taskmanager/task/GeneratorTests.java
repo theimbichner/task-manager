@@ -129,14 +129,14 @@ public class GeneratorTests {
       JSONObject json = generator.toJson();
       JSONArray jsonTasks = json.getJSONArray("tasks");
       for (int i = 0; i < tasks.size(); i++) {
-         assertThat(jsonTasks.getString(i)).isEqualTo(tasks.get(i).getId());
+         assertThat(jsonTasks.getString(i)).isEqualTo(tasks.get(i).getId().toString());
       }
 
       generator = Generator.fromJson(json);
       json = generator.toJson();
       jsonTasks = json.getJSONArray("tasks");
       for (int i = 0; i < tasks.size(); i++) {
-         assertThat(jsonTasks.getString(i)).isEqualTo(tasks.get(i).getId());
+         assertThat(jsonTasks.getString(i)).isEqualTo(tasks.get(i).getId().toString());
       }
    }
 
@@ -357,7 +357,11 @@ public class GeneratorTests {
          assertThat(task.getGeneratorId()).isEqualTo(generator.getId());
          assertThat(dates).contains(date);
       }
-      List<String> firstIds = firstResult._2.stream().map(Task::getId).collect(Collectors.toList());
+      List<ItemId<Task>> firstIds = firstResult
+         ._2
+         .stream()
+         .map(Task::getId)
+         .collect(Collectors.toList());
       assertThat(generator.getTaskIds().asList()).containsAll(firstIds);
 
       dates = datePattern.getDates(firstInstant, secondInstant);
@@ -370,7 +374,11 @@ public class GeneratorTests {
          assertThat(task.getGeneratorId()).isEqualTo(generator.getId());
          assertThat(dates).contains(date);
       }
-      List<String> secondIds = secondResult._2.stream().map(Task::getId).collect(Collectors.toList());
+      List<ItemId<Task>> secondIds = secondResult
+         ._2
+         .stream()
+         .map(Task::getId)
+         .collect(Collectors.toList());
       assertThat(generator.getTaskIds().asList()).containsAll(firstIds);
       assertThat(generator.getTaskIds().asList()).containsAll(secondIds);
 
@@ -387,13 +395,21 @@ public class GeneratorTests {
 
       Tuple2<Generator, List<Task>> tuple = generator.withTasksUntil(firstInstant);
       generator = tuple._1;
-      List<String> firstIds = tuple._2.stream().map(Task::getId).collect(Collectors.toList());
+      List<ItemId<Task>> firstIds = tuple
+         ._2
+         .stream()
+         .map(Task::getId)
+         .collect(Collectors.toList());
       tuple = generator.withTasksUntil(secondInstant);
       generator = tuple._1;
-      List<String> secondIds = tuple._2.stream().map(Task::getId).collect(Collectors.toList());
+      List<ItemId<Task>> secondIds = tuple
+         ._2
+         .stream()
+         .map(Task::getId)
+         .collect(Collectors.toList());
 
-      String id = secondIds.get(0);
-      Tuple2<Generator, List<String>> result = generator.withoutTasksBefore(id);
+      ItemId<Task> id = secondIds.get(0);
+      Tuple2<Generator, List<ItemId<Task>>> result = generator.withoutTasksBefore(id);
       assertThat(result._1.getTaskIds().asList()).isEqualTo(secondIds);
       assertThat(result._2).isEqualTo(firstIds);
    }
@@ -401,7 +417,8 @@ public class GeneratorTests {
    @Test
    void testUnlinkTasksBeforeInvalid() {
       Generator generator = data.createDefaultGenerator();
+      ItemId<Task> taskId = ItemId.randomId();
       assertThatExceptionOfType(IllegalArgumentException.class)
-         .isThrownBy(() -> generator.withoutTasksBefore("alpha"));
+         .isThrownBy(() -> generator.withoutTasksBefore(taskId));
    }
 }
