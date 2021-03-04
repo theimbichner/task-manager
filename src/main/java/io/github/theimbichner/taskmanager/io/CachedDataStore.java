@@ -38,4 +38,15 @@ public class CachedDataStore<K, V extends Storable<K>> implements DataStore<K, V
       cache.invalidate(id);
       return delegate.deleteById(id);
    }
+
+   @Override
+   public Either<TaskAccessException, Void> commit() {
+      return delegate.commit().peekLeft(x -> cache.invalidateAll());
+   }
+
+   @Override
+   public void cancelTransaction() {
+      cache.invalidateAll();
+      delegate.cancelTransaction();
+   }
 }

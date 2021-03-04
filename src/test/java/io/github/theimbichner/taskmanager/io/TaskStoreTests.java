@@ -12,7 +12,6 @@ import java.util.stream.Stream;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -35,26 +34,12 @@ import static org.assertj.core.api.Assertions.*;
 
 public class TaskStoreTests {
    static final File TEST_ROOT = new File("./TaskStoreTests/");
-   static final Comparator<Task> TASK_COMPARE = (x, y) -> {
-      return x.toJson().similar(y.toJson()) ? 0 : 1;
-   };
-   static final Comparator<Generator> GENERATOR_COMPARE = (x, y) -> {
-      return x.toJson().similar(y.toJson()) ? 0 : 1;
-   };
-   static final Comparator<Table> TABLE_COMPARE = (x, y) -> {
-      return x.toJson().similar(y.toJson()) ? 0 : 1;
-   };
 
    static TaskStore taskStore;
 
    @BeforeAll
-   static void beforeAll() {
+   static void beforeAll() throws IOException {
       taskStore = TaskStore.getDefault(TEST_ROOT);
-   }
-
-   @BeforeEach
-   void beforeEach() throws IOException {
-      assertThat(deleteRecursive(TEST_ROOT)).isTrue();
    }
 
    @AfterAll
@@ -69,12 +54,12 @@ public class TaskStoreTests {
       return Files.walk(file.toPath())
          .sorted(Comparator.reverseOrder())
          .map(Path::toFile)
-         .filter(f -> !f.delete())
-         .count() == 0;
+         .allMatch(File::delete);
    }
 
    static Stream<Arguments> provideTaskGeneratorTable() {
-      Orchestration orchestrator = new Orchestration(taskStore);
+      TaskStore secondaryTaskStore = InMemoryDataStore.createTaskStore();
+      Orchestration orchestrator = new Orchestration(secondaryTaskStore);
 
       TableDelta tableDelta = new TableDelta(Schema.empty(), "modified");
       TaskDelta taskDelta = new TaskDelta(
@@ -215,7 +200,7 @@ public class TaskStoreTests {
       DataStore<ItemId<T>, T> dataStore,
       Comparator<T> comparator
    ) {
-      assertThat(dataStore.getById(ItemId.randomId()).getLeft())
+      assertThat(dataStore.getById(t.getId()).getLeft())
          .isInstanceOf(TaskAccessException.class);
    }
 

@@ -1,6 +1,7 @@
 package io.github.theimbichner.taskmanager.io;
 
 import java.io.File;
+import java.io.IOException;
 
 import io.github.theimbichner.taskmanager.task.Generator;
 import io.github.theimbichner.taskmanager.task.ItemId;
@@ -42,7 +43,7 @@ public class TaskStore {
       return tables;
    }
 
-   public static TaskStore getDefault(File root) {
+   public static TaskStore getDefault(File root) throws IOException {
       return new TaskStore(
          new CachedDataStore<>(
             new JsonFileDataStore<>(
