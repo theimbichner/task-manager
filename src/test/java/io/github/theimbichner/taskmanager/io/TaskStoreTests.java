@@ -124,61 +124,6 @@ public class TaskStoreTests {
 
    @ParameterizedTest
    @MethodSource("provideTaskGeneratorTable")
-   <T extends Storable<ItemId<T>>> void testWriteRead(
-      T t,
-      T overwrite,
-      DataStore<ItemId<T>, T> dataStore,
-      Comparator<T> comparator
-   ) {
-      dataStore.save(t).get();
-      T result = dataStore.getById(t.getId()).get();
-      assertThat(result).usingComparator(comparator).isEqualTo(t);
-   }
-
-   @ParameterizedTest
-   @MethodSource("provideTaskGeneratorTable")
-   <T extends Storable<ItemId<T>>> void testWriteOverwriteRead(
-      T t,
-      T overwrite,
-      DataStore<ItemId<T>, T> dataStore,
-      Comparator<T> comparator
-   ) {
-      dataStore.save(t).get();
-      dataStore.save(overwrite).get();
-      T result = dataStore.getById(t.getId()).get();
-      assertThat(result).usingComparator(comparator).isEqualTo(overwrite);
-   }
-
-   @ParameterizedTest
-   @MethodSource("provideTaskGeneratorTable")
-   <T extends Storable<ItemId<T>>> void testWriteDeleteRead(
-      T t,
-      T overwrite,
-      DataStore<ItemId<T>, T> dataStore,
-      Comparator<T> comparator
-   ) {
-      dataStore.save(t).get();
-      dataStore.deleteById(t.getId()).get();
-      assertThat(dataStore.getById(t.getId()).getLeft())
-         .isInstanceOf(TaskAccessException.class);
-   }
-
-   @ParameterizedTest
-   @MethodSource("provideTaskGeneratorTable")
-   <T extends Storable<ItemId<T>>> void testWriteDeleteDelete(
-      T t,
-      T overwrite,
-      DataStore<ItemId<T>, T> dataStore,
-      Comparator<T> comparator
-   ) {
-      dataStore.save(t).get();
-      dataStore.deleteById(t.getId()).get();
-      assertThat(dataStore.deleteById(t.getId()).getLeft())
-         .isInstanceOf(TaskAccessException.class);
-   }
-
-   @ParameterizedTest
-   @MethodSource("provideTaskGeneratorTable")
    <T extends Storable<ItemId<T>>> void testWriteDeleteOverwriteRead(
       T t,
       T overwrite,
@@ -190,30 +135,6 @@ public class TaskStoreTests {
       dataStore.save(overwrite).get();
       T result = dataStore.getById(t.getId()).get();
       assertThat(result).usingComparator(comparator).isEqualTo(overwrite);
-   }
-
-   @ParameterizedTest
-   @MethodSource("provideTaskGeneratorTable")
-   <T extends Storable<ItemId<T>>> void testReadInvalid(
-      T t,
-      T overwrite,
-      DataStore<ItemId<T>, T> dataStore,
-      Comparator<T> comparator
-   ) {
-      assertThat(dataStore.getById(t.getId()).getLeft())
-         .isInstanceOf(TaskAccessException.class);
-   }
-
-   @ParameterizedTest
-   @MethodSource("provideTaskGeneratorTable")
-   <T extends Storable<ItemId<T>>> void testDeleteInvalid(
-      T t,
-      T overwrite,
-      DataStore<ItemId<T>, T> dataStore,
-      Comparator<T> comparator
-   ) {
-      assertThat(dataStore.deleteById(t.getId()).getLeft())
-         .isInstanceOf(TaskAccessException.class);
    }
 
    @ParameterizedTest
