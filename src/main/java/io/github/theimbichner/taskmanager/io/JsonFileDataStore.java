@@ -203,7 +203,7 @@ public class JsonFileDataStore<K, V extends Storable<K>> implements DataStore<K,
    private void setRegisteredFolders(Vector<String> vector) throws IOException {
       File file = getTempFile();
 
-      JSONArray jsonArray = new JSONArray(vector);
+      JSONArray jsonArray = new JSONArray(vector.asJava());
       try (
          FileOutputStream stream = new FileOutputStream(file);
          OutputStreamWriter writer = new OutputStreamWriter(stream)

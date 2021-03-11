@@ -1,10 +1,17 @@
 package io.github.theimbichner.taskmanager.io;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.UUID;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
+import org.json.JSONObject;
+
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -13,6 +20,8 @@ import static org.assertj.core.api.Assertions.*;
 import static org.assertj.vavr.api.VavrAssertions.*;
 
 public class DataStoreTests {
+   private static final File TEST_ROOT = new File("./DataStoreTests/");
+
    private static class StringStorable implements Storable<String> {
       private final String id;
       private final String value;
@@ -36,16 +45,67 @@ public class DataStoreTests {
       public String getValue() {
          return value;
       }
+
+      public JSONObject toJson() {
+         JSONObject json = new JSONObject();
+         json.put("id", id);
+         json.put("value", value);
+
+         return json;
+      }
+
+      public static StringStorable fromJson(JSONObject json) {
+         String id = json.getString("id");
+         String value = json.getString("value");
+
+         return new StringStorable(id, value);
+      }
    }
 
-   private static Stream<Arguments> provideData() {
+   private static File getRandomFolder() {
+      return new File(TEST_ROOT, UUID.randomUUID().toString());
+   }
+
+   private static Stream<Arguments> provideData() throws IOException {
       return Stream.of(
          Arguments.of(
             new InMemoryDataStore<String, StringStorable>(),
             new StringStorable("alpha", "alpha"),
             Comparator.comparing(StringStorable::getValue),
             new StringStorable("alpha", "beta"),
+            (Supplier<StringStorable>) StringStorable::random),
+         Arguments.of(
+            new CachedDataStore<String, StringStorable>(
+               new InMemoryDataStore<>(),
+               5),
+            new StringStorable("alpha", "alpha"),
+            Comparator.comparing(StringStorable::getValue),
+            new StringStorable("alpha", "beta"),
+            (Supplier<StringStorable>) StringStorable::random),
+         Arguments.of(
+            new JsonFileDataStore<String, StringStorable>(
+               getRandomFolder(),
+               StringStorable::toJson,
+               StringStorable::fromJson),
+            new StringStorable("alpha", "alpha"),
+            Comparator.comparing(StringStorable::getValue),
+            new StringStorable("alpha", "beta"),
             (Supplier<StringStorable>) StringStorable::random));
+   }
+
+   @AfterAll
+   static void afterAll() throws IOException {
+      assertThat(deleteRecursive(TEST_ROOT)).isTrue();
+   }
+
+   static boolean deleteRecursive(File file) throws IOException {
+      if (!file.exists()) {
+         return true;
+      }
+      return Files.walk(file.toPath())
+         .sorted(Comparator.reverseOrder())
+         .map(Path::toFile)
+         .allMatch(File::delete);
    }
 
    @ParameterizedTest
