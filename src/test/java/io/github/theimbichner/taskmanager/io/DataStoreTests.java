@@ -22,44 +22,25 @@ import static org.assertj.vavr.api.VavrAssertions.*;
 public class DataStoreTests {
    private static final File TEST_ROOT = new File("./DataStoreTests/");
 
-   private static class StringStorable implements Storable<String> {
-      private final String id;
-      private final String value;
+   private static JSONObject stringStorableToJson(StringStorable s) {
+      JSONObject json = new JSONObject();
+      json.put("id", s.getId());
+      json.put("value", s.getValue());
 
-      public StringStorable(String id, String value) {
-         this.id = id;
-         this.value = value;
-      }
+      return json;
+   }
 
-      public static StringStorable random() {
-         return new StringStorable(
-            UUID.randomUUID().toString(),
-            UUID.randomUUID().toString());
-      }
+   private static StringStorable stringStorableFromJson(JSONObject json) {
+      String id = json.getString("id");
+      String value = json.getString("value");
 
-      @Override
-      public String getId() {
-         return id;
-      }
+      return new StringStorable(id, value);
+   }
 
-      public String getValue() {
-         return value;
-      }
-
-      public JSONObject toJson() {
-         JSONObject json = new JSONObject();
-         json.put("id", id);
-         json.put("value", value);
-
-         return json;
-      }
-
-      public static StringStorable fromJson(JSONObject json) {
-         String id = json.getString("id");
-         String value = json.getString("value");
-
-         return new StringStorable(id, value);
-      }
+   public static StringStorable randomStringStorable() {
+      return new StringStorable(
+         UUID.randomUUID().toString(),
+         UUID.randomUUID().toString());
    }
 
    private static File getRandomFolder() {
@@ -73,7 +54,7 @@ public class DataStoreTests {
             new StringStorable("alpha", "alpha"),
             Comparator.comparing(StringStorable::getValue),
             new StringStorable("alpha", "beta"),
-            (Supplier<StringStorable>) StringStorable::random),
+            (Supplier<StringStorable>) DataStoreTests::randomStringStorable),
          Arguments.of(
             new CachedDataStore<String, StringStorable>(
                new InMemoryDataStore<>(),
@@ -81,16 +62,25 @@ public class DataStoreTests {
             new StringStorable("alpha", "alpha"),
             Comparator.comparing(StringStorable::getValue),
             new StringStorable("alpha", "beta"),
-            (Supplier<StringStorable>) StringStorable::random),
+            (Supplier<StringStorable>) DataStoreTests::randomStringStorable),
          Arguments.of(
             new JsonFileDataStore<String, StringStorable>(
                getRandomFolder(),
-               StringStorable::toJson,
-               StringStorable::fromJson),
+               DataStoreTests::stringStorableToJson,
+               DataStoreTests::stringStorableFromJson),
             new StringStorable("alpha", "alpha"),
             Comparator.comparing(StringStorable::getValue),
             new StringStorable("alpha", "beta"),
-            (Supplier<StringStorable>) StringStorable::random));
+            (Supplier<StringStorable>) DataStoreTests::randomStringStorable),
+         Arguments.of(
+            new JsonAdapterDataStore<String, StringStorable>(
+               new InMemoryDataStore<>(),
+               DataStoreTests::stringStorableToJson,
+               DataStoreTests::stringStorableFromJson),
+            new StringStorable("alpha", "alpha"),
+            Comparator.comparing(StringStorable::getValue),
+            new StringStorable("alpha", "beta"),
+            (Supplier<StringStorable>) DataStoreTests::randomStringStorable));
    }
 
    @AfterAll
