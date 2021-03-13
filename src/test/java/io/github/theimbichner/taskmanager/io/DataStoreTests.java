@@ -48,30 +48,35 @@ public class DataStoreTests {
    }
 
    private static Stream<Arguments> provideData() throws IOException {
+      InMemoryDataStore<String, StringStorable> inMemory = new InMemoryDataStore<>();
+      FileDataStore fileBased = new FileDataStore(getRandomFolder(), ".txt");
+
       return Stream.of(
          Arguments.of(
-            new InMemoryDataStore<String, StringStorable>(),
+            inMemory,
+            inMemory.getChannel("alpha"),
+            new StringStorable("alpha", "alpha"),
+            Comparator.comparing(StringStorable::getValue),
+            new StringStorable("alpha", "beta"),
+            (Supplier<StringStorable>) DataStoreTests::randomStringStorable),
+//         Arguments.of(
+//            inMemory,
+//            new CachedDataStore<>(inMemory.getChannel("beta"), 5),
+//            new StringStorable("alpha", "alpha"),
+//            Comparator.comparing(StringStorable::getValue),
+//            new StringStorable("alpha", "beta"),
+//            (Supplier<StringStorable>) DataStoreTests::randomStringStorable),
+         Arguments.of(
+            fileBased,
+            fileBased.getChannel("alpha"),
             new StringStorable("alpha", "alpha"),
             Comparator.comparing(StringStorable::getValue),
             new StringStorable("alpha", "beta"),
             (Supplier<StringStorable>) DataStoreTests::randomStringStorable),
          Arguments.of(
-            new CachedDataStore<String, StringStorable>(
-               new InMemoryDataStore<>(),
-               5),
-            new StringStorable("alpha", "alpha"),
-            Comparator.comparing(StringStorable::getValue),
-            new StringStorable("alpha", "beta"),
-            (Supplier<StringStorable>) DataStoreTests::randomStringStorable),
-         Arguments.of(
-            new FileDataStore(getRandomFolder(), ".txt"),
-            new StringStorable("alpha", "alpha"),
-            Comparator.comparing(StringStorable::getValue),
-            new StringStorable("alpha", "beta"),
-            (Supplier<StringStorable>) DataStoreTests::randomStringStorable),
-         Arguments.of(
-            new JsonAdapterDataStore<String, StringStorable>(
-               new InMemoryDataStore<>(),
+            inMemory,
+            new JsonAdapterDataStore<>(
+               inMemory.getChannel("gamma"),
                DataStoreTests::stringStorableToJson,
                DataStoreTests::stringStorableFromJson),
             new StringStorable("alpha", "alpha"),
@@ -98,6 +103,7 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testWrite(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value,
       Comparator<V> comparator
@@ -110,6 +116,7 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testRead(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value
    ) {
@@ -119,6 +126,7 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testDelete(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value
    ) {
@@ -128,6 +136,7 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testWriteRead(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value,
       Comparator<V> comparator
@@ -142,12 +151,13 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testWriteCommitRead(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value,
       Comparator<V> comparator
    ) {
       assertThat(dataStore.save(value)).isRight();
-      assertThat(dataStore.commit()).isRight();
+      assertThat(base.commit()).isRight();
 
       assertThat(dataStore.getById(value.getId()))
          .usingValueComparator(comparator)
@@ -157,13 +167,14 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testWriteCommitCancelRead(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value,
       Comparator<V> comparator
    ) {
       assertThat(dataStore.save(value)).isRight();
-      assertThat(dataStore.commit()).isRight();
-      dataStore.cancelTransaction();
+      assertThat(base.commit()).isRight();
+      base.cancelTransaction();
 
       assertThat(dataStore.getById(value.getId()))
          .usingValueComparator(comparator)
@@ -173,11 +184,12 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testWriteCancelRead(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value
    ) {
       assertThat(dataStore.save(value)).isRight();
-      dataStore.cancelTransaction();
+      base.cancelTransaction();
 
       assertThat(dataStore.getById(value.getId())).isLeft();
    }
@@ -185,12 +197,13 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testWriteCancelCommitRead(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value
    ) {
       assertThat(dataStore.save(value)).isRight();
-      dataStore.cancelTransaction();
-      assertThat(dataStore.commit()).isRight();
+      base.cancelTransaction();
+      assertThat(base.commit()).isRight();
 
       assertThat(dataStore.getById(value.getId())).isLeft();
    }
@@ -198,6 +211,7 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testWriteDelete(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value
    ) {
@@ -209,11 +223,12 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testWriteCommitDelete(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value
    ) {
       assertThat(dataStore.save(value)).isRight();
-      assertThat(dataStore.commit()).isRight();
+      assertThat(base.commit()).isRight();
 
       assertThat(dataStore.deleteById(value.getId())).isRight();
    }
@@ -221,12 +236,13 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testWriteCommitCancelDelete(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value
    ) {
       assertThat(dataStore.save(value)).isRight();
-      assertThat(dataStore.commit()).isRight();
-      dataStore.cancelTransaction();
+      assertThat(base.commit()).isRight();
+      base.cancelTransaction();
 
       assertThat(dataStore.deleteById(value.getId())).isRight();
    }
@@ -234,11 +250,12 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testWriteCancelDelete(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value
    ) {
       assertThat(dataStore.save(value)).isRight();
-      dataStore.cancelTransaction();
+      base.cancelTransaction();
 
       assertThat(dataStore.deleteById(value.getId())).isLeft();
    }
@@ -246,12 +263,13 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testWriteCancelCommitDelete(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value
    ) {
       assertThat(dataStore.save(value)).isRight();
-      dataStore.cancelTransaction();
-      assertThat(dataStore.commit()).isRight();
+      base.cancelTransaction();
+      assertThat(base.commit()).isRight();
 
       assertThat(dataStore.deleteById(value.getId())).isLeft();
    }
@@ -259,6 +277,7 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testWriteDeleteDelete(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value
    ) {
@@ -271,13 +290,14 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testWriteDeleteCommitCancelDelete(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value
    ) {
       assertThat(dataStore.save(value)).isRight();
       assertThat(dataStore.deleteById(value.getId())).isRight();
-      assertThat(dataStore.commit()).isRight();
-      dataStore.cancelTransaction();
+      assertThat(base.commit()).isRight();
+      base.cancelTransaction();
 
       assertThat(dataStore.deleteById(value.getId())).isLeft();
    }
@@ -285,12 +305,13 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testWriteDeleteCancelDelete(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value
    ) {
       assertThat(dataStore.save(value)).isRight();
       assertThat(dataStore.deleteById(value.getId())).isRight();
-      dataStore.cancelTransaction();
+      base.cancelTransaction();
 
       assertThat(dataStore.deleteById(value.getId())).isLeft();
    }
@@ -298,6 +319,7 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testWriteDeleteRead(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value
    ) {
@@ -310,13 +332,14 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testWriteDeleteCommitCancelRead(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value
    ) {
       assertThat(dataStore.save(value)).isRight();
       assertThat(dataStore.deleteById(value.getId())).isRight();
-      assertThat(dataStore.commit()).isRight();
-      dataStore.cancelTransaction();
+      assertThat(base.commit()).isRight();
+      base.cancelTransaction();
 
       assertThat(dataStore.getById(value.getId())).isLeft();
    }
@@ -324,12 +347,13 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testWriteDeleteCancelRead(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value
    ) {
       assertThat(dataStore.save(value)).isRight();
       assertThat(dataStore.deleteById(value.getId())).isRight();
-      dataStore.cancelTransaction();
+      base.cancelTransaction();
 
       assertThat(dataStore.getById(value.getId())).isLeft();
    }
@@ -337,6 +361,7 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testWriteOverwrite(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value,
       Comparator<V> comparator,
@@ -352,13 +377,14 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testWriteCommitOverwrite(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value,
       Comparator<V> comparator,
       V overwrite
    ) {
       assertThat(dataStore.save(value)).isRight();
-      assertThat(dataStore.commit()).isRight();
+      assertThat(base.commit()).isRight();
 
       assertThat(dataStore.save(overwrite))
          .usingValueComparator(comparator)
@@ -368,14 +394,15 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testWriteCommitCancelOverwrite(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value,
       Comparator<V> comparator,
       V overwrite
    ) {
       assertThat(dataStore.save(value)).isRight();
-      assertThat(dataStore.commit()).isRight();
-      dataStore.cancelTransaction();
+      assertThat(base.commit()).isRight();
+      base.cancelTransaction();
 
       assertThat(dataStore.save(overwrite))
          .usingValueComparator(comparator)
@@ -385,13 +412,14 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testWriteCancelOverwrite(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value,
       Comparator<V> comparator,
       V overwrite
    ) {
       assertThat(dataStore.save(value)).isRight();
-      dataStore.cancelTransaction();
+      base.cancelTransaction();
 
       assertThat(dataStore.save(overwrite))
          .usingValueComparator(comparator)
@@ -401,14 +429,15 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testWriteCancelCommitOverwrite(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value,
       Comparator<V> comparator,
       V overwrite
    ) {
       assertThat(dataStore.save(value)).isRight();
-      dataStore.cancelTransaction();
-      assertThat(dataStore.commit()).isRight();
+      base.cancelTransaction();
+      assertThat(base.commit()).isRight();
 
       assertThat(dataStore.save(overwrite))
          .usingValueComparator(comparator)
@@ -418,6 +447,7 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testWriteOverwriteRead(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value,
       Comparator<V> comparator,
@@ -434,14 +464,15 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testWriteCommitCancelOverwriteRead(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value,
       Comparator<V> comparator,
       V overwrite
    ) {
       assertThat(dataStore.save(value)).isRight();
-      assertThat(dataStore.commit()).isRight();
-      dataStore.cancelTransaction();
+      assertThat(base.commit()).isRight();
+      base.cancelTransaction();
       assertThat(dataStore.save(overwrite)).isRight();
 
       assertThat(dataStore.getById(value.getId()))
@@ -452,13 +483,14 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testWriteCancelOverwriteRead(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value,
       Comparator<V> comparator,
       V overwrite
    ) {
       assertThat(dataStore.save(value)).isRight();
-      dataStore.cancelTransaction();
+      base.cancelTransaction();
       assertThat(dataStore.save(overwrite)).isRight();
 
       assertThat(dataStore.getById(value.getId()))
@@ -469,6 +501,7 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testWriteOverwriteCommitCancelRead(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value,
       Comparator<V> comparator,
@@ -476,8 +509,8 @@ public class DataStoreTests {
    ) {
       assertThat(dataStore.save(value)).isRight();
       assertThat(dataStore.save(overwrite)).isRight();
-      assertThat(dataStore.commit()).isRight();
-      dataStore.cancelTransaction();
+      assertThat(base.commit()).isRight();
+      base.cancelTransaction();
 
       assertThat(dataStore.getById(value.getId()))
          .usingValueComparator(comparator)
@@ -487,6 +520,7 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testWriteOverwriteCancelRead(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value,
       Comparator<V> comparator,
@@ -494,7 +528,7 @@ public class DataStoreTests {
    ) {
       assertThat(dataStore.save(value)).isRight();
       assertThat(dataStore.save(overwrite)).isRight();
-      dataStore.cancelTransaction();
+      base.cancelTransaction();
 
       assertThat(dataStore.getById(value.getId())).isLeft();
    }
@@ -502,6 +536,7 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testWriteDeleteOverwrite(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value,
       Comparator<V> comparator,
@@ -518,6 +553,7 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testWriteDeleteCommitCancelOverwrite(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value,
       Comparator<V> comparator,
@@ -525,8 +561,8 @@ public class DataStoreTests {
    ) {
       assertThat(dataStore.save(value)).isRight();
       assertThat(dataStore.deleteById(value.getId())).isRight();
-      assertThat(dataStore.commit()).isRight();
-      dataStore.cancelTransaction();
+      assertThat(base.commit()).isRight();
+      base.cancelTransaction();
 
       assertThat(dataStore.save(overwrite))
          .usingValueComparator(comparator)
@@ -536,6 +572,7 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testWriteDeleteCancelOverwrite(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value,
       Comparator<V> comparator,
@@ -543,7 +580,7 @@ public class DataStoreTests {
    ) {
       assertThat(dataStore.save(value)).isRight();
       assertThat(dataStore.deleteById(value.getId())).isRight();
-      dataStore.cancelTransaction();
+      base.cancelTransaction();
 
       assertThat(dataStore.save(overwrite))
          .usingValueComparator(comparator)
@@ -553,6 +590,7 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testWriteDeleteOverwriteRead(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value,
       Comparator<V> comparator,
@@ -570,6 +608,7 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testFailureStateInvalidRead(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value,
       Comparator<V> comparator,
@@ -591,6 +630,7 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testFailureStateInvalidDelete(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value,
       Comparator<V> comparator,
@@ -610,6 +650,7 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testFailureRollbackInvalidRead(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value,
       Comparator<V> comparator,
@@ -617,12 +658,12 @@ public class DataStoreTests {
       Supplier<V> supplier
    ) {
       assertThat(dataStore.save(value)).isRight();
-      assertThat(dataStore.commit()).isRight();
+      assertThat(base.commit()).isRight();
       assertThat(dataStore.save(overwrite)).isRight();
 
       V v = supplier.get();
       assertThat(dataStore.getById(v.getId())).isLeft();
-      dataStore.cancelTransaction();
+      base.cancelTransaction();
 
       assertThat(dataStore.getById(value.getId()))
          .usingValueComparator(comparator)
@@ -632,6 +673,7 @@ public class DataStoreTests {
    @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testFailureRollbackInvalidDelete(
+      MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
       V value,
       Comparator<V> comparator,
@@ -639,14 +681,14 @@ public class DataStoreTests {
       Supplier<V> supplier
    ) {
       assertThat(dataStore.save(value)).isRight();
-      assertThat(dataStore.commit()).isRight();
+      assertThat(base.commit()).isRight();
       assertThat(dataStore.save(overwrite)).isRight();
 
       V v = supplier.get();
       assertThat(dataStore.save(v)).isRight();
       assertThat(dataStore.deleteById(v.getId())).isRight();
       assertThat(dataStore.deleteById(v.getId())).isLeft();
-      dataStore.cancelTransaction();
+      base.cancelTransaction();
 
       assertThat(dataStore.getById(value.getId()))
          .usingValueComparator(comparator)

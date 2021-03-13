@@ -3,6 +3,8 @@ package io.github.theimbichner.taskmanager.io;
 import java.io.File;
 import java.io.IOException;
 
+import io.vavr.control.Either;
+
 import io.github.theimbichner.taskmanager.task.Generator;
 import io.github.theimbichner.taskmanager.task.ItemId;
 import io.github.theimbichner.taskmanager.task.Table;
@@ -13,22 +15,43 @@ public class TaskStore {
    public static final int MAXIMUM_GENERATORS_CACHED = 1000;
    public static final int MAXIMUM_TABLES_CACHED = 1000;
 
-   private static final String TASKS_FOLDER_NAME = "tasks";
-   private static final String GENERATORS_FOLDER_NAME = "generators";
-   private static final String TABLES_FOLDER_NAME = "tables";
+   private static final String TASKS_CHANNEL_NAME = "tasks";
+   private static final String GENERATORS_CHANNEL_NAME = "generators";
+   private static final String TABLES_CHANNEL_NAME = "tables";
 
-   private final DataStore<ItemId<Task>, Task> tasks;
-   private final DataStore<ItemId<Generator>, Generator> generators;
-   private final DataStore<ItemId<Table>, Table> tables;
+   private static final String DEFAULT_EXTENSION = ".json";
+
+   private final MultiChannelDataStore<String, StringStorable> base;
+   private final CachedDataStore<ItemId<Task>, Task> tasks;
+   private final CachedDataStore<ItemId<Generator>, Generator> generators;
+   private final CachedDataStore<ItemId<Table>, Table> tables;
 
    public TaskStore(
-      DataStore<ItemId<Task>, Task> tasks,
-      DataStore<ItemId<Generator>, Generator> generators,
-      DataStore<ItemId<Table>, Table> tables
+      MultiChannelDataStore<String, StringStorable> base,
+      int numTasksCached,
+      int numGeneratorsCached,
+      int numTablesCached
    ) {
-      this.tasks = tasks;
-      this.generators = generators;
-      this.tables = tables;
+      this.base = base;
+
+      this.tasks = new CachedDataStore<>(
+         new JsonAdapterDataStore<>(
+            base.getChannel(TASKS_CHANNEL_NAME),
+            Task::toJson,
+            Task::fromJson),
+         numTasksCached);
+      this.generators = new CachedDataStore<>(
+         new JsonAdapterDataStore<>(
+            base.getChannel(GENERATORS_CHANNEL_NAME),
+            Generator::toJson,
+            Generator::fromJson),
+         numGeneratorsCached);
+      this.tables = new CachedDataStore<>(
+         new JsonAdapterDataStore<>(
+            base.getChannel(TABLES_CHANNEL_NAME),
+            Table::toJson,
+            Table::fromJson),
+         numTablesCached);
    }
 
    public DataStore<ItemId<Task>, Task> getTasks() {
@@ -43,25 +66,26 @@ public class TaskStore {
       return tables;
    }
 
+   public Either<TaskAccessException, Void> commit() {
+      return base.commit().peekLeft(x -> invalidateCaches());
+   }
+
+   public void cancelTransaction() {
+      invalidateCaches();
+      base.cancelTransaction();
+   }
+
    public static TaskStore getDefault(File root) throws IOException {
       return new TaskStore(
-         new CachedDataStore<>(
-            new JsonAdapterDataStore<>(
-               new FileDataStore(new File(root, TASKS_FOLDER_NAME), ".json"),
-               Task::toJson,
-               Task::fromJson),
-            MAXIMUM_TASKS_CACHED),
-         new CachedDataStore<>(
-            new JsonAdapterDataStore<>(
-               new FileDataStore(new File(root, GENERATORS_FOLDER_NAME), ".json"),
-               Generator::toJson,
-               Generator::fromJson),
-            MAXIMUM_GENERATORS_CACHED),
-         new CachedDataStore<>(
-            new JsonAdapterDataStore<>(
-               new FileDataStore(new File(root, TABLES_FOLDER_NAME), ".json"),
-               Table::toJson,
-               Table::fromJson),
-            MAXIMUM_TABLES_CACHED));
+         new FileDataStore(root, DEFAULT_EXTENSION),
+         MAXIMUM_TASKS_CACHED,
+         MAXIMUM_GENERATORS_CACHED,
+         MAXIMUM_TABLES_CACHED);
+   }
+
+   private void invalidateCaches() {
+      tasks.invalidate();
+      generators.invalidate();
+      tables.invalidate();
    }
 }

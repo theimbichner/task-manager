@@ -54,14 +54,4 @@ public class JsonAdapterDataStore<K, V extends Storable<K>> implements DataStore
    public Either<TaskAccessException, Void> deleteById(K id) {
       return delegate.deleteById(id.toString());
    }
-
-   @Override
-   public Either<TaskAccessException, Void> commit() {
-      return delegate.commit();
-   }
-
-   @Override
-   public void cancelTransaction() {
-      delegate.cancelTransaction();
-   }
 }
