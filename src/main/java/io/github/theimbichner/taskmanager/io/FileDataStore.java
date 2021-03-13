@@ -6,40 +6,32 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Comparator;
 import java.util.UUID;
-import java.util.function.Function;
 
 import io.vavr.collection.Vector;
 import io.vavr.control.Either;
 
 import org.json.JSONArray;
 import org.json.JSONException;
-import org.json.JSONObject;
 import org.json.JSONTokener;
 
-public class JsonFileDataStore<K, V extends Storable<K>> implements DataStore<K, V> {
+public class FileDataStore implements DataStore<String, StringStorable> {
    private static final String INDEX_FILENAME = "index.json";
    private static final String TEMP_FILENAME = "temp";
-   private static final String EXTENSION = ".json";
 
    private final File root;
-   private final Function<V, JSONObject> toJson;
-   private final Function<JSONObject, V> fromJson;
+   private final String extension;
 
    private String activeTransactionId;
 
-   public JsonFileDataStore(
-      File root,
-      Function<V, JSONObject> toJson,
-      Function<JSONObject, V> fromJson
-   ) throws IOException {
+   public FileDataStore(File root, String extension) throws IOException {
       this.root = root;
-      this.toJson = toJson;
-      this.fromJson = fromJson;
+      this.extension = extension;
 
       root.mkdirs();
       if (!root.exists()) {
@@ -50,40 +42,39 @@ public class JsonFileDataStore<K, V extends Storable<K>> implements DataStore<K,
    }
 
    @Override
-   public Either<TaskAccessException, V> getById(K id) {
-      try (FileInputStream stream = new FileInputStream(lookupById(id))) {
-         JSONTokener tokener = new JSONTokener(stream);
-         JSONObject json = new JSONObject(tokener);
-         return Either.right(fromJson.apply(json));
+   public Either<TaskAccessException, StringStorable> getById(String id) {
+      try {
+         File file = lookupById(id);
+         String fileContents = Files.readString(file.toPath());
+         return Either.right(new StringStorable(id, fileContents));
       }
-      catch (IOException|JSONException e) {
+      catch (IOException e) {
          return Either.left(new TaskAccessException(e));
       }
    }
 
    @Override
-   public Either<TaskAccessException, V> save(V value) {
-      K id = value.getId();
+   public Either<TaskAccessException, StringStorable> save(StringStorable s) {
       File file = getTempFile();
 
       try (
          FileOutputStream stream = new FileOutputStream(file);
-         OutputStreamWriter writer = new OutputStreamWriter(stream)
+         OutputStreamWriter writer = new OutputStreamWriter(stream, StandardCharsets.UTF_8)
       ) {
-         toJson.apply(value).write(writer);
+         writer.write(s.getValue());
 
-         Path target = getUncommittedFile(id).toPath();
+         Path target = getUncommittedFile(s.getId()).toPath();
          Files.move(file.toPath(), target, StandardCopyOption.ATOMIC_MOVE);
 
-         return Either.right(value);
+         return Either.right(s);
       }
-      catch (IOException|JSONException e) {
+      catch (IOException e) {
          return Either.left(new TaskAccessException(e));
       }
    }
 
    @Override
-   public Either<TaskAccessException, Void> deleteById(K id) {
+   public Either<TaskAccessException, Void> deleteById(String id) {
       try {
          lookupById(id);
       }
@@ -141,8 +132,8 @@ public class JsonFileDataStore<K, V extends Storable<K>> implements DataStore<K,
       getActiveFolder().mkdirs();
    }
 
-   private File lookupById(K id) throws IOException {
-      String filename = id.toString() + EXTENSION;
+   private File lookupById(String id) throws IOException {
+      String filename = id + extension;
 
       Vector<String> folders = getRegisteredFolders();
       folders = folders.reverse().prepend(activeTransactionId);
@@ -165,8 +156,8 @@ public class JsonFileDataStore<K, V extends Storable<K>> implements DataStore<K,
       return new File(root, activeTransactionId);
    }
 
-   private File getUncommittedFile(K id) {
-      String filename = id.toString() + EXTENSION;
+   private File getUncommittedFile(String id) {
+      String filename = id + extension;
       return new File(getActiveFolder(), filename);
    }
 

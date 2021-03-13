@@ -46,20 +46,20 @@ public class TaskStore {
    public static TaskStore getDefault(File root) throws IOException {
       return new TaskStore(
          new CachedDataStore<>(
-            new JsonFileDataStore<>(
-               new File(root, TASKS_FOLDER_NAME),
+            new JsonAdapterDataStore<>(
+               new FileDataStore(new File(root, TASKS_FOLDER_NAME), ".json"),
                Task::toJson,
                Task::fromJson),
             MAXIMUM_TASKS_CACHED),
          new CachedDataStore<>(
-            new JsonFileDataStore<>(
-               new File(root, GENERATORS_FOLDER_NAME),
+            new JsonAdapterDataStore<>(
+               new FileDataStore(new File(root, GENERATORS_FOLDER_NAME), ".json"),
                Generator::toJson,
                Generator::fromJson),
             MAXIMUM_GENERATORS_CACHED),
          new CachedDataStore<>(
-            new JsonFileDataStore<>(
-               new File(root, TABLES_FOLDER_NAME),
+            new JsonAdapterDataStore<>(
+               new FileDataStore(new File(root, TABLES_FOLDER_NAME), ".json"),
                Table::toJson,
                Table::fromJson),
             MAXIMUM_TABLES_CACHED));

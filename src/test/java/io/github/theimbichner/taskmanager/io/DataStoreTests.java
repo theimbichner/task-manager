@@ -64,10 +64,7 @@ public class DataStoreTests {
             new StringStorable("alpha", "beta"),
             (Supplier<StringStorable>) DataStoreTests::randomStringStorable),
          Arguments.of(
-            new JsonFileDataStore<String, StringStorable>(
-               getRandomFolder(),
-               DataStoreTests::stringStorableToJson,
-               DataStoreTests::stringStorableFromJson),
+            new FileDataStore(getRandomFolder(), ".txt"),
             new StringStorable("alpha", "alpha"),
             Comparator.comparing(StringStorable::getValue),
             new StringStorable("alpha", "beta"),
