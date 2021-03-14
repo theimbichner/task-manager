@@ -59,13 +59,13 @@ public class DataStoreTests {
             Comparator.comparing(StringStorable::getValue),
             new StringStorable("alpha", "beta"),
             (Supplier<StringStorable>) DataStoreTests::randomStringStorable),
-//         Arguments.of(
-//            inMemory,
-//            new CachedDataStore<>(inMemory.getChannel("beta"), 5),
-//            new StringStorable("alpha", "alpha"),
-//            Comparator.comparing(StringStorable::getValue),
-//            new StringStorable("alpha", "beta"),
-//            (Supplier<StringStorable>) DataStoreTests::randomStringStorable),
+         Arguments.of(
+            inMemory,
+            new CachedDataStore<>(inMemory.getChannel("beta"), 5),
+            new StringStorable("alpha", "alpha"),
+            Comparator.comparing(StringStorable::getValue),
+            new StringStorable("alpha", "beta"),
+            (Supplier<StringStorable>) DataStoreTests::randomStringStorable),
          Arguments.of(
             fileBased,
             fileBased.getChannel("alpha"),

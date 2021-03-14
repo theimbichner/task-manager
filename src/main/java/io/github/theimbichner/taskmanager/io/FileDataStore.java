@@ -20,7 +20,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONTokener;
 
-public class FileDataStore implements MultiChannelDataStore<String, StringStorable> {
+public class FileDataStore extends MultiChannelDataStore<String, StringStorable> {
    private static final String INDEX_FILENAME = "index.json";
    private static final String TEMP_FILENAME = "temp";
 
@@ -42,7 +42,7 @@ public class FileDataStore implements MultiChannelDataStore<String, StringStorab
    }
 
    @Override
-   public DataStore<String, StringStorable> getChannel(String channelId) {
+   public DataStore<String, StringStorable> createChannel(String channelId) {
       getActiveFolder(channelId).mkdirs();
       return new DataStore<>() {
          @Override
@@ -136,7 +136,7 @@ public class FileDataStore implements MultiChannelDataStore<String, StringStorab
    }
 
    @Override
-   public Either<TaskAccessException, Void> commit() {
+   public Either<TaskAccessException, Void> performCommit() {
       Vector<String> registeredFolders;
       try {
          registeredFolders = getRegisteredFolders().append(activeTransactionId);
@@ -154,7 +154,7 @@ public class FileDataStore implements MultiChannelDataStore<String, StringStorab
    }
 
    @Override
-   public void cancelTransaction() {
+   public void performCancel() {
       cleanUpUnregisteredFolder();
       startNewTransaction();
    }

@@ -5,7 +5,7 @@ import java.util.NoSuchElementException;
 import io.vavr.collection.HashMap;
 import io.vavr.control.Either;
 
-public class InMemoryDataStore<K, V extends Storable<K>> implements MultiChannelDataStore<K, V> {
+public class InMemoryDataStore<K, V extends Storable<K>> extends MultiChannelDataStore<K, V> {
    private HashMap<String, HashMap<K, V>> committedData = HashMap.empty();
    private HashMap<String, HashMap<K, V>> data = HashMap.empty();
 
@@ -14,7 +14,7 @@ public class InMemoryDataStore<K, V extends Storable<K>> implements MultiChannel
    }
 
    @Override
-   public DataStore<K, V> getChannel(String channelId) {
+   public DataStore<K, V> createChannel(String channelId) {
       return new DataStore<>() {
          @Override
          public Either<TaskAccessException, V> getById(K id) {
@@ -52,13 +52,13 @@ public class InMemoryDataStore<K, V extends Storable<K>> implements MultiChannel
    }
 
    @Override
-   public Either<TaskAccessException, Void> commit() {
+   public Either<TaskAccessException, Void> performCommit() {
       committedData = data;
       return Either.right(null);
    }
 
    @Override
-   public void cancelTransaction() {
+   public void performCancel() {
       data = committedData;
    }
 }

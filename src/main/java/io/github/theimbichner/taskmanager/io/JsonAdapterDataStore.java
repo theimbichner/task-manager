@@ -7,7 +7,7 @@ import io.vavr.control.Either;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-public class JsonAdapterDataStore<K, V extends Storable<K>> implements DataStore<K, V> {
+public class JsonAdapterDataStore<K, V extends Storable<K>> extends DataStore<K, V> {
    private final Function<V, JSONObject> toJson;
    private final Function<JSONObject, V> fromJson;
    private final DataStore<String, StringStorable> delegate;
@@ -20,6 +20,8 @@ public class JsonAdapterDataStore<K, V extends Storable<K>> implements DataStore
       this.delegate = delegate;
       this.toJson = toJson;
       this.fromJson = fromJson;
+
+      delegate.registerChild(this);
    }
 
    @Override

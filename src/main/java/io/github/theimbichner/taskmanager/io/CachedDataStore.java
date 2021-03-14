@@ -5,7 +5,7 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 
 import io.vavr.control.Either;
 
-public class CachedDataStore<K, V extends Storable<K>> implements DataStore<K, V> {
+public class CachedDataStore<K, V extends Storable<K>> extends DataStore<K, V> {
    private final Cache<K, V> cache;
    private final DataStore<K, V> delegate;
 
@@ -14,6 +14,8 @@ public class CachedDataStore<K, V extends Storable<K>> implements DataStore<K, V
       cache = Caffeine.newBuilder()
          .maximumSize(maxSize)
          .build();
+
+      dataStore.registerChild(this);
    }
 
    @Override
@@ -39,7 +41,13 @@ public class CachedDataStore<K, V extends Storable<K>> implements DataStore<K, V
       return delegate.deleteById(id);
    }
 
-   public void invalidate() {
+   @Override
+   public void onCommitFailure() {
+      cache.invalidateAll();
+   }
+
+   @Override
+   public void onCancel() {
       cache.invalidateAll();
    }
 }

@@ -22,9 +22,9 @@ public class TaskStore {
    private static final String DEFAULT_EXTENSION = ".json";
 
    private final MultiChannelDataStore<String, StringStorable> base;
-   private final CachedDataStore<ItemId<Task>, Task> tasks;
-   private final CachedDataStore<ItemId<Generator>, Generator> generators;
-   private final CachedDataStore<ItemId<Table>, Table> tables;
+   private final DataStore<ItemId<Task>, Task> tasks;
+   private final DataStore<ItemId<Generator>, Generator> generators;
+   private final DataStore<ItemId<Table>, Table> tables;
 
    public TaskStore(
       MultiChannelDataStore<String, StringStorable> base,
@@ -67,11 +67,10 @@ public class TaskStore {
    }
 
    public Either<TaskAccessException, Void> commit() {
-      return base.commit().peekLeft(x -> invalidateCaches());
+      return base.commit();
    }
 
    public void cancelTransaction() {
-      invalidateCaches();
       base.cancelTransaction();
    }
 
@@ -81,11 +80,5 @@ public class TaskStore {
          MAXIMUM_TASKS_CACHED,
          MAXIMUM_GENERATORS_CACHED,
          MAXIMUM_TABLES_CACHED);
-   }
-
-   private void invalidateCaches() {
-      tasks.invalidate();
-      generators.invalidate();
-      tables.invalidate();
    }
 }
