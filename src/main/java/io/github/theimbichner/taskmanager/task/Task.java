@@ -170,4 +170,8 @@ public class Task implements Storable<ItemId<Task>> {
 
       return new Task(result);
    }
+
+   public static TypeAdapter<Task, JSONObject> jsonAdapter() {
+      return new TypeAdapter<>(Task::toJson, Task::fromJson);
+   }
 }

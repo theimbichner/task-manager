@@ -1,25 +1,25 @@
 package io.github.theimbichner.taskmanager.io;
 
-import java.util.function.Function;
-
 import io.vavr.control.Either;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import io.github.theimbichner.taskmanager.task.TypeAdapter;
+
 public class JsonAdapterDataStore<K, V extends Storable<K>> extends DataStore<K, V> {
-   private final Function<V, JSONObject> toJson;
-   private final Function<JSONObject, V> fromJson;
    private final DataStore<String, StringStorable> delegate;
+   private final TypeAdapter<V, JSONObject> valueAdapter;
+   private final TypeAdapter<K, String> keyAdapter;
 
    public JsonAdapterDataStore(
       DataStore<String, StringStorable> delegate,
-      Function<V, JSONObject> toJson,
-      Function<JSONObject, V> fromJson
+      TypeAdapter<V, JSONObject> valueAdapter,
+      TypeAdapter<K, String> keyAdapter
    ) {
       this.delegate = delegate;
-      this.toJson = toJson;
-      this.fromJson = fromJson;
+      this.valueAdapter = valueAdapter;
+      this.keyAdapter = keyAdapter;
 
       delegate.registerChild(this);
    }
@@ -27,10 +27,10 @@ public class JsonAdapterDataStore<K, V extends Storable<K>> extends DataStore<K,
    @Override
    public Either<TaskAccessException, V> getById(K id) {
       try {
-         return delegate.getById(id.toString())
+         return delegate.getById(keyAdapter.convert(id))
             .map(result -> {
                JSONObject json = new JSONObject(result.getValue());
-               return fromJson.apply(json);
+               return valueAdapter.deconvert(json);
             });
       }
       catch (JSONException e) {
@@ -41,9 +41,9 @@ public class JsonAdapterDataStore<K, V extends Storable<K>> extends DataStore<K,
    @Override
    public Either<TaskAccessException, V> save(V value) {
       try {
-         JSONObject json = toJson.apply(value);
+         JSONObject json = valueAdapter.convert(value);
          String stringValue = json.toString();
-         String id = value.getId().toString();
+         String id = keyAdapter.convert(value.getId());
          return delegate.save(new StringStorable(id, stringValue))
             .map(x -> value);
       }
@@ -54,6 +54,6 @@ public class JsonAdapterDataStore<K, V extends Storable<K>> extends DataStore<K,
 
    @Override
    public Either<TaskAccessException, Void> deleteById(K id) {
-      return delegate.deleteById(id.toString());
+      return delegate.deleteById(keyAdapter.convert(id));
    }
 }

@@ -16,25 +16,29 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import io.github.theimbichner.taskmanager.task.TypeAdapter;
+
 import static org.assertj.core.api.Assertions.*;
 import static org.assertj.vavr.api.VavrAssertions.*;
 
 public class DataStoreTests {
    private static final File TEST_ROOT = new File("./DataStoreTests/");
 
-   private static JSONObject stringStorableToJson(StringStorable s) {
-      JSONObject json = new JSONObject();
-      json.put("id", s.getId());
-      json.put("value", s.getValue());
+   private static TypeAdapter<StringStorable, JSONObject> stringStorableJsonAdapter() {
+      return new TypeAdapter<>(
+         s -> {
+            JSONObject json = new JSONObject();
+            json.put("id", s.getId());
+            json.put("value", s.getValue());
 
-      return json;
-   }
+            return json;
+         },
+         json -> {
+            String id = json.getString("id");
+            String value = json.getString("value");
 
-   private static StringStorable stringStorableFromJson(JSONObject json) {
-      String id = json.getString("id");
-      String value = json.getString("value");
-
-      return new StringStorable(id, value);
+            return new StringStorable(id, value);
+         });
    }
 
    public static StringStorable randomStringStorable() {
@@ -77,8 +81,8 @@ public class DataStoreTests {
             inMemory,
             new JsonAdapterDataStore<>(
                inMemory.getChannel("gamma"),
-               DataStoreTests::stringStorableToJson,
-               DataStoreTests::stringStorableFromJson),
+               stringStorableJsonAdapter(),
+               TypeAdapter.identity()),
             new StringStorable("alpha", "alpha"),
             Comparator.comparing(StringStorable::getValue),
             new StringStorable("alpha", "beta"),
