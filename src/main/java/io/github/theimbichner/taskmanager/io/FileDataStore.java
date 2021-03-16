@@ -42,7 +42,7 @@ public class FileDataStore extends MultiChannelDataStore<String, StringStorable>
    }
 
    @Override
-   public DataStore<String, StringStorable> createChannel(String channelId) {
+   protected DataStore<String, StringStorable> createChannel(String channelId) {
       getActiveFolder(channelId).mkdirs();
       return new DataStore<>() {
          @Override
@@ -136,7 +136,7 @@ public class FileDataStore extends MultiChannelDataStore<String, StringStorable>
    }
 
    @Override
-   public Either<TaskAccessException, Void> performCommit() {
+   protected Either<TaskAccessException, Void> performCommit() {
       Vector<String> registeredFolders;
       try {
          registeredFolders = getRegisteredFolders().append(activeTransactionId);
@@ -154,7 +154,7 @@ public class FileDataStore extends MultiChannelDataStore<String, StringStorable>
    }
 
    @Override
-   public void performCancel() {
+   protected void performCancel() {
       cleanUpUnregisteredFolder();
       startNewTransaction();
    }

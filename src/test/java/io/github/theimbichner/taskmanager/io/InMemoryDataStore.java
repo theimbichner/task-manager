@@ -14,7 +14,7 @@ public class InMemoryDataStore<K, V extends Storable<K>> extends MultiChannelDat
    }
 
    @Override
-   public DataStore<K, V> createChannel(String channelId) {
+   protected DataStore<K, V> createChannel(String channelId) {
       return new DataStore<>() {
          @Override
          public Either<TaskAccessException, V> getById(K id) {
@@ -52,13 +52,13 @@ public class InMemoryDataStore<K, V extends Storable<K>> extends MultiChannelDat
    }
 
    @Override
-   public Either<TaskAccessException, Void> performCommit() {
+   protected Either<TaskAccessException, Void> performCommit() {
       committedData = data;
       return Either.right(null);
    }
 
    @Override
-   public void performCancel() {
+   protected void performCancel() {
       data = committedData;
    }
 }

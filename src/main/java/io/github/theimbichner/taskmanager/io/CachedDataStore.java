@@ -42,12 +42,12 @@ public class CachedDataStore<K, V extends Storable<K>> extends DataStore<K, V> {
    }
 
    @Override
-   public void onCommitFailure() {
+   protected void onCommitFailure() {
       cache.invalidateAll();
    }
 
    @Override
-   public void onCancel() {
+   protected void onCancel() {
       cache.invalidateAll();
    }
 }
