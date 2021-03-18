@@ -23,7 +23,9 @@ public class Orchestration {
 
    public Either<TaskAccessException, Table> createTable() {
       Table table = Table.newTable();
-      return taskStore.getTables().save(table);
+      return taskStore.getTables().save(table)
+         .peekLeft(x -> taskStore.cancelTransaction())
+         .flatMap(this::commit);
    }
 
    public Either<TaskAccessException, Task> createTask(ItemId<Table> tableId) {
@@ -32,7 +34,9 @@ public class Orchestration {
          Table updatedTable = table.withTasks(List.of(task.getId()));
 
          return taskStore.getTables().save(updatedTable)
-            .flatMap(x -> taskStore.getTasks().save(task));
+            .flatMap(x -> taskStore.getTasks().save(task))
+            .peekLeft(x -> taskStore.cancelTransaction())
+            .flatMap(this::commit);
       });
    }
 
@@ -46,7 +50,9 @@ public class Orchestration {
          Table updateTable = table.withGenerator(generator.getId());
 
          return taskStore.getTables().save(updateTable)
-            .flatMap(x -> taskStore.getGenerators().save(generator));
+            .flatMap(x -> taskStore.getGenerators().save(generator))
+            .peekLeft(x -> taskStore.cancelTransaction())
+            .flatMap(this::commit);
       });
    }
 
@@ -62,7 +68,9 @@ public class Orchestration {
          }
          return result
             .flatMap(taskStore.getTables()::save)
-            .map(Table::getAllTaskIds);
+            .map(Table::getAllTaskIds)
+            .peekLeft(x -> taskStore.cancelTransaction())
+            .flatMap(this::commit);
       });
    }
 
@@ -91,7 +99,9 @@ public class Orchestration {
 
          Table modifiedTable = table.withModification(delta);
          return result
-            .flatMap(x -> taskStore.getTables().save(modifiedTable));
+            .flatMap(x -> taskStore.getTables().save(modifiedTable))
+            .peekLeft(x -> taskStore.cancelTransaction())
+            .flatMap(this::commit);
       });
    }
 
@@ -112,7 +122,9 @@ public class Orchestration {
             .flatMap(x -> {
                Generator modifiedGenerator = generator.withModification(delta);
                return taskStore.getGenerators().save(modifiedGenerator);
-            });
+            })
+            .peekLeft(x -> taskStore.cancelTransaction())
+            .flatMap(this::commit);
       });
    }
 
@@ -133,7 +145,9 @@ public class Orchestration {
          removePriorTasksFromGenerator(generatorId, taskId);
          modifyGenerator(generatorId, delta);
 
-         return taskStore.getTasks().getById(taskId);
+         return taskStore.getTasks().getById(taskId)
+            .peekLeft(x -> taskStore.cancelTransaction())
+            .flatMap(this::commit);
       });
    }
 
@@ -164,7 +178,9 @@ public class Orchestration {
 
          return severedTask
             .map(t -> t.withModification(delta))
-            .flatMap(taskStore.getTasks()::save);
+            .flatMap(taskStore.getTasks()::save)
+            .peekLeft(x -> taskStore.cancelTransaction())
+            .flatMap(this::commit);
       });
    }
 
@@ -206,5 +222,9 @@ public class Orchestration {
                .collect(Collectors.toList())))
             .map(tasks -> tasks.map(Task::getId).asJava());
       });
+   }
+
+   private <T> Either<TaskAccessException, T> commit(T t) {
+      return taskStore.commit().map(x -> t);
    }
 }

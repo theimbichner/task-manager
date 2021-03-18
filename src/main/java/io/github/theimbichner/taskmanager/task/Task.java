@@ -103,7 +103,7 @@ public class Task implements Storable<ItemId<Task>> {
    }
 
    Task withSeriesModification(GeneratorDelta delta, Generator generator) {
-      if (generator.getId() != generatorId) {
+      if (!generator.getId().equals(generatorId)) {
          String message = "The provided generator must be the parent of this task";
          throw new IllegalArgumentException(message);
       }
