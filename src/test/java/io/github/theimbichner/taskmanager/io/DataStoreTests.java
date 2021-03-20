@@ -107,7 +107,7 @@ public class DataStoreTests {
    }
 
    @ParameterizedTest
-   @MethodSource("providedData")
+   @MethodSource("provideData")
    <K, V extends Storable<K>> void testListEmpty(
       MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore
