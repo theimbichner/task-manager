@@ -9,6 +9,8 @@ import java.util.UUID;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
+import io.vavr.collection.HashSet;
+
 import org.json.JSONObject;
 
 import org.junit.jupiter.api.AfterAll;
@@ -105,6 +107,16 @@ public class DataStoreTests {
    }
 
    @ParameterizedTest
+   @MethodSource("providedData")
+   <K, V extends Storable<K>> void testListEmpty(
+      MultiChannelDataStore<String, StringStorable> base,
+      DataStore<K, V> dataStore
+   ) {
+      assertThat(dataStore.listIds())
+         .containsOnRight(HashSet.empty());
+   }
+
+   @ParameterizedTest
    @MethodSource("provideData")
    <K, V extends Storable<K>> void testWrite(
       MultiChannelDataStore<String, StringStorable> base,
@@ -135,6 +147,77 @@ public class DataStoreTests {
       V value
    ) {
       assertThat(dataStore.deleteById(value.getId())).isLeft();
+   }
+
+   @ParameterizedTest
+   @MethodSource("provideData")
+   <K, V extends Storable<K>> void testWriteList(
+      MultiChannelDataStore<String, StringStorable> base,
+      DataStore<K, V> dataStore,
+      V value
+   ) {
+      assertThat(dataStore.save(value)).isRight();
+
+      assertThat(dataStore.listIds())
+         .containsOnRight(HashSet.of(value.getId()));
+   }
+
+   @ParameterizedTest
+   @MethodSource("provideData")
+   <K, V extends Storable<K>> void testWriteCommitList(
+      MultiChannelDataStore<String, StringStorable> base,
+      DataStore<K, V> dataStore,
+      V value
+   ) {
+      assertThat(dataStore.save(value)).isRight();
+      assertThat(base.commit()).isRight();
+
+      assertThat(dataStore.listIds())
+         .containsOnRight(HashSet.of(value.getId()));
+   }
+
+   @ParameterizedTest
+   @MethodSource("provideData")
+   <K, V extends Storable<K>> void testWriteCommitCancelList(
+      MultiChannelDataStore<String, StringStorable> base,
+      DataStore<K, V> dataStore,
+      V value
+   ) {
+      assertThat(dataStore.save(value)).isRight();
+      assertThat(base.commit()).isRight();
+      base.cancelTransaction();
+
+      assertThat(dataStore.listIds())
+         .containsOnRight(HashSet.of(value.getId()));
+   }
+
+   @ParameterizedTest
+   @MethodSource("provideData")
+   <K, V extends Storable<K>> void testWriteCancelList(
+      MultiChannelDataStore<String, StringStorable> base,
+      DataStore<K, V> dataStore,
+      V value
+   ) {
+      assertThat(dataStore.save(value)).isRight();
+      base.cancelTransaction();
+
+      assertThat(dataStore.listIds())
+         .containsOnRight(HashSet.empty());
+   }
+
+   @ParameterizedTest
+   @MethodSource("provideData")
+   <K, V extends Storable<K>> void testWriteCancelCommitList(
+      MultiChannelDataStore<String, StringStorable> base,
+      DataStore<K, V> dataStore,
+      V value
+   ) {
+      assertThat(dataStore.save(value)).isRight();
+      base.cancelTransaction();
+      assertThat(base.commit()).isRight();
+
+      assertThat(dataStore.listIds())
+         .containsOnRight(HashSet.empty());
    }
 
    @ParameterizedTest
@@ -276,6 +359,84 @@ public class DataStoreTests {
       assertThat(base.commit()).isRight();
 
       assertThat(dataStore.deleteById(value.getId())).isLeft();
+   }
+
+   @ParameterizedTest
+   @MethodSource("provideData")
+   <K, V extends Storable<K>> void testWriteDeleteList(
+      MultiChannelDataStore<String, StringStorable> base,
+      DataStore<K, V> dataStore,
+      V value
+   ) {
+      assertThat(dataStore.save(value)).isRight();
+      assertThat(dataStore.deleteById(value.getId())).isRight();
+
+      assertThat(dataStore.listIds())
+         .containsOnRight(HashSet.empty());
+   }
+
+   @ParameterizedTest
+   @MethodSource("provideData")
+   <K, V extends Storable<K>> void testWriteDeleteCommitCancelList(
+      MultiChannelDataStore<String, StringStorable> base,
+      DataStore<K, V> dataStore,
+      V value
+   ) {
+      assertThat(dataStore.save(value)).isRight();
+      assertThat(dataStore.deleteById(value.getId())).isRight();
+      assertThat(base.commit()).isRight();
+      base.cancelTransaction();
+
+      assertThat(dataStore.listIds())
+         .containsOnRight(HashSet.empty());
+   }
+
+   @ParameterizedTest
+   @MethodSource("provideData")
+   <K, V extends Storable<K>> void testWriteDeleteCancelList(
+      MultiChannelDataStore<String, StringStorable> base,
+      DataStore<K, V> dataStore,
+      V value
+   ) {
+      assertThat(dataStore.save(value)).isRight();
+      assertThat(dataStore.deleteById(value.getId())).isRight();
+      base.cancelTransaction();
+
+      assertThat(dataStore.listIds())
+         .containsOnRight(HashSet.empty());
+   }
+
+   @ParameterizedTest
+   @MethodSource("provideData")
+   <K, V extends Storable<K>> void testWriteCommitDeleteCommitCancelList(
+      MultiChannelDataStore<String, StringStorable> base,
+      DataStore<K, V> dataStore,
+      V value
+   ) {
+      assertThat(dataStore.save(value)).isRight();
+      assertThat(base.commit()).isRight();
+      assertThat(dataStore.deleteById(value.getId())).isRight();
+      assertThat(base.commit()).isRight();
+      base.cancelTransaction();
+
+      assertThat(dataStore.listIds())
+         .containsOnRight(HashSet.empty());
+   }
+
+   @ParameterizedTest
+   @MethodSource("provideData")
+   <K, V extends Storable<K>> void testWriteCommitDeleteCancelList(
+      MultiChannelDataStore<String, StringStorable> base,
+      DataStore<K, V> dataStore,
+      V value
+   ) {
+      assertThat(dataStore.save(value)).isRight();
+      assertThat(base.commit()).isRight();
+      assertThat(dataStore.deleteById(value.getId())).isRight();
+      base.cancelTransaction();
+
+      assertThat(dataStore.listIds())
+         .containsOnRight(HashSet.of(value.getId()));
    }
 
    @ParameterizedTest
@@ -450,6 +611,94 @@ public class DataStoreTests {
 
    @ParameterizedTest
    @MethodSource("provideData")
+   <K, V extends Storable<K>> void testWriteOverwriteList(
+      MultiChannelDataStore<String, StringStorable> base,
+      DataStore<K, V> dataStore,
+      V value,
+      Comparator<V> comparator,
+      V overwrite
+   ) {
+      assertThat(dataStore.save(value)).isRight();
+      assertThat(dataStore.save(overwrite)).isRight();
+
+      assertThat(dataStore.listIds())
+         .containsOnRight(HashSet.of(value.getId()));
+   }
+
+   @ParameterizedTest
+   @MethodSource("provideData")
+   <K, V extends Storable<K>> void testWriteOverwriteCommitCancelList(
+      MultiChannelDataStore<String, StringStorable> base,
+      DataStore<K, V> dataStore,
+      V value,
+      Comparator<V> comparator,
+      V overwrite
+   ) {
+      assertThat(dataStore.save(value)).isRight();
+      assertThat(dataStore.save(overwrite)).isRight();
+      assertThat(base.commit()).isRight();
+      base.cancelTransaction();
+
+      assertThat(dataStore.listIds())
+         .containsOnRight(HashSet.of(value.getId()));
+   }
+
+   @ParameterizedTest
+   @MethodSource("provideData")
+   <K, V extends Storable<K>> void testWriteOverwriteCancelList(
+      MultiChannelDataStore<String, StringStorable> base,
+      DataStore<K, V> dataStore,
+      V value,
+      Comparator<V> comparator,
+      V overwrite
+   ) {
+      assertThat(dataStore.save(value)).isRight();
+      assertThat(dataStore.save(overwrite)).isRight();
+      base.cancelTransaction();
+
+      assertThat(dataStore.listIds())
+         .containsOnRight(HashSet.empty());
+   }
+
+   @ParameterizedTest
+   @MethodSource("provideData")
+   <K, V extends Storable<K>> void testWriteCommitOverwriteCommitCancelList(
+      MultiChannelDataStore<String, StringStorable> base,
+      DataStore<K, V> dataStore,
+      V value,
+      Comparator<V> comparator,
+      V overwrite
+   ) {
+      assertThat(dataStore.save(value)).isRight();
+      assertThat(base.commit()).isRight();
+      assertThat(dataStore.save(overwrite)).isRight();
+      assertThat(base.commit()).isRight();
+      base.cancelTransaction();
+
+      assertThat(dataStore.listIds())
+         .containsOnRight(HashSet.of(value.getId()));
+   }
+
+   @ParameterizedTest
+   @MethodSource("provideData")
+   <K, V extends Storable<K>> void testWriteCommitOverwriteCancelList(
+      MultiChannelDataStore<String, StringStorable> base,
+      DataStore<K, V> dataStore,
+      V value,
+      Comparator<V> comparator,
+      V overwrite
+   ) {
+      assertThat(dataStore.save(value)).isRight();
+      assertThat(base.commit()).isRight();
+      assertThat(dataStore.save(overwrite)).isRight();
+      base.cancelTransaction();
+
+      assertThat(dataStore.listIds())
+         .containsOnRight(HashSet.of(value.getId()));
+   }
+
+   @ParameterizedTest
+   @MethodSource("provideData")
    <K, V extends Storable<K>> void testWriteOverwriteRead(
       MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
@@ -593,6 +842,23 @@ public class DataStoreTests {
 
    @ParameterizedTest
    @MethodSource("provideData")
+   <K, V extends Storable<K>> void testWriteDeleteOverwriteList(
+      MultiChannelDataStore<String, StringStorable> base,
+      DataStore<K, V> dataStore,
+      V value,
+      Comparator<V> comparator,
+      V overwrite
+   ) {
+      assertThat(dataStore.save(value)).isRight();
+      assertThat(dataStore.deleteById(value.getId())).isRight();
+      assertThat(dataStore.save(overwrite)).isRight();
+
+      assertThat(dataStore.listIds())
+         .containsOnRight(HashSet.of(value.getId()));
+   }
+
+   @ParameterizedTest
+   @MethodSource("provideData")
    <K, V extends Storable<K>> void testWriteDeleteOverwriteRead(
       MultiChannelDataStore<String, StringStorable> base,
       DataStore<K, V> dataStore,
@@ -607,6 +873,55 @@ public class DataStoreTests {
       assertThat(dataStore.getById(value.getId()))
          .usingValueComparator(comparator)
          .containsOnRight(overwrite);
+   }
+
+   @ParameterizedTest
+   @MethodSource("provideData")
+   <K, V extends Storable<K>> void testMultiWriteList(
+      MultiChannelDataStore<String, StringStorable> base,
+      DataStore<K, V> dataStore,
+      V value,
+      Comparator<V> comparator,
+      V overwrite,
+      Supplier<V> supplier
+   ) {
+      HashSet<K> expected = HashSet.empty();
+      for (int i = 0; i < 100; i++) {
+         V v = supplier.get();
+         expected = expected.add(v.getId());
+         assertThat(dataStore.save(v)).isRight();
+      }
+
+      assertThat(dataStore.listIds())
+         .containsOnRight(expected);
+   }
+
+   @ParameterizedTest
+   @MethodSource("provideData")
+   <K, V extends Storable<K>> void testMultiWriteCommitCancelList(
+      MultiChannelDataStore<String, StringStorable> base,
+      DataStore<K, V> dataStore,
+      V value,
+      Comparator<V> comparator,
+      V overwrite,
+      Supplier<V> supplier
+   ) {
+      HashSet<K> expected = HashSet.empty();
+      for (int i = 0; i < 100; i++) {
+         V v = supplier.get();
+         expected = expected.add(v.getId());
+         assertThat(dataStore.save(v)).isRight();
+      }
+      assertThat(base.commit()).isRight();
+
+      for (int i = 0; i < 100; i++) {
+         V v = supplier.get();
+         assertThat(dataStore.save(v)).isRight();
+      }
+      base.cancelTransaction();
+
+      assertThat(dataStore.listIds())
+         .containsOnRight(expected);
    }
 
    @ParameterizedTest
@@ -626,6 +941,8 @@ public class DataStoreTests {
       assertThat(dataStore.deleteById(v.getId())).isRight();
       assertThat(dataStore.getById(v.getId())).isLeft();
 
+      assertThat(dataStore.listIds())
+         .containsOnRight(HashSet.of(value.getId()));
       assertThat(dataStore.getById(value.getId()))
          .usingValueComparator(comparator)
          .containsOnRight(value);
@@ -646,6 +963,8 @@ public class DataStoreTests {
       V v = supplier.get();
       assertThat(dataStore.deleteById(v.getId())).isLeft();
 
+      assertThat(dataStore.listIds())
+         .containsOnRight(HashSet.of(value.getId()));
       assertThat(dataStore.getById(value.getId()))
          .usingValueComparator(comparator)
          .containsOnRight(value);
@@ -662,13 +981,17 @@ public class DataStoreTests {
       Supplier<V> supplier
    ) {
       assertThat(dataStore.save(value)).isRight();
+      V v1 = supplier.get();
+      assertThat(dataStore.save(v1)).isRight();
       assertThat(base.commit()).isRight();
       assertThat(dataStore.save(overwrite)).isRight();
 
-      V v = supplier.get();
-      assertThat(dataStore.getById(v.getId())).isLeft();
+      V v2 = supplier.get();
+      assertThat(dataStore.getById(v2.getId())).isLeft();
       base.cancelTransaction();
 
+      assertThat(dataStore.listIds())
+         .containsOnRight(HashSet.of(v1.getId(), value.getId()));
       assertThat(dataStore.getById(value.getId()))
          .usingValueComparator(comparator)
          .containsOnRight(value);
@@ -685,15 +1008,19 @@ public class DataStoreTests {
       Supplier<V> supplier
    ) {
       assertThat(dataStore.save(value)).isRight();
+      V v1 = supplier.get();
+      assertThat(dataStore.save(v1)).isRight();
       assertThat(base.commit()).isRight();
       assertThat(dataStore.save(overwrite)).isRight();
 
-      V v = supplier.get();
-      assertThat(dataStore.save(v)).isRight();
-      assertThat(dataStore.deleteById(v.getId())).isRight();
-      assertThat(dataStore.deleteById(v.getId())).isLeft();
+      V v2 = supplier.get();
+      assertThat(dataStore.save(v2)).isRight();
+      assertThat(dataStore.deleteById(v2.getId())).isRight();
+      assertThat(dataStore.deleteById(v2.getId())).isLeft();
       base.cancelTransaction();
 
+      assertThat(dataStore.listIds())
+         .containsOnRight(HashSet.of(v1.getId(), value.getId()));
       assertThat(dataStore.getById(value.getId()))
          .usingValueComparator(comparator)
          .containsOnRight(value);

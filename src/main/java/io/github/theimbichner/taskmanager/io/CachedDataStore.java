@@ -3,6 +3,7 @@ package io.github.theimbichner.taskmanager.io;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 
+import io.vavr.collection.Set;
 import io.vavr.control.Either;
 
 public class CachedDataStore<K, V extends Storable<K>> extends DataStore<K, V> {
@@ -16,6 +17,11 @@ public class CachedDataStore<K, V extends Storable<K>> extends DataStore<K, V> {
          .build();
 
       dataStore.registerChild(this);
+   }
+
+   @Override
+   public Either<TaskAccessException, Set<K>> listIds() {
+      return delegate.listIds();
    }
 
    @Override

@@ -13,6 +13,8 @@ import java.nio.file.StandardCopyOption;
 import java.util.Comparator;
 import java.util.UUID;
 
+import io.vavr.collection.HashSet;
+import io.vavr.collection.Set;
 import io.vavr.collection.Vector;
 import io.vavr.control.Either;
 
@@ -45,6 +47,44 @@ public class FileDataStore extends MultiChannelDataStore<String, StringStorable>
    protected DataStore<String, StringStorable> createChannel(String channelId) {
       getActiveFolder(channelId).mkdirs();
       return new DataStore<>() {
+         @Override
+         public Either<TaskAccessException, Set<String>> listIds() {
+            File channelRoot = new File(root, channelId);
+            HashSet<String> result = HashSet.empty();
+
+            try {
+               Vector<String> registeredFolders = getRegisteredFolders();
+               for (String s : registeredFolders.append(activeTransactionId)) {
+                  File dir = new File(channelRoot, s);
+                  String[] filenames = dir.list();
+                  if (filenames == null) {
+                     throw new IOException("Could not list files");
+                  }
+
+                  for (String filename : filenames) {
+                     File file = new File(dir, filename);
+                     if (isDirectory(file)) {
+                        continue;
+                     }
+
+                     int idSize = filename.length() - extension.length();
+                     String id = filename.substring(0, idSize);
+                     if (isDeletion(new File(dir, filename))) {
+                        result = result.remove(id);
+                     }
+                     else {
+                        result = result.add(id);
+                     }
+                  }
+               }
+
+               return Either.right(result);
+            }
+            catch (IOException e) {
+               return Either.left(new TaskAccessException(e));
+            }
+         }
+
          @Override
          public Either<TaskAccessException, StringStorable> getById(String id) {
             try {
@@ -192,6 +232,10 @@ public class FileDataStore extends MultiChannelDataStore<String, StringStorable>
       return size == 0;
    }
 
+   private boolean isDirectory(File file) throws IOException {
+      return (Boolean) Files.getAttribute(file.toPath(), "isDirectory");
+   }
+
    private Vector<String> getChannelIds() throws IOException {
       String[] filenames = root.list();
       if (filenames == null) {
@@ -200,9 +244,7 @@ public class FileDataStore extends MultiChannelDataStore<String, StringStorable>
 
       Vector<String> result = Vector.empty();
       for (String filename : filenames) {
-         Path target = new File(root, filename).toPath();
-         Boolean isDirectory = (Boolean) Files.getAttribute(target, "isDirectory");
-         if (isDirectory) {
+         if (isDirectory(new File(root, filename))) {
             result = result.append(filename);
          }
       }

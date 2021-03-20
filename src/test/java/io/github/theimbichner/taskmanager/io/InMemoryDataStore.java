@@ -3,6 +3,7 @@ package io.github.theimbichner.taskmanager.io;
 import java.util.NoSuchElementException;
 
 import io.vavr.collection.HashMap;
+import io.vavr.collection.Set;
 import io.vavr.control.Either;
 
 public class InMemoryDataStore<K, V extends Storable<K>> extends MultiChannelDataStore<K, V> {
@@ -16,6 +17,12 @@ public class InMemoryDataStore<K, V extends Storable<K>> extends MultiChannelDat
    @Override
    protected DataStore<K, V> createChannel(String channelId) {
       return new DataStore<>() {
+         @Override
+         public Either<TaskAccessException, Set<K>> listIds() {
+            HashMap<K, V> map = data.getOrElse(channelId, HashMap.empty());
+            return Either.right(map.keySet());
+         }
+
          @Override
          public Either<TaskAccessException, V> getById(K id) {
             try {

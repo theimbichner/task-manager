@@ -1,5 +1,6 @@
 package io.github.theimbichner.taskmanager.io;
 
+import io.vavr.collection.Set;
 import io.vavr.control.Either;
 
 import org.json.JSONException;
@@ -22,6 +23,11 @@ public class JsonAdapterDataStore<K, V extends Storable<K>> extends DataStore<K,
       this.keyAdapter = keyAdapter;
 
       delegate.registerChild(this);
+   }
+
+   @Override
+   public Either<TaskAccessException, Set<K>> listIds() {
+      return delegate.listIds().map(ids -> ids.map(keyAdapter::deconvert));
    }
 
    @Override
