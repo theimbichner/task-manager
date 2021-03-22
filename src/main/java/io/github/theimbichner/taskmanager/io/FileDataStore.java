@@ -23,6 +23,140 @@ import org.json.JSONException;
 import org.json.JSONTokener;
 
 public class FileDataStore extends MultiChannelDataStore<String, StringStorable> {
+   private class Channel extends DataStore<String, StringStorable> {
+      private final String channelId;
+      private final File channelRoot;
+
+      public Channel(String channelId) {
+         this.channelId = channelId;
+         channelRoot = new File(root, channelId);
+      }
+
+      @Override
+      public Either<TaskAccessException, Set<String>> listIds() {
+         HashSet<String> result = HashSet.empty();
+
+         try {
+            Vector<String> registeredFolders = getRegisteredFolders();
+            for (String s : registeredFolders.append(activeTransactionId)) {
+               File dir = new File(channelRoot, s);
+               String[] filenames = dir.list();
+               if (filenames == null) {
+                  throw new IOException("Could not list files");
+               }
+
+               for (String filename : filenames) {
+                  File file = new File(dir, filename);
+                  if (isDirectory(file)) {
+                     continue;
+                  }
+
+                  int idSize = filename.length() - extension.length();
+                  String id = filename.substring(0, idSize);
+                  if (isDeletion(new File(dir, filename))) {
+                     result = result.remove(id);
+                  }
+                  else {
+                     result = result.add(id);
+                  }
+               }
+            }
+
+            return Either.right(result);
+         }
+         catch (IOException e) {
+            return Either.left(new TaskAccessException(e));
+         }
+      }
+
+      @Override
+      public Either<TaskAccessException, StringStorable> getById(String id) {
+         try {
+            File file = lookupById(id);
+            String fileContents = Files.readString(file.toPath());
+            return Either.right(new StringStorable(id, fileContents));
+         }
+         catch (IOException e) {
+            return Either.left(new TaskAccessException(e));
+         }
+      }
+
+      @Override
+      public Either<TaskAccessException, StringStorable> save(StringStorable s) {
+         File file = getTempFile();
+
+         try (
+            FileOutputStream stream = new FileOutputStream(file);
+            OutputStreamWriter writer = new OutputStreamWriter(stream, StandardCharsets.UTF_8)
+         ) {
+            writer.write(s.getValue());
+
+            Path target = getUncommittedFile(s.getId()).toPath();
+            Files.move(file.toPath(), target, StandardCopyOption.ATOMIC_MOVE);
+
+            return Either.right(s);
+         }
+         catch (IOException e) {
+            return Either.left(new TaskAccessException(e));
+         }
+      }
+
+      @Override
+      public Either<TaskAccessException, Void> deleteById(String id) {
+         try {
+            lookupById(id);
+         }
+         catch (IOException e) {
+            return Either.left(new TaskAccessException(e));
+         }
+
+         File file = getTempFile();
+
+         file.delete();
+         if (file.exists()) {
+            String message = "Failed to delete file";
+            return Either.left(new TaskAccessException(new IOException(message)));
+         }
+
+         try {
+            file.createNewFile();
+
+            Path target = getUncommittedFile(id).toPath();
+            Files.move(file.toPath(), target, StandardCopyOption.ATOMIC_MOVE);
+
+            return Either.right(null);
+         }
+         catch (IOException e) {
+            return Either.left(new TaskAccessException(e));
+         }
+      }
+
+      private File getUncommittedFile(String id) {
+         String filename = id + extension;
+         return new File(getActiveFolder(channelId), filename);
+      }
+
+      private File lookupById(String id) throws IOException {
+         String filename = id + extension;
+
+         Vector<String> folders = getRegisteredFolders();
+         folders = folders.reverse().prepend(activeTransactionId);
+         for (String s : folders) {
+            File dir = new File(channelRoot, s);
+            File potentialPath = new File(dir, filename);
+            if (potentialPath.exists()) {
+               if (isDeletion(potentialPath)) {
+                  throw new FileNotFoundException("File has been deleted");
+               }
+               return potentialPath;
+            }
+         }
+
+         String message = "Cannot find file in any registered folder";
+         throw new FileNotFoundException(message);
+      }
+   }
+
    private static final String INDEX_FILENAME = "index.json";
    private static final String TEMP_FILENAME = "temp";
 
@@ -46,133 +180,7 @@ public class FileDataStore extends MultiChannelDataStore<String, StringStorable>
    @Override
    protected DataStore<String, StringStorable> createChannel(String channelId) {
       getActiveFolder(channelId).mkdirs();
-      return new DataStore<>() {
-         @Override
-         public Either<TaskAccessException, Set<String>> listIds() {
-            File channelRoot = new File(root, channelId);
-            HashSet<String> result = HashSet.empty();
-
-            try {
-               Vector<String> registeredFolders = getRegisteredFolders();
-               for (String s : registeredFolders.append(activeTransactionId)) {
-                  File dir = new File(channelRoot, s);
-                  String[] filenames = dir.list();
-                  if (filenames == null) {
-                     throw new IOException("Could not list files");
-                  }
-
-                  for (String filename : filenames) {
-                     File file = new File(dir, filename);
-                     if (isDirectory(file)) {
-                        continue;
-                     }
-
-                     int idSize = filename.length() - extension.length();
-                     String id = filename.substring(0, idSize);
-                     if (isDeletion(new File(dir, filename))) {
-                        result = result.remove(id);
-                     }
-                     else {
-                        result = result.add(id);
-                     }
-                  }
-               }
-
-               return Either.right(result);
-            }
-            catch (IOException e) {
-               return Either.left(new TaskAccessException(e));
-            }
-         }
-
-         @Override
-         public Either<TaskAccessException, StringStorable> getById(String id) {
-            try {
-               File file = lookupById(id);
-               String fileContents = Files.readString(file.toPath());
-               return Either.right(new StringStorable(id, fileContents));
-            }
-            catch (IOException e) {
-               return Either.left(new TaskAccessException(e));
-            }
-         }
-
-         @Override
-         public Either<TaskAccessException, StringStorable> save(StringStorable s) {
-            File file = getTempFile();
-
-            try (
-               FileOutputStream stream = new FileOutputStream(file);
-               OutputStreamWriter writer = new OutputStreamWriter(stream, StandardCharsets.UTF_8)
-            ) {
-               writer.write(s.getValue());
-
-               Path target = getUncommittedFile(s.getId()).toPath();
-               Files.move(file.toPath(), target, StandardCopyOption.ATOMIC_MOVE);
-
-               return Either.right(s);
-            }
-            catch (IOException e) {
-               return Either.left(new TaskAccessException(e));
-            }
-         }
-
-         @Override
-         public Either<TaskAccessException, Void> deleteById(String id) {
-            try {
-               lookupById(id);
-            }
-            catch (IOException e) {
-               return Either.left(new TaskAccessException(e));
-            }
-
-            File file = getTempFile();
-
-            file.delete();
-            if (file.exists()) {
-               String message = "Failed to delete file";
-               return Either.left(new TaskAccessException(new IOException(message)));
-            }
-
-            try {
-               file.createNewFile();
-
-               Path target = getUncommittedFile(id).toPath();
-               Files.move(file.toPath(), target, StandardCopyOption.ATOMIC_MOVE);
-
-               return Either.right(null);
-            }
-            catch (IOException e) {
-               return Either.left(new TaskAccessException(e));
-            }
-         }
-
-         private File getUncommittedFile(String id) {
-            String filename = id + extension;
-            return new File(getActiveFolder(channelId), filename);
-         }
-
-         private File lookupById(String id) throws IOException {
-            String filename = id + extension;
-            File channelRoot = new File(root, channelId);
-
-            Vector<String> folders = getRegisteredFolders();
-            folders = folders.reverse().prepend(activeTransactionId);
-            for (String s : folders) {
-               File dir = new File(channelRoot, s);
-               File potentialPath = new File(dir, filename);
-               if (potentialPath.exists()) {
-                  if (isDeletion(potentialPath)) {
-                     throw new FileNotFoundException("File has been deleted");
-                  }
-                  return potentialPath;
-               }
-            }
-
-            String message = "Cannot find file in any registered folder";
-            throw new FileNotFoundException(message);
-         }
-      };
+      return new Channel(channelId);
    }
 
    @Override
