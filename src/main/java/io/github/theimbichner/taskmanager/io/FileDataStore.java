@@ -10,7 +10,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.Comparator;
 import java.util.UUID;
 
 import io.vavr.collection.HashSet;
@@ -47,13 +46,13 @@ public class FileDataStore extends MultiChannelDataStore<String, StringStorable>
 
                for (String filename : filenames) {
                   File file = new File(dir, filename);
-                  if (isDirectory(file)) {
+                  if (IOUtils.isDirectory(file)) {
                      continue;
                   }
 
                   int idSize = filename.length() - extension.length();
                   String id = filename.substring(0, idSize);
-                  if (isDeletion(new File(dir, filename))) {
+                  if (IOUtils.isEmptyFile(new File(dir, filename))) {
                      result = result.remove(id);
                   }
                   else {
@@ -111,15 +110,8 @@ public class FileDataStore extends MultiChannelDataStore<String, StringStorable>
          }
 
          File file = getTempFile();
-
-         file.delete();
-         if (file.exists()) {
-            String message = "Failed to delete file";
-            return Either.left(new TaskAccessException(new IOException(message)));
-         }
-
          try {
-            file.createNewFile();
+            IOUtils.writeEmptyfile(file);
 
             Path target = getUncommittedFile(id).toPath();
             Files.move(file.toPath(), target, StandardCopyOption.ATOMIC_MOVE);
@@ -145,7 +137,7 @@ public class FileDataStore extends MultiChannelDataStore<String, StringStorable>
             File dir = new File(channelRoot, s);
             File potentialPath = new File(dir, filename);
             if (potentialPath.exists()) {
-               if (isDeletion(potentialPath)) {
+               if (IOUtils.isEmptyFile(potentialPath)) {
                   throw new FileNotFoundException("File has been deleted");
                }
                return potentialPath;
@@ -235,15 +227,6 @@ public class FileDataStore extends MultiChannelDataStore<String, StringStorable>
       return new File(channelRoot, activeTransactionId);
    }
 
-   private boolean isDeletion(File file) throws IOException {
-      Long size = (Long) Files.getAttribute(file.toPath(), "size");
-      return size == 0;
-   }
-
-   private boolean isDirectory(File file) throws IOException {
-      return (Boolean) Files.getAttribute(file.toPath(), "isDirectory");
-   }
-
    private Vector<String> getChannelIds() throws IOException {
       String[] filenames = root.list();
       if (filenames == null) {
@@ -252,7 +235,7 @@ public class FileDataStore extends MultiChannelDataStore<String, StringStorable>
 
       Vector<String> result = Vector.empty();
       for (String filename : filenames) {
-         if (isDirectory(new File(root, filename))) {
+         if (IOUtils.isDirectory(new File(root, filename))) {
             result = result.append(filename);
          }
       }
@@ -294,16 +277,6 @@ public class FileDataStore extends MultiChannelDataStore<String, StringStorable>
       Files.move(file.toPath(), target, StandardCopyOption.ATOMIC_MOVE);
    }
 
-   private void deleteFolder(File dir) throws IOException {
-      boolean allFilesDeleted = Files.walk(dir.toPath())
-         .sorted(Comparator.reverseOrder())
-         .map(Path::toFile)
-         .allMatch(File::delete);
-      if (!allFilesDeleted) {
-         throw new IOException("Failed to delete files");
-      }
-   }
-
    private void cleanUpUnregisteredFolder() {
       Vector<String> channelIds;
       try {
@@ -317,7 +290,7 @@ public class FileDataStore extends MultiChannelDataStore<String, StringStorable>
 
       for (String channelId : channelIds) {
          try {
-            deleteFolder(getActiveFolder(channelId));
+            IOUtils.deleteFolder(getActiveFolder(channelId));
          }
          catch (IOException e) {
             e.printStackTrace();
