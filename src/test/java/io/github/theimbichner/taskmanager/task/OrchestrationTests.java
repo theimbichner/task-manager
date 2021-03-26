@@ -22,7 +22,6 @@ import io.github.theimbichner.taskmanager.time.DateTime;
 import io.github.theimbichner.taskmanager.time.UniformDatePattern;
 
 import static org.assertj.core.api.Assertions.*;
-import static org.assertj.vavr.api.VavrAssertions.*;
 
 public class OrchestrationTests {
    private TaskStore taskStore;

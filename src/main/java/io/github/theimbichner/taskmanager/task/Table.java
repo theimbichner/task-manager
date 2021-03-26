@@ -179,4 +179,8 @@ public class Table implements Storable<ItemId<Table>> {
 
       return new Table(result);
    }
+
+   public static TypeAdapter<Table, JSONObject> jsonAdapter() {
+      return new TypeAdapter<>(Table::toJson, Table::fromJson);
+   }
 }

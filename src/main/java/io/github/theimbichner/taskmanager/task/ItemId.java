@@ -21,6 +21,10 @@ public class ItemId<T> {
       return new ItemId<>(value);
    }
 
+   public static <T> TypeAdapter<ItemId<T>, String> stringAdapter() {
+      return new TypeAdapter<>(ItemId::toString, ItemId::of);
+   }
+
    @Override
    public boolean equals(Object obj) {
       if (obj instanceof ItemId) {

@@ -37,20 +37,20 @@ public class TaskStore {
       this.tasks = new CachedDataStore<>(
          new JsonAdapterDataStore<>(
             base.getChannel(TASKS_CHANNEL_NAME),
-            Task::toJson,
-            Task::fromJson),
+            Task.jsonAdapter(),
+            ItemId.stringAdapter()),
          numTasksCached);
       this.generators = new CachedDataStore<>(
          new JsonAdapterDataStore<>(
             base.getChannel(GENERATORS_CHANNEL_NAME),
-            Generator::toJson,
-            Generator::fromJson),
+            Generator.jsonAdapter(),
+            ItemId.stringAdapter()),
          numGeneratorsCached);
       this.tables = new CachedDataStore<>(
          new JsonAdapterDataStore<>(
             base.getChannel(TABLES_CHANNEL_NAME),
-            Table::toJson,
-            Table::fromJson),
+            Table.jsonAdapter(),
+            ItemId.stringAdapter()),
          numTablesCached);
    }
 

@@ -284,4 +284,8 @@ public class Generator implements Storable<ItemId<Generator>> {
 
       return new Generator(result);
    }
+
+   public static TypeAdapter<Generator, JSONObject> jsonAdapter() {
+      return new TypeAdapter<>(Generator::toJson, Generator::fromJson);
+   }
 }

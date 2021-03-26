@@ -56,12 +56,6 @@ public class TaskTests {
          data.createModifiedTaskWithGenerator());
    }
 
-   private static Stream<Task> provideGeneratorTasks() {
-      return Stream.of(
-         data.createDefaultTaskWithGenerator(),
-         data.createModifiedTaskWithGenerator());
-   }
-
    private static Stream<Generator> provideGenerators() {
       return Stream.of(
          data.createDefaultGenerator(),
