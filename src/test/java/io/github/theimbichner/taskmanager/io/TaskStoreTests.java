@@ -2,8 +2,6 @@ package io.github.theimbichner.taskmanager.io;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Instant;
 import java.time.Duration;
 import java.util.Comparator;
@@ -44,17 +42,7 @@ public class TaskStoreTests {
 
    @AfterAll
    static void afterAll() throws IOException {
-      assertThat(deleteRecursive(TEST_ROOT)).isTrue();
-   }
-
-   static boolean deleteRecursive(File file) throws IOException {
-      if (!file.exists()) {
-         return true;
-      }
-      return Files.walk(file.toPath())
-         .sorted(Comparator.reverseOrder())
-         .map(Path::toFile)
-         .allMatch(File::delete);
+      IOUtils.deleteFolder(TEST_ROOT);
    }
 
    static Stream<Arguments> provideTaskGeneratorTable() {
