@@ -2,8 +2,8 @@ package io.github.theimbichner.taskmanager.time;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
+
+import io.vavr.collection.Vector;
 
 import org.json.JSONObject;
 
@@ -17,7 +17,7 @@ public class UniformDatePattern implements DatePattern {
    }
 
    @Override
-   public List<Instant> getDates(Instant start, Instant end) {
+   public Vector<Instant> getDates(Instant start, Instant end) {
       if (!start.isBefore(end)) {
          throw new IllegalArgumentException();
       }
@@ -32,9 +32,9 @@ public class UniformDatePattern implements DatePattern {
          time = initialTime.plus(deltaTime.multipliedBy(n));
       }
 
-      List<Instant> result = new ArrayList<>();
+      Vector<Instant> result = Vector.empty();
       while (!time.isAfter(end)) {
-         result.add(time);
+         result = result.append(time);
          time = time.plus(deltaTime);
       }
       return result;

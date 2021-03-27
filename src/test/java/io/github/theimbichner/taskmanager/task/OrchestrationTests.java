@@ -4,8 +4,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.util.List;
-import java.util.stream.Collectors;
+
+import io.vavr.collection.Vector;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -182,7 +182,7 @@ public class OrchestrationTests {
       Table table = getTable(dataTableId);
 
       Task task = orchestrator.createTask(dataTableId).get();
-      Table expectedTable = table.withTasks(List.of(task.getId()));
+      Table expectedTable = table.withTasks(Vector.of(task.getId()));
 
       taskStore.cancelTransaction();
       Table savedTable = getTable(dataTableId);
@@ -240,19 +240,17 @@ public class OrchestrationTests {
 
    @Test
    void testGetTasksFromTableTimestamps() {
-      List<Instant> expectedStartTimes = List.of(
+      Vector<Instant> expectedStartTimes = Vector.of(
          patternStart,
          patternStart.plus(patternStep),
          patternStart.plus(patternStep.multipliedBy(2)));
 
       taskStore.cancelTransaction();
-      List<Instant> actualStartTimes = generatedTaskIds
+      Vector<Instant> actualStartTimes = generatedTaskIds
          .asList()
-         .stream()
          .map(this::getTask)
          .map(task -> task.getProperties().asMap().get("alpha").get())
-         .map(property -> ((DateTime) property.get()).getStart())
-         .collect(Collectors.toList());
+         .map(property -> ((DateTime) property.get()).getStart());
 
       assertThat(actualStartTimes)
          .containsExactlyInAnyOrderElementsOf(expectedStartTimes);
@@ -344,21 +342,15 @@ public class OrchestrationTests {
 
    @Test
    void testModifyTableTasksAreSaved() {
-      List<Task> expectedTasks = allTaskIds
+      Vector<Task> expectedTasks = allTaskIds
          .asList()
-         .stream()
          .map(this::getTask)
-         .map(task -> task.withModification(taskDelta))
-         .collect(Collectors.toList());
+         .map(task -> task.withModification(taskDelta));
 
       orchestrator.modifyTable(dataTableId, tableDelta).get();
 
       taskStore.cancelTransaction();
-      List<Task> actualTasks = allTaskIds
-         .asList()
-         .stream()
-         .map(this::getTask)
-         .collect(Collectors.toList());
+      Vector<Task> actualTasks = allTaskIds.asList().map(this::getTask);
 
       assertThat(actualTasks)
          .usingElementComparator(TestComparators::compareTasksIgnoringId)
@@ -395,21 +387,15 @@ public class OrchestrationTests {
    @Test
    void testModifyGeneratorTasksAreSaved() {
       Generator generator = getGenerator(dataGeneratorId);
-      List<Task> expectedTasks = generatedTaskIds
+      Vector<Task> expectedTasks = generatedTaskIds
          .asList()
-         .stream()
          .map(this::getTask)
-         .map(task -> task.withSeriesModification(generatorDelta, generator))
-         .collect(Collectors.toList());
+         .map(task -> task.withSeriesModification(generatorDelta, generator));
 
       orchestrator.modifyGenerator(dataGeneratorId, generatorDelta).get();
 
       taskStore.cancelTransaction();
-      List<Task> actualTasks = generatedTaskIds
-         .asList()
-         .stream()
-         .map(this::getTask)
-         .collect(Collectors.toList());
+      Vector<Task> actualTasks = generatedTaskIds.asList().map(this::getTask);
 
       assertThat(actualTasks)
          .usingElementComparator(TestComparators::compareTasksIgnoringId)
@@ -483,20 +469,16 @@ public class OrchestrationTests {
 
    @Test
    void testModifyAndSeverTaskStandaloneGeneratedTasksAreUnchanged() {
-      List<Task> expectedTasks = generatedTaskIds
+      Vector<Task> expectedTasks = generatedTaskIds
          .asList()
-         .stream()
-         .map(this::getTask)
-         .collect(Collectors.toList());
+         .map(this::getTask);
 
       orchestrator.modifyAndSeverTask(dataTaskId, taskDelta).get();
 
       taskStore.cancelTransaction();
-      List<Task> actualTasks = generatedTaskIds
+      Vector<Task> actualTasks = generatedTaskIds
          .asList()
-         .stream()
-         .map(this::getTask)
-         .collect(Collectors.toList());
+         .map(this::getTask);
 
       assertThat(actualTasks)
          .usingElementComparator(TestComparators::compareTasks)
@@ -545,22 +527,18 @@ public class OrchestrationTests {
 
    @Test
    void testModifyAndSeverTaskSeriesOtherTasksAreUnchanged() {
-      List<Task> expectedTasks = allTaskIds
+      Vector<Task> expectedTasks = allTaskIds
          .asList()
-         .stream()
-         .filter(id -> !id.equals(middleTaskId))
          .map(this::getTask)
-         .collect(Collectors.toList());
+         .filter(task -> !task.getId().equals(middleTaskId));
 
       orchestrator.modifyAndSeverTask(middleTaskId, taskDelta).get();
 
       taskStore.cancelTransaction();
-      List<Task> actualTasks = allTaskIds
+      Vector<Task> actualTasks = allTaskIds
          .asList()
-         .stream()
-         .filter(id -> !id.equals(middleTaskId))
          .map(this::getTask)
-         .collect(Collectors.toList());
+         .filter(task -> !task.getId().equals(middleTaskId));
 
       assertThat(actualTasks)
          .usingElementComparator(TestComparators::compareTasks)
@@ -714,15 +692,13 @@ public class OrchestrationTests {
    private ItemId<Task> getGeneratedTaskId(Instant timestamp) {
       return generatedTaskIds
          .asList()
-         .stream()
          .map(id -> taskStore.getTasks().getById(id).get())
          .filter(t -> {
             Property property = t.getProperties().asMap().get("alpha").get();
             Instant startTime = ((DateTime) property.get()).getStart();
             return startTime.equals(timestamp);
          })
-         .findAny()
-         .get()
+         .get(0)
          .getId();
    }
 }

@@ -1,7 +1,6 @@
 package io.github.theimbichner.taskmanager.task;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import io.vavr.collection.Vector;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -134,23 +133,19 @@ public class Table implements Storable<ItemId<Table>> {
    }
 
    public JSONObject toJson() {
-      List<String> stringTaskIds = taskIds
+      Vector<String> stringTaskIds = taskIds
          .asList()
-         .stream()
-         .map(ItemId::toString)
-         .collect(Collectors.toList());
-      List<String> stringGeneratorIds = generatorIds
+         .map(ItemId::toString);
+      Vector<String> stringGeneratorIds = generatorIds
          .asList()
-         .stream()
-         .map(ItemId::toString)
-         .collect(Collectors.toList());
+         .map(ItemId::toString);
 
       JSONObject json = new JSONObject();
       json.put("id", id.toString());
       json.put("name", name);
       modifyRecord.writeIntoJson(json);
-      json.put("tasks", stringTaskIds);
-      json.put("generators", stringGeneratorIds);
+      json.put("tasks", stringTaskIds.asJava());
+      json.put("generators", stringGeneratorIds.asJava());
       json.put("schema", schema.toJson());
 
       return json;

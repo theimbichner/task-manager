@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;
 
+import io.vavr.collection.Vector;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -40,12 +42,12 @@ public class UnionDatePattern implements DatePattern {
    }
 
    @Override
-   public List<Instant> getDates(Instant start, Instant end) {
+   public Vector<Instant> getDates(Instant start, Instant end) {
       TreeSet<Instant> set = new TreeSet<>();
       for (DatePattern p : patterns) {
-         set.addAll(p.getDates(start, end));
+         set.addAll(p.getDates(start, end).asJava());
       }
-      return new ArrayList<>(set);
+      return Vector.ofAll(set);
    }
 
    @Override

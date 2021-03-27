@@ -1,10 +1,10 @@
 package io.github.theimbichner.taskmanager.collection;
 
-import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.stream.Stream;
 
 import io.vavr.Tuple2;
+import io.vavr.collection.Vector;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,6 +13,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.assertj.vavr.api.VavrAssertions.*;
 
 public class SetListTests {
    SetList<String> setList;
@@ -24,7 +25,7 @@ public class SetListTests {
 
    @Test
    void testEmpty() {
-      assertThat(SetList.empty().asList()).isEqualTo(List.of());
+      assertThat(SetList.empty().asList()).isEmpty();
    }
 
    @Test
@@ -32,19 +33,19 @@ public class SetListTests {
       assertThat(setList.contains("alpha")).isFalse();
       setList = setList.add("alpha");
       assertThat(setList.contains("alpha")).isTrue();
-      assertThat(setList.asList()).isEqualTo(List.of("alpha"));
+      assertThat(setList.asList()).isEqualTo(Vector.of("alpha"));
    }
 
    @Test
    void testAddDuplicate() {
       setList = setList.add("alpha").add("alpha");
-      assertThat(setList.asList()).isEqualTo(List.of("alpha"));
+      assertThat(setList.asList()).isEqualTo(Vector.of("alpha"));
    }
 
    @Test
    void testAddDuplicateOrder() {
       setList = setList.add("alpha").add("beta").add("gamma").add("beta");
-      assertThat(setList.asList()).isEqualTo(List.of("alpha", "beta", "gamma"));
+      assertThat(setList.asList()).isEqualTo(Vector.of("alpha", "beta", "gamma"));
    }
 
    @Test
@@ -53,7 +54,7 @@ public class SetListTests {
       assertThat(setList.contains("alpha")).isTrue();
       assertThat(setList.contains("beta")).isTrue();
       assertThat(setList.contains("gamma")).isTrue();
-      assertThat(setList.asList()).isEqualTo(List.of("alpha", "gamma", "beta"));
+      assertThat(setList.asList()).isEqualTo(Vector.of("alpha", "gamma", "beta"));
    }
 
    @Test
@@ -70,7 +71,7 @@ public class SetListTests {
       setList = setList.add("alpha").add("beta").remove("alpha").add("alpha").remove("alpha");
       assertThat(setList.contains("alpha")).isFalse();
       assertThat(setList.contains("beta")).isTrue();
-      assertThat(setList.asList()).isEqualTo(List.of("beta"));
+      assertThat(setList.asList()).isEqualTo(Vector.of("beta"));
    }
 
    @Test
@@ -79,22 +80,22 @@ public class SetListTests {
       assertThat(setList.contains("gamma")).isFalse();
       setList = setList.remove("gamma");
       assertThat(setList.contains("gamma")).isFalse();
-      assertThat(setList.asList()).isEqualTo(List.of("alpha", "beta"));
+      assertThat(setList.asList()).isEqualTo(Vector.of("alpha", "beta"));
    }
 
    @Test
    void testAddAll() {
-      setList = setList.addAll(List.of("alpha", "beta", "gamma", "beta"));
-      assertThat(setList.asList()).isEqualTo(List.of("alpha", "beta", "gamma"));
+      setList = setList.addAll(Vector.of("alpha", "beta", "gamma", "beta"));
+      assertThat(setList.asList()).isEqualTo(Vector.of("alpha", "beta", "gamma"));
    }
 
    @Test
    void testAddRemoveAddAll() {
       setList = setList
-         .addAll(List.of("alpha", "beta", "gamma"))
+         .addAll(Vector.of("alpha", "beta", "gamma"))
          .remove("beta")
-         .addAll(List.of("beta", "gamma"));
-      assertThat(setList.asList()).isEqualTo(List.of("alpha", "gamma", "beta"));
+         .addAll(Vector.of("beta", "gamma"));
+      assertThat(setList.asList()).isEqualTo(Vector.of("alpha", "gamma", "beta"));
    }
 
    @ParameterizedTest
@@ -102,7 +103,7 @@ public class SetListTests {
    void testEquals(Object left, Object right, boolean equals) {
       if (equals) {
          assertThat(left).isEqualTo(right);
-         assertThat(left.hashCode()).isEqualTo(right.hashCode());
+         assertThat(left).hasSameHashCodeAs(right);
       }
       else {
          assertThat(left).isNotEqualTo(right);
@@ -125,31 +126,31 @@ public class SetListTests {
 
    @Test
    void testSplitBeginning() {
-      setList = setList.addAll(List.of("alpha", "beta", "gamma"));
-      Tuple2<List<String>, List<String>> split = setList.split("alpha");
-      assertThat(split._1).isEqualTo(List.of());
-      assertThat(split._2).isEqualTo(List.of("alpha", "beta", "gamma"));
+      setList = setList.addAll(Vector.of("alpha", "beta", "gamma"));
+      Tuple2<Vector<String>, Vector<String>> split = setList.split("alpha");
+      assertThat(split._1).isEqualTo(Vector.of());
+      assertThat(split._2).isEqualTo(Vector.of("alpha", "beta", "gamma"));
    }
 
    @Test
    void testSplitMiddle() {
-      setList = setList.addAll(List.of("alpha", "beta", "gamma"));
-      Tuple2<List<String>, List<String>> split = setList.split("beta");
-      assertThat(split._1).isEqualTo(List.of("alpha"));
-      assertThat(split._2).isEqualTo(List.of("beta", "gamma"));
+      setList = setList.addAll(Vector.of("alpha", "beta", "gamma"));
+      Tuple2<Vector<String>, Vector<String>> split = setList.split("beta");
+      assertThat(split._1).isEqualTo(Vector.of("alpha"));
+      assertThat(split._2).isEqualTo(Vector.of("beta", "gamma"));
    }
 
    @Test
    void testSplitEnd() {
-      setList = setList.addAll(List.of("alpha", "beta", "gamma"));
-      Tuple2<List<String>, List<String>> split = setList.split("gamma");
-      assertThat(split._1).isEqualTo(List.of("alpha", "beta"));
-      assertThat(split._2).isEqualTo(List.of("gamma"));
+      setList = setList.addAll(Vector.of("alpha", "beta", "gamma"));
+      Tuple2<Vector<String>, Vector<String>> split = setList.split("gamma");
+      assertThat(split._1).isEqualTo(Vector.of("alpha", "beta"));
+      assertThat(split._2).isEqualTo(Vector.of("gamma"));
    }
 
    @Test
    void testSplitInvalid() {
-      setList = setList.addAll(List.of("alpha", "beta", "gamma"));
+      setList = setList.addAll(Vector.of("alpha", "beta", "gamma"));
       assertThatExceptionOfType(NoSuchElementException.class)
          .isThrownBy(() -> setList.split("delta"));
    }

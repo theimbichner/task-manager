@@ -2,8 +2,8 @@ package io.github.theimbichner.taskmanager.time;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.List;
-import java.util.stream.Collectors;
+
+import io.vavr.collection.Vector;
 
 import org.json.JSONObject;
 
@@ -16,7 +16,7 @@ public class UnionDatePatternTests {
    static UnionDatePattern pattern;
    static Instant start;
    static Instant end;
-   static List<Integer> expected;
+   static Vector<Integer> expected;
 
    @BeforeAll
    static void beforeAll() {
@@ -28,14 +28,11 @@ public class UnionDatePatternTests {
       start = Instant.ofEpochSecond(0);
       end = Instant.ofEpochSecond(100);
 
-      expected = List.of(6, 30, 54, 75, 78, 82, 89, 93, 94, 95, 96, 97, 98, 99, 100);
+      expected = Vector.of(6, 30, 54, 75, 78, 82, 89, 93, 94, 95, 96, 97, 98, 99, 100);
    }
 
-   static void testDates(DatePattern pattern, List<Integer> expected) {
-      List<Instant> expectedDates = expected.stream()
-         .map(Instant::ofEpochSecond)
-         .collect(Collectors.toList());
-
+   static void testDates(DatePattern pattern, Vector<Integer> expected) {
+      Vector<Instant> expectedDates = expected.map(Instant::ofEpochSecond);
       assertThat(pattern.getDates(start, end)).isEqualTo(expectedDates);
    }
 
@@ -51,12 +48,12 @@ public class UnionDatePatternTests {
 
    @Test
    void testGetDatesEmpty() {
-      testDates(new UnionDatePattern(), List.of());
+      testDates(new UnionDatePattern(), Vector.empty());
    }
 
    @Test
    void testWithoutPatternAt() {
-      List<Integer> expected = List.of(6, 30, 54, 75, 78, 82, 89, 93, 96, 97);
+      Vector<Integer> expected = Vector.of(6, 30, 54, 75, 78, 82, 89, 93, 96, 97);
       testDates(pattern.withoutPatternAt(1), expected);
    }
 
@@ -65,24 +62,24 @@ public class UnionDatePatternTests {
       UnionDatePattern empty = new UnionDatePattern();
       UnionDatePattern wrapped = empty.withPatterns(pattern);
 
-      assertThat(empty.getNumberOfPatterns()).isEqualTo(0);
+      assertThat(empty.getNumberOfPatterns()).isZero();
       assertThat(wrapped.getNumberOfPatterns()).isEqualTo(1);
       assertThat(pattern.getNumberOfPatterns()).isEqualTo(4);
    }
 
    @Test
    void testGetPatternAt() {
-      testDates(pattern.getPatternAt(0), List.of(75, 82, 89, 96));
-      testDates(pattern.getPatternAt(1), List.of(93, 94, 95, 96, 97, 98, 99, 100));
-      testDates(pattern.getPatternAt(2), List.of(6, 30, 54, 78));
-      testDates(pattern.getPatternAt(3), List.of(89, 93, 97));
+      testDates(pattern.getPatternAt(0), Vector.of(75, 82, 89, 96));
+      testDates(pattern.getPatternAt(1), Vector.of(93, 94, 95, 96, 97, 98, 99, 100));
+      testDates(pattern.getPatternAt(2), Vector.of(6, 30, 54, 78));
+      testDates(pattern.getPatternAt(3), Vector.of(89, 93, 97));
    }
 
    @Test
    void testWithPatternsImmutable() {
       UnionDatePattern newPattern = new UnionDatePattern();
       newPattern.withPatterns(pattern);
-      testDates(newPattern, List.of());
+      testDates(newPattern, Vector.empty());
    }
 
    @Test

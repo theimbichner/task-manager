@@ -1,11 +1,10 @@
 package io.github.theimbichner.taskmanager.task;
 
 import java.time.Instant;
-import java.util.List;
-import java.util.stream.Collectors;
 
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
+import io.vavr.collection.Vector;
 import io.vavr.control.Option;
 
 import org.json.JSONArray;
@@ -196,12 +195,12 @@ public class Generator implements Storable<ItemId<Generator>> {
    }
 
    // TODO update modification timestamp here?
-   Tuple2<Generator, List<ItemId<Task>>> withoutTasksBefore(ItemId<Task> taskId) {
+   Tuple2<Generator, Vector<ItemId<Task>>> withoutTasksBefore(ItemId<Task> taskId) {
       if (!taskIds.contains(taskId)) {
          throw new IllegalArgumentException("Task not found in generator");
       }
 
-      Tuple2<List<ItemId<Task>>, List<ItemId<Task>>> split = taskIds.split(taskId);
+      Tuple2<Vector<ItemId<Task>>, Vector<ItemId<Task>>> split = taskIds.split(taskId);
       Builder result = new Builder(this);
       result.taskIds = SetList.<ItemId<Task>>empty().addAll(split._2);
 
@@ -209,17 +208,15 @@ public class Generator implements Storable<ItemId<Generator>> {
    }
 
    // TODO update the modification timestamp?
-   Tuple2<Generator, List<Task>> withTasksUntil(Instant timestamp) {
+   Tuple2<Generator, Vector<Task>> withTasksUntil(Instant timestamp) {
       if (!timestamp.isAfter(generationLastTimestamp)) {
-         return Tuple.of(this, List.of());
+         return Tuple.of(this, Vector.empty());
       }
 
-      List<Task> tasks = generationDatePattern
+      Vector<Task> tasks = generationDatePattern
          .getDates(generationLastTimestamp, timestamp)
-         .stream()
-         .map(instant -> Task.newSeriesTask(this, instant))
-         .collect(Collectors.toList());
-      List<ItemId<Task>> ids = tasks.stream().map(Task::getId).collect(Collectors.toList());
+         .map(instant -> Task.newSeriesTask(this, instant));
+      Vector<ItemId<Task>> ids = tasks.map(Task::getId);
 
       Builder result = new Builder(this);
       result.generationLastTimestamp = timestamp;
@@ -237,11 +234,7 @@ public class Generator implements Storable<ItemId<Generator>> {
    }
 
    public JSONObject toJson() {
-      List<String> stringTaskIds = taskIds
-         .asList()
-         .stream()
-         .map(ItemId::toString)
-         .collect(Collectors.toList());
+      Vector<String> stringTaskIds = taskIds.asList().map(ItemId::toString);
 
       JSONObject json = new JSONObject();
       json.put("id", id.toString());
@@ -254,7 +247,7 @@ public class Generator implements Storable<ItemId<Generator>> {
       json.put("generationLastTimestamp", generationLastTimestamp.toString());
       json.put("generationField", generationField);
       json.put("generationDatePattern", generationDatePattern.toJson());
-      json.put("tasks", stringTaskIds);
+      json.put("tasks", stringTaskIds.asJava());
       json.put("templateProperties", templateProperties.toJson());
 
       return json;

@@ -1,7 +1,8 @@
 package io.github.theimbichner.taskmanager.time;
 
 import java.time.Instant;
-import java.util.List;
+
+import io.vavr.collection.Vector;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -32,6 +33,6 @@ public interface DatePattern {
     * @param end The end of the time range, inclusive
     * @return A list of matching Instants between start and end.
     */
-   List<Instant> getDates(Instant start, Instant end);
+   Vector<Instant> getDates(Instant start, Instant end);
    JSONObject toJson();
 }

@@ -1,10 +1,10 @@
 package io.github.theimbichner.taskmanager.task;
 
 import java.time.Instant;
-import java.util.List;
-import java.util.stream.Collectors;
 
 import io.vavr.Tuple2;
+import io.vavr.collection.Seq;
+import io.vavr.collection.Vector;
 import io.vavr.control.Either;
 
 import io.github.theimbichner.taskmanager.collection.SetList;
@@ -31,7 +31,7 @@ public class Orchestration {
    public Either<TaskAccessException, Task> createTask(ItemId<Table> tableId) {
       return taskStore.getTables().getById(tableId).flatMap(table -> {
          Task task = Task.newTask(table);
-         Table updatedTable = table.withTasks(List.of(task.getId()));
+         Table updatedTable = table.withTasks(Vector.of(task.getId()));
 
          return taskStore.getTables().save(updatedTable)
             .flatMap(x -> taskStore.getTasks().save(task))
@@ -110,14 +110,12 @@ public class Orchestration {
       GeneratorDelta delta
    ) {
       return taskStore.getGenerators().getById(generatorId).flatMap(generator -> {
-         List<Either<TaskAccessException, Task>> tasks = generator
+         Vector<Either<TaskAccessException, Task>> tasks = generator
             .getTaskIds()
             .asList()
-            .stream()
             .map(taskId -> taskStore.getTasks().getById(taskId)
                .map(task -> task.withSeriesModification(delta, generator))
-               .flatMap(taskStore.getTasks()::save))
-            .collect(Collectors.toList());
+               .flatMap(taskStore.getTasks()::save));
          return Either.sequenceRight(tasks)
             .flatMap(x -> {
                Generator modifiedGenerator = generator.withModification(delta);
@@ -189,7 +187,7 @@ public class Orchestration {
       ItemId<Task> taskId
    ) {
       return taskStore.getGenerators().getById(generatorId).flatMap(generator -> {
-         Tuple2<Generator, List<ItemId<Task>>> tuple = generator.withoutTasksBefore(taskId);
+         Tuple2<Generator, Vector<ItemId<Task>>> tuple = generator.withoutTasksBefore(taskId);
          Either<TaskAccessException, Task> result = taskStore
             .getGenerators()
             .save(tuple._1)
@@ -206,21 +204,19 @@ public class Orchestration {
       });
    }
 
-   private Either<TaskAccessException, List<ItemId<Task>>> runGenerator(
+   private Either<TaskAccessException, Seq<ItemId<Task>>> runGenerator(
       ItemId<Generator> generatorId,
       Instant timestamp
    ) {
       return taskStore.getGenerators().getById(generatorId).flatMap(generator -> {
-         Tuple2<Generator, List<Task>> tuple = generator.withTasksUntil(timestamp);
+         Tuple2<Generator, Vector<Task>> tuple = generator.withTasksUntil(timestamp);
 
          return taskStore
             .getGenerators()
             .save(tuple._1)
             .flatMap(x -> Either.sequenceRight(tuple._2
-               .stream()
-               .map(taskStore.getTasks()::save)
-               .collect(Collectors.toList())))
-            .map(tasks -> tasks.map(Task::getId).asJava());
+               .map(taskStore.getTasks()::save)))
+            .map(tasks -> tasks.map(Task::getId));
       });
    }
 

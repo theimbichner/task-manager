@@ -82,7 +82,7 @@ public abstract class Property {
    }
 
    public static Property of(SetList<String> list) {
-      return new JsonAdapterProperty<>(list, "EnumList", s -> new JSONArray(s.asList()));
+      return new JsonAdapterProperty<>(list, "EnumList", s -> new JSONArray(s.asList().asJava()));
    }
 
    public static Property of(String string) {
