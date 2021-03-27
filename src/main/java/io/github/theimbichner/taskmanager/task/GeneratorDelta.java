@@ -1,6 +1,6 @@
 package io.github.theimbichner.taskmanager.task;
 
-import java.util.Optional;
+import io.vavr.control.Option;
 
 import io.github.theimbichner.taskmanager.task.property.Property;
 import io.github.theimbichner.taskmanager.task.property.PropertyMap;
@@ -31,20 +31,20 @@ public class GeneratorDelta {
       return properties;
    }
 
-   public Optional<String> getName() {
-      return Optional.ofNullable(name);
+   public Option<String> getName() {
+      return Option.of(name);
    }
 
-   public Optional<String> getTemplateName() {
-      return Optional.ofNullable(templateName);
+   public Option<String> getTemplateName() {
+      return Option.of(templateName);
    }
 
-   public Optional<String> getTemplateMarkup() {
-      return Optional.ofNullable(templateMarkup);
+   public Option<String> getTemplateMarkup() {
+      return Option.of(templateMarkup);
    }
 
-   public Optional<Long> getTemplateDuration() {
-      return Optional.ofNullable(templateDuration);
+   public Option<Long> getTemplateDuration() {
+      return Option.of(templateDuration);
    }
 
    public boolean isEmpty() {

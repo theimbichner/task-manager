@@ -1,6 +1,6 @@
 package io.github.theimbichner.taskmanager.task;
 
-import java.util.Optional;
+import io.vavr.control.Option;
 
 import io.github.theimbichner.taskmanager.task.property.PropertyMap;
 import io.github.theimbichner.taskmanager.task.property.Schema;
@@ -18,8 +18,8 @@ public class TableDelta {
       return schema;
    }
 
-   public Optional<String> getName() {
-      return Optional.ofNullable(name);
+   public Option<String> getName() {
+      return Option.of(name);
    }
 
    public boolean isEmpty() {

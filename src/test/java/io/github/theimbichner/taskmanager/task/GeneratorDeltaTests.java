@@ -12,6 +12,7 @@ import io.github.theimbichner.taskmanager.task.property.PropertyMap;
 import io.github.theimbichner.taskmanager.time.DateTime;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.assertj.vavr.api.VavrAssertions.*;
 
 public class GeneratorDeltaTests {
    static PropertyMap properties;
@@ -83,7 +84,7 @@ public class GeneratorDeltaTests {
          null,
          null);
       assertThat(delta.getProperties().asMap()).isEmpty();
-      assertThat(delta.getName()).hasValue(name);
+      assertThat(delta.getName()).contains(name);
       assertThat(delta.getTemplateName()).isEmpty();
       assertThat(delta.getTemplateMarkup()).isEmpty();
       assertThat(delta.getTemplateDuration()).isEmpty();
@@ -101,7 +102,7 @@ public class GeneratorDeltaTests {
          null);
       assertThat(delta.getProperties().asMap()).isEmpty();
       assertThat(delta.getName()).isEmpty();
-      assertThat(delta.getTemplateName()).hasValue(templateName);
+      assertThat(delta.getTemplateName()).contains(templateName);
       assertThat(delta.getTemplateMarkup()).isEmpty();
       assertThat(delta.getTemplateDuration()).isEmpty();
 
@@ -119,7 +120,7 @@ public class GeneratorDeltaTests {
       assertThat(delta.getProperties().asMap()).isEmpty();
       assertThat(delta.getName()).isEmpty();
       assertThat(delta.getTemplateName()).isEmpty();
-      assertThat(delta.getTemplateMarkup()).hasValue(templateMarkup);
+      assertThat(delta.getTemplateMarkup()).contains(templateMarkup);
       assertThat(delta.getTemplateDuration()).isEmpty();
 
       assertThat(delta.isEmpty()).isFalse();
@@ -137,7 +138,7 @@ public class GeneratorDeltaTests {
       assertThat(delta.getName()).isEmpty();
       assertThat(delta.getTemplateName()).isEmpty();
       assertThat(delta.getTemplateMarkup()).isEmpty();
-      assertThat(delta.getTemplateDuration()).hasValue(templateDuration);
+      assertThat(delta.getTemplateDuration()).contains(templateDuration);
 
       assertThat(delta.isEmpty()).isFalse();
    }
@@ -157,8 +158,8 @@ public class GeneratorDeltaTests {
 
       assertThat(taskDelta.getProperties().asMap())
          .isEqualTo(expectedDeltaProperties.asMap());
-      assertThat(taskDelta.getName()).hasValue(templateName);
-      assertThat(taskDelta.getMarkup()).hasValue(templateMarkup);
+      assertThat(taskDelta.getName()).contains(templateName);
+      assertThat(taskDelta.getMarkup()).contains(templateMarkup);
    }
 
    @Test
@@ -176,8 +177,8 @@ public class GeneratorDeltaTests {
 
       assertThat(taskDelta.getProperties().asMap())
          .isEqualTo(expectedDeltaProperties.asMap());
-      assertThat(taskDelta.getName()).hasValue(templateName);
-      assertThat(taskDelta.getMarkup()).hasValue(templateMarkup);
+      assertThat(taskDelta.getName()).contains(templateName);
+      assertThat(taskDelta.getMarkup()).contains(templateMarkup);
    }
 
    @Test
@@ -194,8 +195,8 @@ public class GeneratorDeltaTests {
 
       assertThat(taskDelta.getProperties().asMap())
          .isEqualTo(expectedDeltaProperties.asMap());
-      assertThat(taskDelta.getName()).hasValue(templateName);
-      assertThat(taskDelta.getMarkup()).hasValue(templateMarkup);
+      assertThat(taskDelta.getName()).contains(templateName);
+      assertThat(taskDelta.getMarkup()).contains(templateMarkup);
    }
 
    @Test

@@ -85,7 +85,7 @@ public class Table implements Storable<ItemId<Table>> {
       }
 
       Builder result = new Builder(this);
-      result.name = delta.getName().orElse(name);
+      result.name = delta.getName().getOrElse(name);
       result.schema = schema.merge(delta.getSchema());
       result.modifyRecord = modifyRecord.updatedNow();
 

@@ -164,10 +164,10 @@ public class Generator implements Storable<ItemId<Generator>> {
 
       Builder result = new Builder(this);
       result.templateProperties = templateProperties.merge(delta.getProperties());
-      result.name = delta.getName().orElse(name);
-      result.templateName = delta.getTemplateName().orElse(templateName);
-      result.templateMarkup = delta.getTemplateMarkup().orElse(templateMarkup);
-      result.templateDuration = delta.getTemplateDuration().orElse(templateDuration);
+      result.name = delta.getName().getOrElse(name);
+      result.templateName = delta.getTemplateName().getOrElse(templateName);
+      result.templateMarkup = delta.getTemplateMarkup().getOrElse(templateMarkup);
+      result.templateDuration = delta.getTemplateDuration().getOrElse(templateDuration);
       result.modifyRecord = modifyRecord.updatedNow();
 
       return new Generator(result);

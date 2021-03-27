@@ -95,8 +95,8 @@ public class Task implements Storable<ItemId<Task>> {
 
       Builder result = new Builder(this);
       result.properties = properties.merge(delta.getProperties());
-      result.name = delta.getName().orElse(name);
-      result.markup = delta.getMarkup().orElse(markup);
+      result.name = delta.getName().getOrElse(name);
+      result.markup = delta.getMarkup().getOrElse(markup);
 
       result.modifyRecord = modifyRecord.updatedNow();
       return new Task(result);

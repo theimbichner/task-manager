@@ -9,6 +9,7 @@ import io.github.theimbichner.taskmanager.task.property.Property;
 import io.github.theimbichner.taskmanager.task.property.PropertyMap;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.assertj.vavr.api.VavrAssertions.*;
 
 public class TaskDeltaTests {
    static PropertyMap properties;
@@ -52,7 +53,7 @@ public class TaskDeltaTests {
    void testName() {
       TaskDelta delta = new TaskDelta(PropertyMap.empty(), name, null);
       assertThat(delta.getProperties().asMap()).isEmpty();
-      assertThat(delta.getName()).hasValue(name);
+      assertThat(delta.getName()).contains(name);
       assertThat(delta.getMarkup()).isEmpty();
 
       assertThat(delta.isEmpty()).isFalse();
@@ -63,7 +64,7 @@ public class TaskDeltaTests {
       TaskDelta delta = new TaskDelta(PropertyMap.empty(), null, markup);
       assertThat(delta.getProperties().asMap()).isEmpty();
       assertThat(delta.getName()).isEmpty();
-      assertThat(delta.getMarkup()).hasValue(markup);
+      assertThat(delta.getMarkup()).contains(markup);
 
       assertThat(delta.isEmpty()).isFalse();
    }
