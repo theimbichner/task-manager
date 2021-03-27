@@ -90,12 +90,30 @@ public class SetListTests {
    }
 
    @Test
+   void testRemoveAll() {
+      setList = setList
+         .addAll(Vector.of("alpha", "beta", "gamma"))
+         .removeAll(Vector.of("alpha", "gamma", "delta"));
+      assertThat(setList.asList()).isEqualTo(Vector.of("beta"));
+   }
+
+   @Test
    void testAddRemoveAddAll() {
       setList = setList
          .addAll(Vector.of("alpha", "beta", "gamma"))
          .remove("beta")
          .addAll(Vector.of("beta", "gamma"));
       assertThat(setList.asList()).isEqualTo(Vector.of("alpha", "gamma", "beta"));
+   }
+
+   @Test
+   void testRemoveAddRemoveAll() {
+      setList = setList
+         .addAll(Vector.of("alpha", "beta", "gamma"))
+         .removeAll(Vector.of("beta", "gamma"))
+         .add("gamma")
+         .removeAll(Vector.of("gamma", "delta"));
+      assertThat(setList.asList()).isEqualTo(Vector.of("alpha"));
    }
 
    @ParameterizedTest
@@ -117,11 +135,12 @@ public class SetListTests {
       return Stream.of(
          Arguments.of(SetList.empty(), SetList.empty(), true),
          Arguments.of(SetList.empty(), list, false),
+         Arguments.of(list, SetList.empty(), false),
          Arguments.of(SetList.empty(), null, false),
          Arguments.of(SetList.empty(), "alpha", false),
          Arguments.of(list, list, true),
          Arguments.of(list, listCopy, true),
-         Arguments.of(list, SetList.empty(), false));
+         Arguments.of(listCopy, list, true));
    }
 
    @Test

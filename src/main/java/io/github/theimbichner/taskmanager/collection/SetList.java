@@ -43,6 +43,7 @@ public class SetList<T> {
       for (T t : ts) {
          result = result.add(t);
       }
+
       return result;
    }
 
@@ -52,6 +53,15 @@ public class SetList<T> {
       }
 
       return new SetList<>(set.remove(t), removed.add(t), list);
+   }
+
+   public SetList<T> removeAll(Iterable<T> ts) {
+      SetList<T> result = this;
+      for (T t : ts) {
+         result = result.remove(t);
+      }
+
+      return result;
    }
 
    public boolean contains(T t) {
