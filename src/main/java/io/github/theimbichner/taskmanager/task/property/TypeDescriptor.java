@@ -1,10 +1,9 @@
 package io.github.theimbichner.taskmanager.task.property;
 
-import java.util.HashSet;
-import java.util.Set;
-
 import org.json.JSONArray;
 import org.json.JSONObject;
+
+import io.github.theimbichner.taskmanager.collection.SetList;
 
 /*
  * Notion data types not implemented:
@@ -27,9 +26,9 @@ public interface TypeDescriptor {
       case "DateTime":
          return new SimpleTypeDescriptor(typeName);
       case "Enum":
-         return new EnumerationTypeDescriptor(false, new HashSet<>());
+         return new EnumerationTypeDescriptor(false, SetList.empty());
       case "EnumList":
-         return new EnumerationTypeDescriptor(true, new HashSet<>());
+         return new EnumerationTypeDescriptor(true, SetList.empty());
       default:
          throw new IllegalArgumentException();
       }
@@ -42,9 +41,9 @@ public interface TypeDescriptor {
 
       boolean permitMultiple = json.getBoolean("permitMultiple");
       JSONArray jsonArray = json.getJSONArray("enumValues");
-      Set<String> enumValues = new HashSet<>();
+      SetList<String> enumValues = SetList.empty();
       for (int i = 0; i < jsonArray.length(); i++) {
-         enumValues.add(jsonArray.getString(i));
+         enumValues = enumValues.add(jsonArray.getString(i));
       }
       return new EnumerationTypeDescriptor(permitMultiple, enumValues);
    }

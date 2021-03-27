@@ -17,6 +17,7 @@ import io.github.theimbichner.taskmanager.collection.SetList;
 import io.github.theimbichner.taskmanager.time.DateTime;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.assertj.vavr.api.VavrAssertions.*;
 
 public class SchemaTests {
    private static DateTime dateTime;
@@ -49,7 +50,7 @@ public class SchemaTests {
          "beta", "DateTime",
          "gamma", "EnumList"));
       TypeDescriptor type = baseSchema.asMap().get("gamma").get();
-      assertThat(((EnumerationTypeDescriptor) type).getEnumValues())
+      assertThat(((EnumerationTypeDescriptor) type).getEnumValues().asList())
          .containsExactlyInAnyOrder("one", "two", "three");
    }
 
@@ -62,7 +63,7 @@ public class SchemaTests {
          "beta", "DateTime",
          "gamma", "EnumList"));
       TypeDescriptor type = schema.asMap().get("gamma").get();
-      assertThat(((EnumerationTypeDescriptor) type).getEnumValues())
+      assertThat(((EnumerationTypeDescriptor) type).getEnumValues().asList())
          .containsExactlyInAnyOrder("one", "two", "three");
    }
 
