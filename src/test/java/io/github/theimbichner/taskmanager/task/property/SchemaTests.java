@@ -1,10 +1,10 @@
 package io.github.theimbichner.taskmanager.task.property;
 
-import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.stream.Stream;
 
 import io.vavr.collection.HashMap;
+import io.vavr.collection.Map;
 import io.vavr.control.Option;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -37,7 +37,7 @@ public class SchemaTests {
             "gamma",
             ((EnumerationTypeDescriptor) TypeDescriptor.fromTypeName("EnumList"))
                .withEnumValues("one", "two", "three"));
-      baseProperties = PropertyMap.fromJava(Map.of(
+      baseProperties = PropertyMap.of(HashMap.of(
          "alpha", Property.of("abcde"),
          "beta", Property.of(dateTime),
          "gamma", Property.of(setList)));
@@ -57,7 +57,7 @@ public class SchemaTests {
    @Test
    void testToFromJson() {
       Schema schema = Schema.fromJson(baseSchema.toJson());
-      HashMap<String, String> map = schema.asMap().mapValues(x -> x.getTypeName());
+      Map<String, String> map = schema.asMap().mapValues(x -> x.getTypeName());
       assertThat(map).isEqualTo(HashMap.of(
          "alpha", "String",
          "beta", "DateTime",

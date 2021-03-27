@@ -1,6 +1,6 @@
 package io.github.theimbichner.taskmanager.task;
 
-import java.util.Map;
+import io.vavr.collection.HashMap;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -33,11 +33,11 @@ public class TableDeltaTests {
          .withColumn("delta", TypeDescriptor.fromTypeName("Integer"))
          .withColumnRenamed("beta", "epsilon")
          .withoutColumn("gamma");
-      baseProperties = PropertyMap.fromJava(Map.of(
+      baseProperties = PropertyMap.of(HashMap.of(
          "alpha", Property.of(SetList.empty()),
          "beta", Property.of("abcde"),
          "gamma", Property.of(true)));
-      deltaProperties = PropertyMap.fromJava(Map.of(
+      deltaProperties = PropertyMap.of(HashMap.of(
          "beta", Property.DELETE,
          "gamma", Property.DELETE,
          "delta", Property.empty(),

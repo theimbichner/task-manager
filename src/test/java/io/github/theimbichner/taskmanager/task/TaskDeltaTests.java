@@ -1,6 +1,6 @@
 package io.github.theimbichner.taskmanager.task;
 
-import java.util.Map;
+import io.vavr.collection.HashMap;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -18,7 +18,7 @@ public class TaskDeltaTests {
 
    @BeforeAll
    static void beforeAll() {
-      properties = PropertyMap.fromJava(Map.of(
+      properties = PropertyMap.of(HashMap.of(
          "alpha", Property.ofNumber("1"),
          "beta", Property.ofNumber("2"),
          "gamma", Property.ofNumber("3"),

@@ -2,13 +2,14 @@ package io.github.theimbichner.taskmanager.task.property;
 
 import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
+import io.vavr.collection.Map;
 
 import org.json.JSONObject;
 
 public class PropertyMap {
-   private final HashMap<String, Property> map;
+   private final Map<String, Property> map;
 
-   private PropertyMap(HashMap<String, Property> map) {
+   private PropertyMap(Map<String, Property> map) {
       this.map = map;
    }
 
@@ -16,8 +17,8 @@ public class PropertyMap {
       return new PropertyMap(HashMap.empty());
    }
 
-   public static PropertyMap fromJava(java.util.Map<String, Property> javaMap) {
-      return new PropertyMap(HashMap.ofAll(javaMap));
+   public static PropertyMap of(Map<String, Property> map) {
+      return new PropertyMap(map);
    }
 
    public PropertyMap put(String key, Property property) {
@@ -25,7 +26,7 @@ public class PropertyMap {
    }
 
    public PropertyMap merge(PropertyMap delta) {
-      HashMap<String, Property> result = map;
+      Map<String, Property> result = map;
       for (Tuple2<String, Property> entry : delta.asMap()) {
          if (entry._2 == Property.DELETE) {
             result = result.remove(entry._1);
@@ -56,7 +57,7 @@ public class PropertyMap {
       return new PropertyMap(result);
    }
 
-   public HashMap<String, Property> asMap() {
+   public Map<String, Property> asMap() {
       return map;
    }
 }

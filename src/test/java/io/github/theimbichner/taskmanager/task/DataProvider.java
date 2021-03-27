@@ -2,7 +2,8 @@ package io.github.theimbichner.taskmanager.task;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Map;
+
+import io.vavr.collection.HashMap;
 
 import io.github.theimbichner.taskmanager.io.InMemoryDataStore;
 import io.github.theimbichner.taskmanager.io.TaskStore;
@@ -58,14 +59,14 @@ public class DataProvider {
    }
 
    public PropertyMap getProperties() {
-      return PropertyMap.fromJava(Map.of(
+      return PropertyMap.of(HashMap.of(
          "alpha", Property.ofNumber("1"),
          "beta", Property.of(""),
          "gamma", Property.of(new DateTime(Instant.ofEpochSecond(12345)))));
    }
 
    public PropertyMap getUpdateProperties() {
-      return PropertyMap.fromJava(Map.of(
+      return PropertyMap.of(HashMap.of(
          // modify
          "alpha", Property.empty(),
          // delete

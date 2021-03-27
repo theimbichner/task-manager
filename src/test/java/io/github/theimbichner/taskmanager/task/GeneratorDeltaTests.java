@@ -1,7 +1,8 @@
 package io.github.theimbichner.taskmanager.task;
 
-import java.util.Map;
 import java.util.NoSuchElementException;
+
+import io.vavr.collection.HashMap;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -24,7 +25,7 @@ public class GeneratorDeltaTests {
 
    @BeforeAll
    static void beforeAll() {
-      properties = PropertyMap.fromJava(Map.of(
+      properties = PropertyMap.of(HashMap.of(
          "alpha", Property.ofNumber("1"),
          "beta", Property.ofNumber("2"),
          "gamma", Property.ofNumber("3"),
@@ -35,7 +36,7 @@ public class GeneratorDeltaTests {
       templateDuration = 123456L;
 
       dateTime = new DateTime();
-      taskProperties = PropertyMap.fromJava(Map.of(
+      taskProperties = PropertyMap.of(HashMap.of(
          "epsilon", Property.of(dateTime)));
    }
 
