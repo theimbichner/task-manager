@@ -1,7 +1,7 @@
 package io.github.theimbichner.taskmanager.task;
 
-import java.util.stream.Stream;
 import java.time.Instant;
+import java.util.stream.Stream;
 
 import io.vavr.collection.HashMap;
 import io.vavr.collection.HashSet;

@@ -1,7 +1,7 @@
 package io.github.theimbichner.taskmanager.task.property;
 
-import java.util.stream.Stream;
 import java.time.Instant;
+import java.util.stream.Stream;
 
 import org.json.JSONObject;
 
