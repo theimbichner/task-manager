@@ -1,13 +1,14 @@
 package io.github.theimbichner.taskmanager.time;
 
 import java.time.Instant;
-import java.util.List;
+
+import io.vavr.collection.Vector;
 
 import org.json.JSONObject;
 
 public class MonthlyDatePattern implements DatePattern {
    @Override
-   public List<Instant> getDates(Instant start, Instant end) {
+   public Vector<Instant> getDates(Instant start, Instant end) {
       return null;
    }
 

@@ -1,7 +1,6 @@
 package io.github.theimbichner.taskmanager.task.property;
 
 import java.time.Instant;
-import java.util.Map;
 
 import io.vavr.collection.HashMap;
 
@@ -18,14 +17,14 @@ public class PropertyMapTests {
 
    @BeforeEach
    void beforeEach() {
-      propertyMap = PropertyMap.fromJava(Map.of(
+      propertyMap = PropertyMap.of(HashMap.of(
          "alpha", Property.ofNumber("1"),
          "beta", Property.ofNumber("2")));
    }
 
    @Test
    void testMerge() {
-      PropertyMap delta = PropertyMap.fromJava(Map.of(
+      PropertyMap delta = PropertyMap.of(HashMap.of(
          "alpha", Property.of("update"),
          "beta", Property.DELETE,
          "gamma", Property.ofNumber("3"),
@@ -58,7 +57,7 @@ public class PropertyMapTests {
 
    @Test
    void testToFromJson() {
-      PropertyMap propertyMap = PropertyMap.fromJava(Map.of(
+      PropertyMap propertyMap = PropertyMap.of(HashMap.of(
          "alpha", Property.of(new DateTime(Instant.now())),
          "beta", Property.of(SetList.<String>empty().add("alpha").add("beta")),
          "gamma", Property.of("string"),

@@ -1,10 +1,11 @@
 package io.github.theimbichner.taskmanager.task;
 
-import java.util.stream.Stream;
 import java.time.Instant;
+import java.util.stream.Stream;
 
 import io.vavr.collection.HashMap;
 import io.vavr.collection.HashSet;
+import io.vavr.collection.Map;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -149,7 +150,7 @@ public class TaskTests {
       assertThat(task.getGeneratorId()).isEqualTo(generator.getId());
 
       DateTime date = new DateTime(instant).withDuration(generator.getTemplateDuration());
-      HashMap<String, Property> expectedProperties = generator.getTemplateProperties().asMap();
+      Map<String, Property> expectedProperties = generator.getTemplateProperties().asMap();
       expectedProperties = expectedProperties.put(generationField, Property.of(date));
 
       assertThat(task.getProperties().asMap()).isEqualTo(expectedProperties);

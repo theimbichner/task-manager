@@ -1,10 +1,10 @@
 package io.github.theimbichner.taskmanager.task.property;
 
-import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.stream.Stream;
 
 import io.vavr.collection.HashMap;
+import io.vavr.collection.Map;
 import io.vavr.control.Option;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -17,6 +17,7 @@ import io.github.theimbichner.taskmanager.collection.SetList;
 import io.github.theimbichner.taskmanager.time.DateTime;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.assertj.vavr.api.VavrAssertions.*;
 
 public class SchemaTests {
    private static DateTime dateTime;
@@ -36,7 +37,7 @@ public class SchemaTests {
             "gamma",
             ((EnumerationTypeDescriptor) TypeDescriptor.fromTypeName("EnumList"))
                .withEnumValues("one", "two", "three"));
-      baseProperties = PropertyMap.fromJava(Map.of(
+      baseProperties = PropertyMap.of(HashMap.of(
          "alpha", Property.of("abcde"),
          "beta", Property.of(dateTime),
          "gamma", Property.of(setList)));
@@ -49,20 +50,20 @@ public class SchemaTests {
          "beta", "DateTime",
          "gamma", "EnumList"));
       TypeDescriptor type = baseSchema.asMap().get("gamma").get();
-      assertThat(((EnumerationTypeDescriptor) type).getEnumValues())
+      assertThat(((EnumerationTypeDescriptor) type).getEnumValues().asList())
          .containsExactlyInAnyOrder("one", "two", "three");
    }
 
    @Test
    void testToFromJson() {
       Schema schema = Schema.fromJson(baseSchema.toJson());
-      HashMap<String, String> map = schema.asMap().mapValues(x -> x.getTypeName());
+      Map<String, String> map = schema.asMap().mapValues(x -> x.getTypeName());
       assertThat(map).isEqualTo(HashMap.of(
          "alpha", "String",
          "beta", "DateTime",
          "gamma", "EnumList"));
       TypeDescriptor type = schema.asMap().get("gamma").get();
-      assertThat(((EnumerationTypeDescriptor) type).getEnumValues())
+      assertThat(((EnumerationTypeDescriptor) type).getEnumValues().asList())
          .containsExactlyInAnyOrder("one", "two", "three");
    }
 

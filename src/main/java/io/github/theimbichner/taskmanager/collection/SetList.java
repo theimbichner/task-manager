@@ -1,6 +1,5 @@
 package io.github.theimbichner.taskmanager.collection;
 
-import java.util.List;
 import java.util.NoSuchElementException;
 
 import io.vavr.Tuple;
@@ -44,6 +43,7 @@ public class SetList<T> {
       for (T t : ts) {
          result = result.add(t);
       }
+
       return result;
    }
 
@@ -55,11 +55,20 @@ public class SetList<T> {
       return new SetList<>(set.remove(t), removed.add(t), list);
    }
 
+   public SetList<T> removeAll(Iterable<T> ts) {
+      SetList<T> result = this;
+      for (T t : ts) {
+         result = result.remove(t);
+      }
+
+      return result;
+   }
+
    public boolean contains(T t) {
       return set.contains(t);
    }
 
-   public Tuple2<List<T>, List<T>> split(T t) {
+   public Tuple2<Vector<T>, Vector<T>> split(T t) {
       clean();
       int index = list.indexOf(t, 0);
       if (index == -1) {
@@ -70,7 +79,7 @@ public class SetList<T> {
       Vector<T> left = list.dropRight(list.size() - index);
       Vector<T> right = list.drop(index);
 
-      return Tuple.of(left.asJava(), right.asJava());
+      return Tuple.of(left, right);
    }
 
    @Override
@@ -89,8 +98,8 @@ public class SetList<T> {
       return asList().hashCode();
    }
 
-   public List<T> asList() {
+   public Vector<T> asList() {
       clean();
-      return list.asJava();
+      return list;
    }
 }

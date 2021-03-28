@@ -1,6 +1,6 @@
 package io.github.theimbichner.taskmanager.task;
 
-import java.util.Map;
+import io.vavr.collection.HashMap;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -12,6 +12,7 @@ import io.github.theimbichner.taskmanager.task.property.Schema;
 import io.github.theimbichner.taskmanager.task.property.TypeDescriptor;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.assertj.vavr.api.VavrAssertions.*;
 
 public class TableDeltaTests {
    static Schema schema;
@@ -33,11 +34,11 @@ public class TableDeltaTests {
          .withColumn("delta", TypeDescriptor.fromTypeName("Integer"))
          .withColumnRenamed("beta", "epsilon")
          .withoutColumn("gamma");
-      baseProperties = PropertyMap.fromJava(Map.of(
+      baseProperties = PropertyMap.of(HashMap.of(
          "alpha", Property.of(SetList.empty()),
          "beta", Property.of("abcde"),
          "gamma", Property.of(true)));
-      deltaProperties = PropertyMap.fromJava(Map.of(
+      deltaProperties = PropertyMap.of(HashMap.of(
          "beta", Property.DELETE,
          "gamma", Property.DELETE,
          "delta", Property.empty(),
@@ -48,7 +49,7 @@ public class TableDeltaTests {
    void testFull() {
       TableDelta delta = new TableDelta(schema, name);
       assertThat(delta.getSchema().asMap()).isEqualTo(schema.asMap());
-      assertThat(delta.getName()).hasValue(name);
+      assertThat(delta.getName()).contains(name);
       assertThat(delta.isEmpty()).isFalse();
    }
 
@@ -56,7 +57,7 @@ public class TableDeltaTests {
    void testEmptySchema() {
       TableDelta delta = new TableDelta(Schema.empty(), name);
       assertThat(delta.getSchema().asMap()).isEmpty();
-      assertThat(delta.getName()).hasValue(name);
+      assertThat(delta.getName()).contains(name);
       assertThat(delta.isEmpty()).isFalse();
    }
 

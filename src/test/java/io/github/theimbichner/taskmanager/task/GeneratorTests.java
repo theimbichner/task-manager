@@ -1,14 +1,13 @@
 package io.github.theimbichner.taskmanager.task;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.stream.Stream;
-import java.util.stream.Collectors;
 
 import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.HashSet;
+import io.vavr.collection.Vector;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -122,9 +121,9 @@ public class GeneratorTests {
       Generator generator = data.createModifiedGenerator();
 
       Instant timestamp = Instant.now().plusSeconds(600);
-      Tuple2<Generator, List<Task>> tuple = generator.withTasksUntil(timestamp);
+      Tuple2<Generator, Vector<Task>> tuple = generator.withTasksUntil(timestamp);
       generator = tuple._1;
-      List<Task> tasks = tuple._2;
+      Vector<Task> tasks = tuple._2;
 
       JSONObject json = generator.toJson();
       JSONArray jsonTasks = json.getJSONArray("tasks");
@@ -347,8 +346,8 @@ public class GeneratorTests {
       Instant firstInstant = Instant.now().plusSeconds(100);
       Instant secondInstant = Instant.now().plusSeconds(350);
 
-      List<Instant> dates = datePattern.getDates(start, firstInstant);
-      Tuple2<Generator, List<Task>> firstResult = generator.withTasksUntil(firstInstant);
+      Vector<Instant> dates = datePattern.getDates(start, firstInstant);
+      Tuple2<Generator, Vector<Task>> firstResult = generator.withTasksUntil(firstInstant);
       generator = firstResult._1;
       assertThat(firstResult._2).hasSameSizeAs(dates);
       for (Task task : firstResult._2) {
@@ -357,15 +356,11 @@ public class GeneratorTests {
          assertThat(task.getGeneratorId()).isEqualTo(generator.getId());
          assertThat(dates).contains(date);
       }
-      List<ItemId<Task>> firstIds = firstResult
-         ._2
-         .stream()
-         .map(Task::getId)
-         .collect(Collectors.toList());
+      Vector<ItemId<Task>> firstIds = firstResult._2.map(Task::getId);
       assertThat(generator.getTaskIds().asList()).containsAll(firstIds);
 
       dates = datePattern.getDates(firstInstant, secondInstant);
-      Tuple2<Generator, List<Task>> secondResult = generator.withTasksUntil(secondInstant);
+      Tuple2<Generator, Vector<Task>> secondResult = generator.withTasksUntil(secondInstant);
       generator = secondResult._1;
       assertThat(secondResult._2).hasSameSizeAs(dates);
       for (Task task : secondResult._2) {
@@ -374,15 +369,11 @@ public class GeneratorTests {
          assertThat(task.getGeneratorId()).isEqualTo(generator.getId());
          assertThat(dates).contains(date);
       }
-      List<ItemId<Task>> secondIds = secondResult
-         ._2
-         .stream()
-         .map(Task::getId)
-         .collect(Collectors.toList());
+      Vector<ItemId<Task>> secondIds = secondResult._2.map(Task::getId);
       assertThat(generator.getTaskIds().asList()).containsAll(firstIds);
       assertThat(generator.getTaskIds().asList()).containsAll(secondIds);
 
-      Tuple2<Generator, List<Task>> thirdResult = generator.withTasksUntil(firstInstant);
+      Tuple2<Generator, Vector<Task>> thirdResult = generator.withTasksUntil(firstInstant);
       assertThat(thirdResult._1).isSameAs(generator);
       assertThat(thirdResult._2).isEmpty();
    }
@@ -393,23 +384,15 @@ public class GeneratorTests {
       Instant firstInstant = Instant.now().plusSeconds(100);
       Instant secondInstant = Instant.now().plusSeconds(350);
 
-      Tuple2<Generator, List<Task>> tuple = generator.withTasksUntil(firstInstant);
+      Tuple2<Generator, Vector<Task>> tuple = generator.withTasksUntil(firstInstant);
       generator = tuple._1;
-      List<ItemId<Task>> firstIds = tuple
-         ._2
-         .stream()
-         .map(Task::getId)
-         .collect(Collectors.toList());
+      Vector<ItemId<Task>> firstIds = tuple._2.map(Task::getId);
       tuple = generator.withTasksUntil(secondInstant);
       generator = tuple._1;
-      List<ItemId<Task>> secondIds = tuple
-         ._2
-         .stream()
-         .map(Task::getId)
-         .collect(Collectors.toList());
+      Vector<ItemId<Task>> secondIds = tuple._2.map(Task::getId);
 
       ItemId<Task> id = secondIds.get(0);
-      Tuple2<Generator, List<ItemId<Task>>> result = generator.withoutTasksBefore(id);
+      Tuple2<Generator, Vector<ItemId<Task>>> result = generator.withoutTasksBefore(id);
       assertThat(result._1.getTaskIds().asList()).isEqualTo(secondIds);
       assertThat(result._2).isEqualTo(firstIds);
    }

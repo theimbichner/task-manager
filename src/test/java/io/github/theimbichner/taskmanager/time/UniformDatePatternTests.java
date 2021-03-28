@@ -2,9 +2,9 @@ package io.github.theimbichner.taskmanager.time;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import io.vavr.collection.Vector;
 
 import org.json.JSONObject;
 
@@ -35,18 +35,15 @@ public class UniformDatePatternTests {
 
    @ParameterizedTest
    @MethodSource
-   void testGetDates(int init, int delta, int start, int end, List<Integer> expected) {
+   void testGetDates(int init, int delta, int start, int end, Vector<Integer> expected) {
       Instant initTime = Instant.ofEpochMilli(init);
       Duration deltaTime = Duration.ofMillis(delta);
       UniformDatePattern pattern = new UniformDatePattern(initTime, deltaTime);
 
       Instant startTime = Instant.ofEpochMilli(start);
       Instant endTime = Instant.ofEpochMilli(end);
-      List<Instant> dates = pattern.getDates(startTime, endTime);
-
-      List<Instant> expectedDates = expected.stream()
-         .map(Instant::ofEpochMilli)
-         .collect(Collectors.toList());
+      Vector<Instant> dates = pattern.getDates(startTime, endTime);
+      Vector<Instant> expectedDates = expected.map(Instant::ofEpochMilli);
 
       assertThat(dates).isEqualTo(expectedDates);
    }
@@ -54,27 +51,27 @@ public class UniformDatePatternTests {
    private static Stream<Arguments> testGetDates() {
       return Stream.of(
          // Result lies on start
-         Arguments.of(1000, 400, 1400, 2800, List.of(1800, 2200, 2600)),
+         Arguments.of(1000, 400, 1400, 2800, Vector.of(1800, 2200, 2600)),
          // Result lies on end
-         Arguments.of(1000, 300, 1700, 2500, List.of(1900, 2200, 2500)),
+         Arguments.of(1000, 300, 1700, 2500, Vector.of(1900, 2200, 2500)),
          // init < start (difference is a multiple of delta)
-         Arguments.of(2100, 350, 2800, 4300, List.of(3150, 3500, 3850, 4200)),
+         Arguments.of(2100, 350, 2800, 4300, Vector.of(3150, 3500, 3850, 4200)),
          // init < start (difference not a multiple of delta)
-         Arguments.of(9300, 500, 10400, 11500, List.of(10800, 11300)),
+         Arguments.of(9300, 500, 10400, 11500, Vector.of(10800, 11300)),
          // init == start
-         Arguments.of(1024, 256, 1024, 2048, List.of(1280, 1536, 1792, 2048)),
+         Arguments.of(1024, 256, 1024, 2048, Vector.of(1280, 1536, 1792, 2048)),
          // start < init < end
-         Arguments.of(1536, 256, 1024, 2048, List.of(1536, 1792, 2048)),
+         Arguments.of(1536, 256, 1024, 2048, Vector.of(1536, 1792, 2048)),
          // init == end
-         Arguments.of(1111, 111, 555, 1111, List.of(1111)),
+         Arguments.of(1111, 111, 555, 1111, Vector.of(1111)),
          // end < init
-         Arguments.of(123456789, 2, 1000, 2000, List.of()),
+         Arguments.of(123456789, 2, 1000, 2000, Vector.empty()),
          // empty result (delta hops over the range)
-         Arguments.of(2, 123456789, 1000, 2000, List.of()),
+         Arguments.of(2, 123456789, 1000, 2000, Vector.empty()),
          // one result (init)
-         Arguments.of(10, 4, 8, 12, List.of(10)),
+         Arguments.of(10, 4, 8, 12, Vector.of(10)),
          // one result (not init)
-         Arguments.of(10000, 4000, 13000, 15000, List.of(14000)));
+         Arguments.of(10000, 4000, 13000, 15000, Vector.of(14000)));
    }
 
    @Test

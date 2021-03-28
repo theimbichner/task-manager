@@ -1,6 +1,6 @@
 package io.github.theimbichner.taskmanager.task;
 
-import java.util.Optional;
+import io.vavr.control.Option;
 
 import io.github.theimbichner.taskmanager.task.property.PropertyMap;
 
@@ -23,12 +23,12 @@ public class TaskDelta {
       return properties;
    }
 
-   public Optional<String> getName() {
-      return Optional.ofNullable(name);
+   public Option<String> getName() {
+      return Option.of(name);
    }
 
-   public Optional<String> getMarkup() {
-      return Optional.ofNullable(markup);
+   public Option<String> getMarkup() {
+      return Option.of(markup);
    }
 
    public boolean isEmpty() {

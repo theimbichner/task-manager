@@ -1,9 +1,8 @@
 package io.github.theimbichner.taskmanager.task.property;
 
-import java.util.Map;
-
 import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
+import io.vavr.collection.Map;
 import io.vavr.control.Option;
 
 import org.json.JSONObject;
@@ -126,16 +125,12 @@ public class Schema {
       return columns.isEmpty();
    }
 
-   public HashMap<String, TypeDescriptor> asMap() {
+   public Map<String, TypeDescriptor> asMap() {
       return columns.mapValues(Column::asTypeDescriptor);
    }
 
    public PropertyMap getDefaultProperties() {
-      Map<String, Property> result = new java.util.HashMap<>();
-      for (Tuple2<String, TypeDescriptor> entry : asMap()) {
-         result.put(entry._1, entry._2.getDefaultValue());
-      }
-      return PropertyMap.fromJava(result);
+      return PropertyMap.of(asMap().mapValues(TypeDescriptor::getDefaultValue));
    }
 
    public JSONObject toJson() {

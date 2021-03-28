@@ -1,8 +1,6 @@
 package io.github.theimbichner.taskmanager.task.property;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+import io.vavr.collection.Vector;
 
 import org.json.JSONObject;
 
@@ -10,27 +8,27 @@ import io.github.theimbichner.taskmanager.collection.SetList;
 
 public class EnumerationTypeDescriptor implements TypeDescriptor {
    private final boolean permitMultiple;
-   private final Set<String> enumValues;
+   private final SetList<String> enumValues;
 
-   public EnumerationTypeDescriptor(boolean permitMultiple, Set<String> enumValues) {
+   public EnumerationTypeDescriptor(boolean permitMultiple, SetList<String> enumValues) {
       this.permitMultiple = permitMultiple;
-      this.enumValues = Collections.unmodifiableSet(enumValues);
+      this.enumValues = enumValues;
    }
 
-   public Set<String> getEnumValues() {
+   public SetList<String> getEnumValues() {
       return enumValues;
    }
 
    public EnumerationTypeDescriptor withEnumValues(String... toAdd) {
-      Set<String> newEnumValues = new HashSet<>(enumValues);
-      newEnumValues.addAll(Set.of(toAdd));
-      return new EnumerationTypeDescriptor(permitMultiple, newEnumValues);
+      return new EnumerationTypeDescriptor(
+         permitMultiple,
+         enumValues.addAll(Vector.of(toAdd)));
    }
 
    public EnumerationTypeDescriptor withoutEnumValues(String... toRemove) {
-      Set<String> newEnumValues = new HashSet<>(enumValues);
-      newEnumValues.removeAll(Set.of(toRemove));
-      return new EnumerationTypeDescriptor(permitMultiple, newEnumValues);
+      return new EnumerationTypeDescriptor(
+         permitMultiple,
+         enumValues.removeAll(Vector.of(toRemove)));
    }
 
    @Override
@@ -45,7 +43,7 @@ public class EnumerationTypeDescriptor implements TypeDescriptor {
    public JSONObject toJson() {
       JSONObject result = new JSONObject();
       result.put("permitMultiple", permitMultiple);
-      result.put("enumValues", enumValues);
+      result.put("enumValues", enumValues.asList().asJava());
       return result;
    }
 

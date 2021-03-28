@@ -12,6 +12,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import io.github.theimbichner.taskmanager.collection.SetList;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.assertj.vavr.api.VavrAssertions.*;
 
 public class TypeDescriptorTests {
    private static Stream<Arguments> provideAllTypeNames() {
@@ -75,44 +76,44 @@ public class TypeDescriptorTests {
       EnumerationTypeDescriptor enumType = (EnumerationTypeDescriptor) type;
       EnumerationTypeDescriptor newEnum;
 
-      assertThat(enumType.getEnumValues()).isEmpty();
+      assertThat(enumType.getEnumValues().asList()).isEmpty();
 
       newEnum = enumType.withEnumValues("alpha", "beta", "gamma");
 
-      assertThat(enumType.getEnumValues()).isEmpty();
-      assertThat(newEnum.getEnumValues())
+      assertThat(enumType.getEnumValues().asList()).isEmpty();
+      assertThat(newEnum.getEnumValues().asList())
          .containsExactlyInAnyOrder("alpha", "beta", "gamma");
 
       enumType = newEnum;
       newEnum = enumType.withoutEnumValues("beta", "delta");
 
-      assertThat(enumType.getEnumValues())
+      assertThat(enumType.getEnumValues().asList())
          .containsExactlyInAnyOrder("alpha", "beta", "gamma");
-      assertThat(newEnum.getEnumValues())
+      assertThat(newEnum.getEnumValues().asList())
          .containsExactlyInAnyOrder("alpha", "gamma");
 
       enumType = newEnum;
       newEnum = enumType.withEnumValues("gamma");
 
-      assertThat(enumType.getEnumValues())
+      assertThat(enumType.getEnumValues().asList())
          .containsExactlyInAnyOrder("alpha", "gamma");
-      assertThat(newEnum.getEnumValues())
+      assertThat(newEnum.getEnumValues().asList())
          .containsExactlyInAnyOrder("alpha", "gamma");
 
       enumType = newEnum;
       newEnum = enumType.withEnumValues("epsilon", "zeta");
 
-      assertThat(enumType.getEnumValues())
+      assertThat(enumType.getEnumValues().asList())
          .containsExactlyInAnyOrder("alpha", "gamma");
-      assertThat(newEnum.getEnumValues())
+      assertThat(newEnum.getEnumValues().asList())
          .containsExactlyInAnyOrder("alpha", "gamma", "epsilon", "zeta");
 
       enumType = newEnum;
       newEnum = enumType.withoutEnumValues("alpha", "gamma");
 
-      assertThat(enumType.getEnumValues())
+      assertThat(enumType.getEnumValues().asList())
          .containsExactlyInAnyOrder("alpha", "gamma", "epsilon", "zeta");
-      assertThat(newEnum.getEnumValues())
+      assertThat(newEnum.getEnumValues().asList())
          .containsExactlyInAnyOrder("epsilon", "zeta");
    }
 
