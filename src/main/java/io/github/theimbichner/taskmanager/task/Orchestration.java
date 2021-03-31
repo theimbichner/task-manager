@@ -23,18 +23,18 @@ public class Orchestration {
 
    public Either<TaskAccessException, Table> createTable() {
       Table table = Table.newTable();
-      return taskStore.getTables().save(table)
+      return taskStore.getTables().save(table).asEither()
          .peekLeft(x -> taskStore.cancelTransaction())
          .flatMap(this::commit);
    }
 
    public Either<TaskAccessException, Task> createTask(ItemId<Table> tableId) {
-      return taskStore.getTables().getById(tableId).flatMap(table -> {
+      return taskStore.getTables().getById(tableId).asEither().flatMap(table -> {
          Task task = Task.newTask(table);
          Table updatedTable = table.withTasks(Vector.of(task.getId()));
 
-         return taskStore.getTables().save(updatedTable)
-            .flatMap(x -> taskStore.getTasks().save(task))
+         return taskStore.getTables().save(updatedTable).asEither()
+            .<Task>flatMap(x -> taskStore.getTasks().save(task).asEither())
             .peekLeft(x -> taskStore.cancelTransaction())
             .flatMap(this::commit);
       });
@@ -45,12 +45,12 @@ public class Orchestration {
       String field,
       DatePattern pattern
    ) {
-      return taskStore.getTables().getById(tableId).flatMap(table -> {
+      return taskStore.getTables().getById(tableId).asEither().flatMap(table -> {
          Generator generator = Generator.newGenerator(table, field, pattern);
          Table updateTable = table.withGenerator(generator.getId());
 
-         return taskStore.getTables().save(updateTable)
-            .flatMap(x -> taskStore.getGenerators().save(generator))
+         return taskStore.getTables().save(updateTable).asEither()
+            .<Generator>flatMap(x -> taskStore.getGenerators().save(generator).asEither())
             .peekLeft(x -> taskStore.cancelTransaction())
             .flatMap(this::commit);
       });
@@ -60,14 +60,14 @@ public class Orchestration {
       ItemId<Table> tableId,
       Instant timestamp
    ) {
-      return taskStore.getTables().getById(tableId).flatMap(table -> {
+      return taskStore.getTables().getById(tableId).asEither().flatMap(table -> {
          Either<TaskAccessException, Table> result = Either.right(table);
          for (ItemId<Generator> id : table.getAllGeneratorIds().asList()) {
             result = result.flatMap(resultTable -> runGenerator(id, timestamp)
                .map(resultTable::withTasks));
          }
          return result
-            .flatMap(taskStore.getTables()::save)
+            .flatMap(t -> taskStore.getTables().save(t).asEither())
             .map(Table::getAllTaskIds)
             .peekLeft(x -> taskStore.cancelTransaction())
             .flatMap(this::commit);
@@ -78,28 +78,28 @@ public class Orchestration {
       ItemId<Table> tableId,
       TableDelta delta
    ) {
-      return taskStore.getTables().getById(tableId).flatMap(table -> {
+      return taskStore.getTables().getById(tableId).asEither().flatMap(table -> {
          Either<TaskAccessException, Object> result = Either.right(null);
          for (ItemId<Task> id : table.getAllTaskIds().asList()) {
             result = result
-               .flatMap(x -> taskStore.getTasks().getById(id))
+               .flatMap(x -> taskStore.getTasks().getById(id).asEither())
                .map(task -> {
                   TaskDelta taskDelta = delta.asTaskDelta(task.getProperties());
                   return task.withModification(taskDelta);
                })
-               .flatMap(task -> taskStore.getTasks().save(task));
+               .flatMap(task -> taskStore.getTasks().save(task).asEither());
          }
 
          for (ItemId<Generator> id : table.getAllGeneratorIds().asList()) {
             result = result
-               .flatMap(x -> taskStore.getGenerators().getById(id))
+               .flatMap(x -> taskStore.getGenerators().getById(id).asEither())
                .map(generator -> generator.adjustToSchema(delta.getSchema()))
-               .flatMap(generator -> taskStore.getGenerators().save(generator));
+               .flatMap(generator -> taskStore.getGenerators().save(generator).asEither());
          }
 
          Table modifiedTable = table.withModification(delta);
          return result
-            .flatMap(x -> taskStore.getTables().save(modifiedTable))
+            .flatMap(x -> taskStore.getTables().save(modifiedTable).asEither())
             .peekLeft(x -> taskStore.cancelTransaction())
             .flatMap(this::commit);
       });
@@ -109,17 +109,17 @@ public class Orchestration {
       ItemId<Generator> generatorId,
       GeneratorDelta delta
    ) {
-      return taskStore.getGenerators().getById(generatorId).flatMap(generator -> {
+      return taskStore.getGenerators().getById(generatorId).asEither().flatMap(generator -> {
          Vector<Either<TaskAccessException, Task>> tasks = generator
             .getTaskIds()
             .asList()
-            .map(taskId -> taskStore.getTasks().getById(taskId)
+            .map(taskId -> taskStore.getTasks().getById(taskId).asEither()
                .map(task -> task.withSeriesModification(delta, generator))
-               .flatMap(taskStore.getTasks()::save));
+               .flatMap(t -> taskStore.getTasks().save(t).asEither()));
          return Either.sequenceRight(tasks)
             .flatMap(x -> {
                Generator modifiedGenerator = generator.withModification(delta);
-               return taskStore.getGenerators().save(modifiedGenerator);
+               return taskStore.getGenerators().save(modifiedGenerator).asEither();
             })
             .peekLeft(x -> taskStore.cancelTransaction())
             .flatMap(this::commit);
@@ -133,7 +133,7 @@ public class Orchestration {
       ItemId<Task> taskId,
       GeneratorDelta delta
    ) {
-      return taskStore.getTasks().getById(taskId).flatMap(task -> {
+      return taskStore.getTasks().getById(taskId).asEither().flatMap(task -> {
          ItemId<Generator> generatorId = task.getGeneratorId();
          if (generatorId == null) {
             String msg = "Cannot modify series on non-series task";
@@ -143,7 +143,7 @@ public class Orchestration {
          removePriorTasksFromGenerator(generatorId, taskId);
          modifyGenerator(generatorId, delta);
 
-         return taskStore.getTasks().getById(taskId)
+         return taskStore.getTasks().getById(taskId).asEither()
             .peekLeft(x -> taskStore.cancelTransaction())
             .flatMap(this::commit);
       });
@@ -153,7 +153,7 @@ public class Orchestration {
       ItemId<Task> taskId,
       TaskDelta delta
    ) {
-      return taskStore.getTasks().getById(taskId).flatMap(task -> {
+      return taskStore.getTasks().getById(taskId).asEither().flatMap(task -> {
          // TODO should the task still sever if the delta is empty?
          if (delta.isEmpty()) {
             return Either.right(task);
@@ -164,19 +164,20 @@ public class Orchestration {
             severedTask = taskStore
                .getGenerators()
                .getById(task.getGeneratorId())
+               .asEither()
                .flatMap(generator -> {
                   Generator modifiedGenerator = generator.withoutTask(taskId);
-                  return taskStore.getGenerators().save(modifiedGenerator);
+                  return taskStore.getGenerators().save(modifiedGenerator).asEither();
                })
                .flatMap(x -> {
                   Task modifiedTask = task.withoutGenerator();
-                  return taskStore.getTasks().save(modifiedTask);
+                  return taskStore.getTasks().save(modifiedTask).asEither();
                });
          }
 
          return severedTask
             .map(t -> t.withModification(delta))
-            .flatMap(taskStore.getTasks()::save)
+            .flatMap(t -> taskStore.getTasks().save(t).asEither())
             .peekLeft(x -> taskStore.cancelTransaction())
             .flatMap(this::commit);
       });
@@ -186,18 +187,19 @@ public class Orchestration {
       ItemId<Generator> generatorId,
       ItemId<Task> taskId
    ) {
-      return taskStore.getGenerators().getById(generatorId).flatMap(generator -> {
+      return taskStore.getGenerators().getById(generatorId).asEither().flatMap(generator -> {
          Tuple2<Generator, Vector<ItemId<Task>>> tuple = generator.withoutTasksBefore(taskId);
          Either<TaskAccessException, Task> result = taskStore
             .getGenerators()
             .save(tuple._1)
+            .asEither()
             .map(x -> null);
 
          for (ItemId<Task> id : tuple._2) {
             result = result
-               .flatMap(x -> taskStore.getTasks().getById(id))
+               .flatMap(x -> taskStore.getTasks().getById(id).asEither())
                .map(Task::withoutGenerator)
-               .flatMap(taskStore.getTasks()::save);
+               .flatMap(t -> taskStore.getTasks().save(t).asEither());
          }
 
          return result.map(x -> tuple._1);
@@ -208,19 +210,20 @@ public class Orchestration {
       ItemId<Generator> generatorId,
       Instant timestamp
    ) {
-      return taskStore.getGenerators().getById(generatorId).flatMap(generator -> {
+      return taskStore.getGenerators().getById(generatorId).asEither().flatMap(generator -> {
          Tuple2<Generator, Vector<Task>> tuple = generator.withTasksUntil(timestamp);
 
          return taskStore
             .getGenerators()
             .save(tuple._1)
+            .asEither()
             .flatMap(x -> Either.sequenceRight(tuple._2
-               .map(taskStore.getTasks()::save)))
+               .map(t -> taskStore.getTasks().save(t).asEither())))
             .map(tasks -> tasks.map(Task::getId));
       });
    }
 
    private <T> Either<TaskAccessException, T> commit(T t) {
-      return taskStore.commit().map(x -> t);
+      return taskStore.commit().asEither().map(x -> t);
    }
 }

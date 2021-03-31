@@ -4,7 +4,6 @@ import java.util.NoSuchElementException;
 
 import io.vavr.collection.HashMap;
 import io.vavr.collection.Set;
-import io.vavr.control.Either;
 
 public class InMemoryDataStore<K, V extends Storable<K>> extends MultiChannelDataStore<K, V> {
    private HashMap<String, HashMap<K, V>> committedData = HashMap.empty();
@@ -18,50 +17,50 @@ public class InMemoryDataStore<K, V extends Storable<K>> extends MultiChannelDat
    protected DataStore<K, V> createChannel(String channelId) {
       return new DataStore<>() {
          @Override
-         public Either<TaskAccessException, Set<K>> listIds() {
+         public TaskAccessResult<Set<K>> listIds() {
             HashMap<K, V> map = data.getOrElse(channelId, HashMap.empty());
-            return Either.right(map.keySet());
+            return TaskAccessResult.ofRight(map.keySet());
          }
 
          @Override
-         public Either<TaskAccessException, V> getById(K id) {
+         public TaskAccessResult<V> getById(K id) {
             try {
                V result = data.get(channelId).get().get(id).get();
-               return Either.right(result);
+               return TaskAccessResult.ofRight(result);
             }
             catch (NoSuchElementException e) {
-               return Either.left(new TaskAccessException(e));
+               return TaskAccessResult.ofLeft(new TaskAccessException(e));
             }
          }
 
          @Override
-         public Either<TaskAccessException, V> save(V value) {
+         public TaskAccessResult<V> save(V value) {
             HashMap<K, V> map = data.get(channelId).getOrElse(HashMap.empty());
             map = map.put(value.getId(), value);
             data = data.put(channelId, map);
-            return Either.right(value);
+            return TaskAccessResult.ofRight(value);
          }
 
          @Override
-         public Either<TaskAccessException, Void> deleteById(K id) {
+         public TaskAccessResult<Void> deleteById(K id) {
             try {
                HashMap<K, V> map = data.get(channelId).get();
                map.get(id).get();
                map = map.remove(id);
                data = data.put(channelId, map);
-               return Either.right(null);
+               return TaskAccessResult.ofRight(null);
             }
             catch (NoSuchElementException e) {
-               return Either.left(new TaskAccessException(e));
+               return TaskAccessResult.ofLeft(new TaskAccessException(e));
             }
          }
       };
    }
 
    @Override
-   protected Either<TaskAccessException, Void> performCommit() {
+   protected TaskAccessResult<Void> performCommit() {
       committedData = data;
-      return Either.right(null);
+      return TaskAccessResult.ofRight(null);
    }
 
    @Override

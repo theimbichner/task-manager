@@ -118,10 +118,10 @@ public class TaskStoreTests {
       DataStore<ItemId<T>, T> dataStore,
       Comparator<T> comparator
    ) {
-      dataStore.save(t).get();
+      dataStore.save(t).asEither().get();
       dataStore.deleteById(t.getId());
-      dataStore.save(overwrite).get();
-      T result = dataStore.getById(t.getId()).get();
+      dataStore.save(overwrite).asEither().get();
+      T result = dataStore.getById(t.getId()).asEither().get();
       assertThat(result).usingComparator(comparator).isEqualTo(overwrite);
    }
 
@@ -135,9 +135,9 @@ public class TaskStoreTests {
       Supplier<T> supplier,
       int cacheSize
    ) {
-      dataStore.save(t).get();
+      dataStore.save(t).asEither().get();
       uncache(dataStore, supplier, cacheSize);
-      T result = dataStore.getById(t.getId()).get();
+      T result = dataStore.getById(t.getId()).asEither().get();
       assertThat(result).usingComparator(comparator).isEqualTo(t);
    }
 
@@ -151,10 +151,10 @@ public class TaskStoreTests {
       Supplier<T> supplier,
       int cacheSize
    ) {
-      dataStore.save(t).get();
-      dataStore.save(overwrite).get();
+      dataStore.save(t).asEither().get();
+      dataStore.save(overwrite).asEither().get();
       uncache(dataStore, supplier, cacheSize);
-      T result = dataStore.getById(t.getId()).get();
+      T result = dataStore.getById(t.getId()).asEither().get();
       assertThat(result).usingComparator(comparator).isEqualTo(overwrite);
    }
 
@@ -168,11 +168,11 @@ public class TaskStoreTests {
       Supplier<T> supplier,
       int cacheSize
    ) {
-      dataStore.save(t).get();
+      dataStore.save(t).asEither().get();
       uncache(dataStore, supplier, cacheSize);
-      dataStore.save(overwrite).get();
+      dataStore.save(overwrite).asEither().get();
       uncache(dataStore, supplier, cacheSize);
-      T result = dataStore.getById(t.getId()).get();
+      T result = dataStore.getById(t.getId()).asEither().get();
       assertThat(result).usingComparator(comparator).isEqualTo(overwrite);
    }
 
@@ -182,7 +182,7 @@ public class TaskStoreTests {
       int count
    ) {
       for (int i = 0; i <= count; i++) {
-         dataStore.save(supplier.get()).get();
+         dataStore.save(supplier.get()).asEither().get();
       }
    }
 }

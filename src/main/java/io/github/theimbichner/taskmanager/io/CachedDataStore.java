@@ -4,7 +4,6 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 
 import io.vavr.collection.Set;
-import io.vavr.control.Either;
 
 public class CachedDataStore<K, V extends Storable<K>> extends DataStore<K, V> {
    private final Cache<K, V> cache;
@@ -20,29 +19,27 @@ public class CachedDataStore<K, V extends Storable<K>> extends DataStore<K, V> {
    }
 
    @Override
-   public Either<TaskAccessException, Set<K>> listIds() {
+   public TaskAccessResult<Set<K>> listIds() {
       return delegate.listIds();
    }
 
    @Override
-   public Either<TaskAccessException, V> getById(K id) {
+   public TaskAccessResult<V> getById(K id) {
       V value = cache.getIfPresent(id);
       if (value != null) {
-         return Either.right(value);
+         return TaskAccessResult.ofRight(value);
       }
 
-      return delegate.getById(id).peek(result -> cache.put(id, result));
+      return delegate.getById(id).peek(this::addToCache);
    }
 
    @Override
-   public Either<TaskAccessException, V> save(V value) {
-      return delegate
-         .save(value)
-         .peek(result -> cache.put(result.getId(), result));
+   public TaskAccessResult<V> save(V value) {
+      return delegate.save(value).peek(this::addToCache);
    }
 
    @Override
-   public Either<TaskAccessException, Void> deleteById(K id) {
+   public TaskAccessResult<Void> deleteById(K id) {
       cache.invalidate(id);
       return delegate.deleteById(id);
    }
@@ -55,5 +52,9 @@ public class CachedDataStore<K, V extends Storable<K>> extends DataStore<K, V> {
    @Override
    protected void onCancel() {
       cache.invalidateAll();
+   }
+
+   private void addToCache(V value) {
+      cache.put(value.getId(), value);
    }
 }

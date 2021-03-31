@@ -11,11 +11,14 @@ import io.github.theimbichner.taskmanager.task.Table;
 import io.github.theimbichner.taskmanager.task.TestComparators;
 
 import static org.assertj.core.api.Assertions.*;
-import static org.assertj.vavr.api.VavrAssertions.*;
+
+import static io.github.theimbichner.taskmanager.io.TaskAccessResultAssertions.*;
 
 public class TaskAccessResultTests {
    private static Table table;
    private TaskStore taskStore;
+   private TaskAccessException exception;
+   private int counter;
 
    @BeforeAll
    static void beforeAll() {
@@ -27,22 +30,28 @@ public class TaskAccessResultTests {
    @BeforeEach
    void beforeEach() {
       taskStore = new TaskStore(new InMemoryDataStore<>(), 0, 0, 0);
+      exception = new TaskAccessException(new RuntimeException());
+      counter = 0;
    }
 
    @Test
-   void testResult() {
-      TaskAccessResult<String> result = TaskAccessResult.of(() -> "alpha");
-
-      assertThat(result.asEither()).containsOnRight("alpha");
+   void testOf() {
+      assertThat(TaskAccessResult.of(() -> "alpha")).containsOnRight("alpha");
    }
 
    @Test
-   void testFailResult() {
-      TaskAccessResult<String> result = TaskAccessResult.of(() -> {
-         throw new TaskAccessException(new RuntimeException());
-      });
+   void testFailOf() {
+      assertThat(TaskAccessResult.of(this::errorSupplier)).isLeft();
+   }
 
-      assertThat(result.asEither()).isLeft();
+   @Test
+   void testOfRight() {
+      assertThat(TaskAccessResult.ofRight("alpha")).containsOnRight("alpha");
+   }
+
+   @Test
+   void testOfLeft() {
+      assertThat(TaskAccessResult.ofLeft(exception)).isLeft();
    }
 
    @Test
@@ -55,9 +64,7 @@ public class TaskAccessResultTests {
 
    @Test
    void testFailCheckError() {
-      TaskAccessResult<String> result = TaskAccessResult.of(() -> {
-         throw new TaskAccessException(new RuntimeException());
-      });
+      TaskAccessResult<String> result = TaskAccessResult.of(this::errorSupplier);
 
       assertThatExceptionOfType(TaskAccessException.class)
          .isThrownBy(() -> result.checkError());
@@ -72,12 +79,68 @@ public class TaskAccessResultTests {
 
    @Test
    void testFailGet() {
-      TaskAccessResult<String> result = TaskAccessResult.of(() -> {
-         throw new TaskAccessException(new RuntimeException());
-      });
+      TaskAccessResult<String> result = TaskAccessResult.of(this::errorSupplier);
 
       assertThatExceptionOfType(TaskAccessException.class)
          .isThrownBy(() -> result.get());
+   }
+
+   @Test
+   void testPeek() {
+      TaskAccessResult<String> result = TaskAccessResult.ofRight("alpha");
+      result.peek(x -> counter++);
+
+      assertThat(counter).isEqualTo(1);
+   }
+
+   @Test
+   void testFailPeek() {
+      TaskAccessResult<String> result = TaskAccessResult.ofLeft(exception);
+
+      result.peek(x -> fail("peek() on left called consumer"));
+   }
+
+   @Test
+   void testPeekLeft() {
+      TaskAccessResult<String> result = TaskAccessResult.ofRight("alpha");
+
+      result.peekLeft(x -> fail("peekLeft() on right called consumer"));
+   }
+
+   @Test
+   void testFailPeekLeft() {
+      TaskAccessResult<String> result = TaskAccessResult.ofLeft(exception);
+      result.peekLeft(x -> counter++);
+
+      assertThat(counter).isEqualTo(1);
+   }
+
+   @Test
+   void testAndThen() {
+      TaskAccessResult<String> right = TaskAccessResult.ofRight("alpha");
+
+      assertThat(right.andThen(String::toUpperCase)).containsOnRight("ALPHA");
+   }
+
+   @Test
+   void testFailAndThen() {
+      TaskAccessResult<String> left = TaskAccessResult.ofLeft(exception);
+
+      assertThat(left.andThen(String::toUpperCase)).isLeft();
+   }
+
+   @Test
+   void testAndThenException() {
+      TaskAccessResult<String> right = TaskAccessResult.ofRight("alpha");
+
+      assertThat(right.andThen(this::errorFunction)).isLeft();
+   }
+
+   @Test
+   void testFailAndThenException() {
+      TaskAccessResult<String> left = TaskAccessResult.ofLeft(exception);
+
+      assertThat(left.andThen(this::errorFunction)).isLeft();
    }
 
    @Test
@@ -87,7 +150,7 @@ public class TaskAccessResultTests {
          return "alpha";
       });
 
-      assertThat(result.asEither()).containsOnRight("alpha");
+      assertThat(result).containsOnRight("alpha");
       assertThat(taskStore.getTables().getById(table.getId()))
          .usingValueComparator((Comparator<Table>) TestComparators::compareTables)
          .containsOnRight(table);
@@ -97,10 +160,18 @@ public class TaskAccessResultTests {
    void testTransactionFail() {
       TaskAccessResult<String> result = TaskAccessResult.transaction(taskStore, () -> {
          taskStore.getTables().save(table).get();
-         throw new TaskAccessException(new RuntimeException());
+         throw exception;
       });
 
-      assertThat(result.asEither()).isLeft();
+      assertThat(result).isLeft();
       assertThat(taskStore.getTables().getById(table.getId())).isLeft();
+   }
+
+   private String errorSupplier() throws TaskAccessException {
+      throw exception;
+   }
+
+   private String errorFunction(String input) throws TaskAccessException {
+      throw exception;
    }
 }

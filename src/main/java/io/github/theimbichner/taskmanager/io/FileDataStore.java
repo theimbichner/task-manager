@@ -15,7 +15,6 @@ import java.util.UUID;
 import io.vavr.collection.HashSet;
 import io.vavr.collection.Set;
 import io.vavr.collection.Vector;
-import io.vavr.control.Either;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -32,7 +31,7 @@ public class FileDataStore extends MultiChannelDataStore<String, StringStorable>
       }
 
       @Override
-      public Either<TaskAccessException, Set<String>> listIds() {
+      public TaskAccessResult<Set<String>> listIds() {
          HashSet<String> result = HashSet.empty();
 
          try {
@@ -61,27 +60,27 @@ public class FileDataStore extends MultiChannelDataStore<String, StringStorable>
                }
             }
 
-            return Either.right(result);
+            return TaskAccessResult.ofRight(result);
          }
          catch (IOException e) {
-            return Either.left(new TaskAccessException(e));
+            return TaskAccessResult.ofLeft(new TaskAccessException(e));
          }
       }
 
       @Override
-      public Either<TaskAccessException, StringStorable> getById(String id) {
+      public TaskAccessResult<StringStorable> getById(String id) {
          try {
             File file = lookupById(id);
             String fileContents = Files.readString(file.toPath());
-            return Either.right(new StringStorable(id, fileContents));
+            return TaskAccessResult.ofRight(new StringStorable(id, fileContents));
          }
          catch (IOException e) {
-            return Either.left(new TaskAccessException(e));
+            return TaskAccessResult.ofLeft(new TaskAccessException(e));
          }
       }
 
       @Override
-      public Either<TaskAccessException, StringStorable> save(StringStorable s) {
+      public TaskAccessResult<StringStorable> save(StringStorable s) {
          File file = getTempFile();
 
          try (
@@ -93,20 +92,20 @@ public class FileDataStore extends MultiChannelDataStore<String, StringStorable>
             Path target = getUncommittedFile(s.getId()).toPath();
             Files.move(file.toPath(), target, StandardCopyOption.ATOMIC_MOVE);
 
-            return Either.right(s);
+            return TaskAccessResult.ofRight(s);
          }
          catch (IOException e) {
-            return Either.left(new TaskAccessException(e));
+            return TaskAccessResult.ofLeft(new TaskAccessException(e));
          }
       }
 
       @Override
-      public Either<TaskAccessException, Void> deleteById(String id) {
+      public TaskAccessResult<Void> deleteById(String id) {
          try {
             lookupById(id);
          }
          catch (IOException e) {
-            return Either.left(new TaskAccessException(e));
+            return TaskAccessResult.ofLeft(new TaskAccessException(e));
          }
 
          File file = getTempFile();
@@ -116,10 +115,10 @@ public class FileDataStore extends MultiChannelDataStore<String, StringStorable>
             Path target = getUncommittedFile(id).toPath();
             Files.move(file.toPath(), target, StandardCopyOption.ATOMIC_MOVE);
 
-            return Either.right(null);
+            return TaskAccessResult.ofRight(null);
          }
          catch (IOException e) {
-            return Either.left(new TaskAccessException(e));
+            return TaskAccessResult.ofLeft(new TaskAccessException(e));
          }
       }
 
@@ -176,7 +175,7 @@ public class FileDataStore extends MultiChannelDataStore<String, StringStorable>
    }
 
    @Override
-   protected Either<TaskAccessException, Void> performCommit() {
+   protected TaskAccessResult<Void> performCommit() {
       Vector<String> registeredFolders;
       try {
          registeredFolders = getRegisteredFolders().append(activeTransactionId);
@@ -184,13 +183,13 @@ public class FileDataStore extends MultiChannelDataStore<String, StringStorable>
       }
       catch (IOException e) {
          cancelTransaction();
-         return Either.left(new TaskAccessException(e));
+         return TaskAccessResult.ofLeft(new TaskAccessException(e));
       }
 
       cleanUpRegisteredFolders(registeredFolders);
       startNewTransaction();
 
-      return Either.right(null);
+      return TaskAccessResult.ofRight(null);
    }
 
    @Override

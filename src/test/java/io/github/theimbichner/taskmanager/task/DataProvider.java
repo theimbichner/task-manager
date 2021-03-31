@@ -47,7 +47,7 @@ public class DataProvider {
    }
 
    public Table getTable() {
-      return taskStore.getTables().getById(tableId).get();
+      return taskStore.getTables().getById(tableId).asEither().get();
    }
 
    public String getGenerationField() {
@@ -103,16 +103,16 @@ public class DataProvider {
    public Task createDefaultTaskWithGenerator() {
       Generator generator = createModifiedGenerator();
       orchestrator.getTasksFromTable(tableId, Instant.now().plusSeconds(600)).get();
-      generator = taskStore.getGenerators().getById(generator.getId()).get();
+      generator = taskStore.getGenerators().getById(generator.getId()).asEither().get();
 
       ItemId<Task> taskId = generator.getTaskIds().asList().get(0);
-      return taskStore.getTasks().getById(taskId).get();
+      return taskStore.getTasks().getById(taskId).asEither().get();
    }
 
    public Task createModifiedTaskWithGenerator() {
       Generator generator = createDefaultGenerator();
       orchestrator.getTasksFromTable(tableId, Instant.now().plusSeconds(600)).get();
-      generator = taskStore.getGenerators().getById(generator.getId()).get();
+      generator = taskStore.getGenerators().getById(generator.getId()).asEither().get();
 
       ItemId<Task> taskId = generator.getTaskIds().asList().get(0);
       return orchestrator.modifySeries(taskId, getFullGeneratorDelta()).get();

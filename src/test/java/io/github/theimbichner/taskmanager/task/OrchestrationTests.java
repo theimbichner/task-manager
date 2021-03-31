@@ -113,7 +113,7 @@ public class OrchestrationTests {
       Table table = orchestrator.createTable().get();
 
       taskStore.cancelTransaction();
-      Table savedTable = taskStore.getTables().getById(table.getId()).get();
+      Table savedTable = getTable(table.getId());
 
       assertThat(table)
          .usingComparator(TestComparators::compareTables)
@@ -148,7 +148,7 @@ public class OrchestrationTests {
       table = orchestrator.modifyTable(table.getId(), delta).get();
 
       taskStore.cancelTransaction();
-      Table savedTable = taskStore.getTables().getById(table.getId()).get();
+      Table savedTable = getTable(table.getId());
 
       assertThat(table)
          .usingComparator(TestComparators::compareTables)
@@ -678,21 +678,21 @@ public class OrchestrationTests {
    }
 
    private Table getTable(ItemId<Table> id) {
-      return taskStore.getTables().getById(id).get();
+      return taskStore.getTables().getById(id).asEither().get();
    }
 
    private Task getTask(ItemId<Task> id) {
-      return taskStore.getTasks().getById(id).get();
+      return taskStore.getTasks().getById(id).asEither().get();
    }
 
    private Generator getGenerator(ItemId<Generator> id) {
-      return taskStore.getGenerators().getById(id).get();
+      return taskStore.getGenerators().getById(id).asEither().get();
    }
 
    private ItemId<Task> getGeneratedTaskId(Instant timestamp) {
       return generatedTaskIds
          .asList()
-         .map(id -> taskStore.getTasks().getById(id).get())
+         .map(this::getTask)
          .filter(t -> {
             Property property = t.getProperties().asMap().get("alpha").get();
             Instant startTime = ((DateTime) property.get()).getStart();
