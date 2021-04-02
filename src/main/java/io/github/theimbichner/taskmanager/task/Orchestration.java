@@ -1,13 +1,9 @@
 package io.github.theimbichner.taskmanager.task;
 
-import java.time.Instant;
-
 import io.vavr.Tuple2;
-import io.vavr.collection.Seq;
 import io.vavr.collection.Vector;
 import io.vavr.control.Either;
 
-import io.github.theimbichner.taskmanager.collection.SetList;
 import io.github.theimbichner.taskmanager.io.TaskAccessException;
 import io.github.theimbichner.taskmanager.io.TaskStore;
 import io.github.theimbichner.taskmanager.time.DatePattern;
@@ -19,13 +15,6 @@ public class Orchestration {
 
    public Orchestration(TaskStore taskStore) {
       this.taskStore = taskStore;
-   }
-
-   public Either<TaskAccessException, Table> createTable() {
-      Table table = Table.newTable();
-      return taskStore.getTables().save(table).asEither()
-         .peekLeft(x -> taskStore.cancelTransaction())
-         .flatMap(this::commit);
    }
 
    public Either<TaskAccessException, Task> createTask(ItemId<Table> tableId) {
@@ -51,55 +40,6 @@ public class Orchestration {
 
          return taskStore.getTables().save(updateTable).asEither()
             .<Generator>flatMap(x -> taskStore.getGenerators().save(generator).asEither())
-            .peekLeft(x -> taskStore.cancelTransaction())
-            .flatMap(this::commit);
-      });
-   }
-
-   public Either<TaskAccessException, SetList<ItemId<Task>>> getTasksFromTable(
-      ItemId<Table> tableId,
-      Instant timestamp
-   ) {
-      return taskStore.getTables().getById(tableId).asEither().flatMap(table -> {
-         Either<TaskAccessException, Table> result = Either.right(table);
-         for (ItemId<Generator> id : table.getAllGeneratorIds().asList()) {
-            result = result.flatMap(resultTable -> runGenerator(id, timestamp)
-               .map(resultTable::withTasks));
-         }
-         return result
-            .flatMap(t -> taskStore.getTables().save(t).asEither())
-            .map(Table::getAllTaskIds)
-            .peekLeft(x -> taskStore.cancelTransaction())
-            .flatMap(this::commit);
-      });
-   }
-
-   public Either<TaskAccessException, Table> modifyTable(
-      ItemId<Table> tableId,
-      TableDelta delta
-   ) {
-      return taskStore.getTables().getById(tableId).asEither().flatMap(table -> {
-         Either<TaskAccessException, Object> result = Either.right(null);
-         for (ItemId<Task> id : table.getAllTaskIds().asList()) {
-            result = result
-               .flatMap(x -> taskStore.getTasks().getById(id).asEither())
-               .map(task -> {
-                  TaskDelta taskDelta = delta.asTaskDelta(task.getProperties());
-                  return task.withModification(taskDelta);
-               })
-               .flatMap(task -> taskStore.getTasks().save(task).asEither());
-         }
-
-         for (ItemId<Generator> id : table.getAllGeneratorIds().asList()) {
-            result = result
-               .flatMap(x -> taskStore.getGenerators().getById(id).asEither())
-               .map(generator -> generator.adjustToSchema(delta.getSchema()))
-               .flatMap(generator -> taskStore.getGenerators().save(generator).asEither());
-         }
-
-         Table modifiedTable = table.withModification(delta);
-         return result
-            .flatMap(x -> taskStore.getTables().save(modifiedTable).asEither())
             .peekLeft(x -> taskStore.cancelTransaction())
             .flatMap(this::commit);
       });
@@ -203,23 +143,6 @@ public class Orchestration {
          }
 
          return result.map(x -> tuple._1);
-      });
-   }
-
-   private Either<TaskAccessException, Seq<ItemId<Task>>> runGenerator(
-      ItemId<Generator> generatorId,
-      Instant timestamp
-   ) {
-      return taskStore.getGenerators().getById(generatorId).asEither().flatMap(generator -> {
-         Tuple2<Generator, Vector<Task>> tuple = generator.withTasksUntil(timestamp);
-
-         return taskStore
-            .getGenerators()
-            .save(tuple._1)
-            .asEither()
-            .flatMap(x -> Either.sequenceRight(tuple._2
-               .map(t -> taskStore.getTasks().save(t).asEither())))
-            .map(tasks -> tasks.map(Task::getId));
       });
    }
 

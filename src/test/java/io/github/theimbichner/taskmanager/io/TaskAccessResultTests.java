@@ -2,12 +2,14 @@ package io.github.theimbichner.taskmanager.io;
 
 import java.util.Comparator;
 
+import io.vavr.control.Either;
+
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import io.github.theimbichner.taskmanager.task.Orchestration;
 import io.github.theimbichner.taskmanager.task.Table;
+import io.github.theimbichner.taskmanager.task.TableMutator;
 import io.github.theimbichner.taskmanager.task.TestComparators;
 
 import static org.assertj.core.api.Assertions.*;
@@ -21,10 +23,9 @@ public class TaskAccessResultTests {
    private int counter;
 
    @BeforeAll
-   static void beforeAll() {
+   static void beforeAll() throws TaskAccessException {
       TaskStore taskStore = new TaskStore(new InMemoryDataStore<>(), 0, 0, 0);
-      Orchestration orchestrator = new Orchestration(taskStore);
-      table = orchestrator.createTable().get();
+      table = TableMutator.createTable(taskStore).get();
    }
 
    @BeforeEach
@@ -83,6 +84,18 @@ public class TaskAccessResultTests {
 
       assertThatExceptionOfType(TaskAccessException.class)
          .isThrownBy(() -> result.get());
+   }
+
+   @Test
+   void testGetEither() throws TaskAccessException{
+      String result = TaskAccessResult.getEither(Either.right("alpha"));
+      assertThat(result).isEqualTo("alpha");
+   }
+
+   @Test
+   void testFailGetEither() {
+      assertThatExceptionOfType(TaskAccessException.class)
+         .isThrownBy(() -> TaskAccessResult.getEither(Either.left(exception)));
    }
 
    @Test

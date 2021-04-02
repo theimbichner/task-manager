@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 
 import io.github.theimbichner.taskmanager.collection.SetList;
 import io.github.theimbichner.taskmanager.io.InMemoryDataStore;
+import io.github.theimbichner.taskmanager.io.TaskAccessException;
 import io.github.theimbichner.taskmanager.io.TaskStore;
 import io.github.theimbichner.taskmanager.task.property.Property;
 import io.github.theimbichner.taskmanager.task.property.PropertyMap;
@@ -42,12 +43,11 @@ public class OrchestrationTests {
 
    private Instant lastGenerationTimestamp;
 
-   private TableDelta tableDelta;
    private TaskDelta taskDelta;
    private GeneratorDelta generatorDelta;
 
    @BeforeEach
-   void beforeEach() {
+   void beforeEach() throws TaskAccessException {
       taskStore = InMemoryDataStore.createTaskStore();
       orchestrator = new Orchestration(taskStore);
 
@@ -58,14 +58,15 @@ public class OrchestrationTests {
       patternStep = Duration.parse("PT17M36.5S");
       pattern = new UniformDatePattern(patternStart, patternStep);
 
-      dataTableId = orchestrator.createTable().get().getId();
+      dataTableId = TableMutator.createTable(taskStore).get().getId();
+      TableMutator tableMutator = new TableMutator(taskStore, dataTableId);
 
       TableDelta dataTableDelta = new TableDelta(
          Schema.empty()
             .withColumn("alpha", TypeDescriptor.fromTypeName("DateTime"))
             .withColumn("beta", TypeDescriptor.fromTypeName("String")),
          null);
-      orchestrator.modifyTable(dataTableId, dataTableDelta);
+      tableMutator.modifyTable(dataTableDelta).checkError();
 
       dataTaskId = orchestrator.createTask(dataTableId).get().getId();
       dataGeneratorId = orchestrator.createGenerator(
@@ -74,9 +75,7 @@ public class OrchestrationTests {
          pattern).get().getId();
 
       lastGenerationTimestamp = patternStart.plus(Duration.parse("PT45M"));
-      allTaskIds = orchestrator.getTasksFromTable(
-         dataTableId,
-         lastGenerationTimestamp).get();
+      allTaskIds = tableMutator.getTasksFromTable(lastGenerationTimestamp).get();
       generatedTaskIds = allTaskIds.remove(dataTaskId);
 
       priorTaskId = getGeneratedTaskId(patternStart);
@@ -84,9 +83,6 @@ public class OrchestrationTests {
       subsequentTaskId = getGeneratedTaskId(
          patternStart.plus(patternStep.multipliedBy(2)));
 
-      tableDelta = new TableDelta(
-         Schema.empty().withoutColumn("beta"),
-         null);
       taskDelta = new TaskDelta(
          PropertyMap.empty().put("beta", Property.DELETE),
          null,
@@ -97,62 +93,6 @@ public class OrchestrationTests {
          null,
          null,
          null);
-   }
-
-   @Test
-   void testCreateTable() {
-      Table result = orchestrator.createTable().get();
-
-      assertThat(result)
-         .usingComparator(TestComparators::compareTablesIgnoringId)
-         .isEqualTo(Table.newTable());
-   }
-
-   @Test
-   void testCreateTableIsSaved() {
-      Table table = orchestrator.createTable().get();
-
-      taskStore.cancelTransaction();
-      Table savedTable = getTable(table.getId());
-
-      assertThat(table)
-         .usingComparator(TestComparators::compareTables)
-         .isEqualTo(savedTable);
-   }
-
-   @Test
-   void testModifyEmptyTable() {
-      Table table = orchestrator.createTable().get();
-      TableDelta delta = new TableDelta(
-         Schema.empty()
-            .withColumn("alpha", TypeDescriptor.fromTypeName("DateTime"))
-            .withColumn("beta", TypeDescriptor.fromTypeName("String")),
-         "Renamed table");
-
-      Table result = orchestrator.modifyTable(table.getId(), delta).get();
-
-      assertThat(result)
-         .usingComparator(TestComparators::compareTablesIgnoringId)
-         .isEqualTo(table.withModification(delta));
-   }
-
-   @Test
-   void testModifyEmptyTableIsSaved() {
-      Table table = orchestrator.createTable().get();
-      TableDelta delta = new TableDelta(
-         Schema.empty()
-            .withColumn("alpha", TypeDescriptor.fromTypeName("DateTime"))
-            .withColumn("beta", TypeDescriptor.fromTypeName("String")),
-         "Renamed table");
-
-      table = orchestrator.modifyTable(table.getId(), delta).get();
-
-      taskStore.cancelTransaction();
-      Table savedTable = getTable(table.getId());
-
-      assertThat(table)
-         .usingComparator(TestComparators::compareTables)
-         .isEqualTo(savedTable);
    }
 
    @Test
@@ -236,125 +176,6 @@ public class OrchestrationTests {
       assertThat(savedTable)
          .usingComparator(TestComparators::compareTables)
          .isEqualTo(expectedTable);
-   }
-
-   @Test
-   void testGetTasksFromTableTimestamps() {
-      Vector<Instant> expectedStartTimes = Vector.of(
-         patternStart,
-         patternStart.plus(patternStep),
-         patternStart.plus(patternStep.multipliedBy(2)));
-
-      taskStore.cancelTransaction();
-      Vector<Instant> actualStartTimes = generatedTaskIds
-         .asList()
-         .map(this::getTask)
-         .map(task -> task.getProperties().asMap().get("alpha").get())
-         .map(property -> ((DateTime) property.get()).getStart());
-
-      assertThat(actualStartTimes)
-         .containsExactlyInAnyOrderElementsOf(expectedStartTimes);
-   }
-
-   @Test
-   void testGetTasksFromTableTasksAreSaved() {
-      taskStore.cancelTransaction();
-      Generator generator = getGenerator(dataGeneratorId);
-
-      for (ItemId<Task> id : generatedTaskIds.asList()) {
-         Task task = getTask(id);
-         Property timestamp = task.getProperties().asMap().get("alpha").get();
-         Instant start = ((DateTime) timestamp.get()).getStart();
-
-         Task expectedTask = Task.newSeriesTask(generator, start);
-         assertThat(task)
-            .usingComparator(TestComparators::compareTasksIgnoringId)
-            .isEqualTo(expectedTask);
-      }
-   }
-
-   @Test
-   void testGetTasksFromTableGeneratorIsSaved() {
-      taskStore.cancelTransaction();
-      Generator savedGenerator = getGenerator(dataGeneratorId);
-
-      assertThat(savedGenerator.getTaskIds().asList())
-         .containsExactlyInAnyOrderElementsOf(generatedTaskIds.asList());
-   }
-
-   @Test
-   void testGetTasksFromTableGeneratorTimestampIsSaved() {
-      taskStore.cancelTransaction();
-      SetList<ItemId<Task>> result = orchestrator.getTasksFromTable(
-         dataTableId,
-         lastGenerationTimestamp).get();
-
-      assertThat(result.asList())
-         .containsExactlyInAnyOrderElementsOf(allTaskIds.asList());
-   }
-
-   @Test
-   void testGetTasksFromTableTableIsSaved() {
-      taskStore.cancelTransaction();
-      Table savedTable = getTable(dataTableId);
-
-      assertThat(savedTable.getAllTaskIds().asList())
-         .containsExactlyInAnyOrderElementsOf(allTaskIds.asList());
-   }
-
-   @Test
-   void testModifyTable() {
-      Table table = getTable(dataTableId);
-      Table expectedTable = table.withModification(tableDelta);
-
-      Table result = orchestrator.modifyTable(dataTableId, tableDelta).get();
-
-      assertThat(result)
-         .usingComparator(TestComparators::compareTablesIgnoringId)
-         .isEqualTo(expectedTable);
-   }
-
-   @Test
-   void testModifyTableTableIsSaved() {
-      Table table = orchestrator.modifyTable(dataTableId, tableDelta).get();
-
-      taskStore.cancelTransaction();
-      Table savedTable = getTable(dataTableId);
-
-      assertThat(table)
-         .usingComparator(TestComparators::compareTables)
-         .isEqualTo(savedTable);
-   }
-
-   @Test
-   void testModifyTableGeneratorIsSaved() {
-      Generator generator = getGenerator(dataGeneratorId);
-
-      orchestrator.modifyTable(dataTableId, tableDelta).get();
-
-      taskStore.cancelTransaction();
-      Generator savedGenerator = getGenerator(dataGeneratorId);
-
-      assertThat(savedGenerator)
-         .usingComparator(TestComparators::compareGeneratorsIgnoringId)
-         .isEqualTo(generator.adjustToSchema(tableDelta.getSchema()));
-   }
-
-   @Test
-   void testModifyTableTasksAreSaved() {
-      Vector<Task> expectedTasks = allTaskIds
-         .asList()
-         .map(this::getTask)
-         .map(task -> task.withModification(taskDelta));
-
-      orchestrator.modifyTable(dataTableId, tableDelta).get();
-
-      taskStore.cancelTransaction();
-      Vector<Task> actualTasks = allTaskIds.asList().map(this::getTask);
-
-      assertThat(actualTasks)
-         .usingElementComparator(TestComparators::compareTasksIgnoringId)
-         .isEqualTo(expectedTasks);
    }
 
    @Test

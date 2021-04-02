@@ -72,6 +72,10 @@ public class TaskAccessResult<T> {
       return value.get();
    }
 
+   public static <T> T getEither(Either<TaskAccessException, T> either) throws TaskAccessException {
+      return new TaskAccessResult<>(either).get();
+   }
+
    public TaskAccessResult<T> peek(Consumer<T> consumer) {
       value.peek(consumer);
       return this;

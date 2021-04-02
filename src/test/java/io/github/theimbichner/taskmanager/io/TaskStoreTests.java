@@ -19,6 +19,7 @@ import io.github.theimbichner.taskmanager.task.GeneratorDelta;
 import io.github.theimbichner.taskmanager.task.ItemId;
 import io.github.theimbichner.taskmanager.task.Orchestration;
 import io.github.theimbichner.taskmanager.task.Table;
+import io.github.theimbichner.taskmanager.task.TableMutator;
 import io.github.theimbichner.taskmanager.task.TableDelta;
 import io.github.theimbichner.taskmanager.task.Task;
 import io.github.theimbichner.taskmanager.task.TaskDelta;
@@ -45,7 +46,7 @@ public class TaskStoreTests {
       IOUtils.deleteFolder(TEST_ROOT);
    }
 
-   static Stream<Arguments> provideTaskGeneratorTable() {
+   static Stream<Arguments> provideTaskGeneratorTable() throws TaskAccessException {
       TaskStore secondaryTaskStore = InMemoryDataStore.createTaskStore();
       Orchestration orchestrator = new Orchestration(secondaryTaskStore);
 
@@ -61,8 +62,9 @@ public class TaskStoreTests {
          null,
          null);
 
-      Table table = orchestrator.createTable().get();
-      Table overwriteTable = orchestrator.modifyTable(table.getId(), tableDelta).get();
+      Table table = TableMutator.createTable(taskStore).get();
+      TableMutator tableMutator = new TableMutator(taskStore, table.getId());
+      Table overwriteTable = tableMutator.modifyTable(tableDelta).get();
 
       Task task = orchestrator.createTask(table.getId()).get();
       Task overwriteTask = orchestrator.modifyAndSeverTask(task.getId(), taskDelta).get();
@@ -85,7 +87,7 @@ public class TaskStoreTests {
             taskStore.getTasks(),
             (Comparator<Task>) TestComparators::compareTasks,
             (Supplier<Task>) () -> {
-               Table tempTable = orchestrator.createTable().get();
+               Table tempTable = TableMutator.createTable(taskStore).asEither().get();
                return orchestrator.createTask(tempTable.getId()).get();
             },
             TaskStore.MAXIMUM_TASKS_CACHED),
@@ -95,7 +97,7 @@ public class TaskStoreTests {
             taskStore.getGenerators(),
             (Comparator<Generator>) TestComparators::compareGenerators,
             (Supplier<Generator>) () -> {
-               Table tempTable = orchestrator.createTable().get();
+               Table tempTable = TableMutator.createTable(taskStore).asEither().get();
                return orchestrator
                   .createGenerator(tempTable.getId(), field, datePattern)
                   .get();
@@ -106,7 +108,7 @@ public class TaskStoreTests {
             overwriteTable,
             taskStore.getTables(),
             (Comparator<Table>) TestComparators::compareTables,
-            (Supplier<Table>) () -> orchestrator.createTable().get(),
+            (Supplier<Table>) () -> TableMutator.createTable(taskStore).asEither().get(),
             TaskStore.MAXIMUM_TABLES_CACHED));
    }
 

@@ -17,6 +17,7 @@ public class DataProvider {
    private final TaskStore taskStore;
    private final Orchestration orchestrator;
    private final ItemId<Table> tableId;
+   private final TableMutator tableMutator;
    private final String generationField;
    private final DatePattern datePattern;
 
@@ -29,7 +30,8 @@ public class DataProvider {
       taskStore = InMemoryDataStore.createTaskStore();
       orchestrator = new Orchestration(taskStore);
 
-      tableId = orchestrator.createTable().get().getId();
+      tableId = TableMutator.createTable(taskStore).asEither().get().getId();
+      tableMutator = new TableMutator(taskStore, tableId);
 
       generationField = "";
       datePattern = new UniformDatePattern(
@@ -102,7 +104,7 @@ public class DataProvider {
 
    public Task createDefaultTaskWithGenerator() {
       Generator generator = createModifiedGenerator();
-      orchestrator.getTasksFromTable(tableId, Instant.now().plusSeconds(600)).get();
+      tableMutator.getTasksFromTable(Instant.now().plusSeconds(600)).asEither().get();
       generator = taskStore.getGenerators().getById(generator.getId()).asEither().get();
 
       ItemId<Task> taskId = generator.getTaskIds().asList().get(0);
@@ -111,7 +113,7 @@ public class DataProvider {
 
    public Task createModifiedTaskWithGenerator() {
       Generator generator = createDefaultGenerator();
-      orchestrator.getTasksFromTable(tableId, Instant.now().plusSeconds(600)).get();
+      tableMutator.getTasksFromTable(Instant.now().plusSeconds(600)).asEither().get();
       generator = taskStore.getGenerators().getById(generator.getId()).asEither().get();
 
       ItemId<Task> taskId = generator.getTaskIds().asList().get(0);
