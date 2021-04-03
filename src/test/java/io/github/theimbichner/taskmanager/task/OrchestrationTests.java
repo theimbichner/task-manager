@@ -69,10 +69,10 @@ public class OrchestrationTests {
       tableMutator.modifyTable(dataTableDelta).checkError();
 
       dataTaskId = orchestrator.createTask(dataTableId).get().getId();
-      dataGeneratorId = orchestrator.createGenerator(
-         dataTableId,
-         "alpha",
-         pattern).get().getId();
+      dataGeneratorId = GeneratorMutator
+         .createGenerator(taskStore, dataTableId, "alpha", pattern)
+         .get()
+         .getId();
 
       lastGenerationTimestamp = patternStart.plus(Duration.parse("PT45M"));
       allTaskIds = tableMutator.getTasksFromTable(lastGenerationTimestamp).get();
@@ -129,125 +129,6 @@ public class OrchestrationTests {
 
       assertThat(savedTable)
          .usingComparator(TestComparators::compareTablesIgnoringId)
-         .isEqualTo(expectedTable);
-   }
-
-   @Test
-   void testCreateGenerator() {
-      Table table = getTable(dataTableId);
-
-      Generator result = orchestrator.createGenerator(
-         dataTableId,
-         "alpha",
-         pattern).get();
-      assertThat(result)
-         .usingComparator(TestComparators::compareGeneratorsIgnoringId)
-         .isEqualTo(Generator.newGenerator(table, "alpha", pattern));
-   }
-
-   @Test
-   void testCreateGeneratorResultIsSaved() {
-      Generator generator = orchestrator.createGenerator(
-         dataTableId,
-         "alpha",
-         pattern).get();
-
-      taskStore.cancelTransaction();
-      Generator savedGenerator = getGenerator(generator.getId());
-
-      assertThat(generator)
-         .usingComparator(TestComparators::compareGenerators)
-         .isEqualTo(savedGenerator);
-   }
-
-   @Test
-   void testCreateGeneratorTableIsSaved() {
-      Table table = getTable(dataTableId);
-
-      Generator generator = orchestrator.createGenerator(
-         dataTableId,
-         "alpha",
-         pattern).get();
-      Table expectedTable = table.withGenerator(generator.getId());
-
-      taskStore.cancelTransaction();
-      Table savedTable = getTable(dataTableId);
-
-      assertThat(savedTable)
-         .usingComparator(TestComparators::compareTables)
-         .isEqualTo(expectedTable);
-   }
-
-   @Test
-   void testModifyGenerator() {
-      Generator generator = getGenerator(dataGeneratorId);
-
-      Generator result = orchestrator.modifyGenerator(
-         dataGeneratorId,
-         generatorDelta).get();
-
-      assertThat(result)
-         .usingComparator(TestComparators::compareGeneratorsIgnoringId)
-         .isEqualTo(generator.withModification(generatorDelta));
-   }
-
-   @Test
-   void testModifyGeneratorGeneratorIsSaved() {
-      Generator generator = orchestrator.modifyGenerator(
-         dataGeneratorId,
-         generatorDelta).get();
-
-      taskStore.cancelTransaction();
-      Generator savedGenerator = getGenerator(dataGeneratorId);
-
-      assertThat(generator)
-         .usingComparator(TestComparators::compareGenerators)
-         .isEqualTo(savedGenerator);
-   }
-
-   @Test
-   void testModifyGeneratorTasksAreSaved() {
-      Generator generator = getGenerator(dataGeneratorId);
-      Vector<Task> expectedTasks = generatedTaskIds
-         .asList()
-         .map(this::getTask)
-         .map(task -> task.withSeriesModification(generatorDelta, generator));
-
-      orchestrator.modifyGenerator(dataGeneratorId, generatorDelta).get();
-
-      taskStore.cancelTransaction();
-      Vector<Task> actualTasks = generatedTaskIds.asList().map(this::getTask);
-
-      assertThat(actualTasks)
-         .usingElementComparator(TestComparators::compareTasksIgnoringId)
-         .isEqualTo(expectedTasks);
-   }
-
-   @Test
-   void testModifyGeneratorStandaloneTaskIsUnchanged() {
-      Task expectedTask = getTask(dataTaskId);
-
-      orchestrator.modifyGenerator(dataGeneratorId, generatorDelta).get();
-
-      taskStore.cancelTransaction();
-      Task savedTask = getTask(dataTaskId);
-
-      assertThat(savedTask)
-         .usingComparator(TestComparators::compareTasks)
-         .isEqualTo(expectedTask);
-   }
-
-   @Test
-   void testModifyGeneratorTableIsUnchanged() {
-      Table expectedTable = getTable(dataTableId);
-
-      orchestrator.modifyGenerator(dataGeneratorId, generatorDelta).get();
-
-      taskStore.cancelTransaction();
-      Table savedTable = getTable(dataTableId);
-
-      assertThat(savedTable)
-         .usingComparator(TestComparators::compareTables)
          .isEqualTo(expectedTable);
    }
 

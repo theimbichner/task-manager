@@ -128,13 +128,17 @@ public class DataProvider {
    }
 
    public Generator createDefaultGenerator() {
-      return orchestrator.createGenerator(tableId, generationField, datePattern).get();
+      return GeneratorMutator
+         .createGenerator(taskStore, tableId, generationField, datePattern)
+         .asEither()
+         .get();
    }
 
    public Generator createModifiedGenerator() {
       Generator generator = createDefaultGenerator();
       GeneratorDelta delta = getFullGeneratorDelta();
-      return orchestrator.modifyGenerator(generator.getId(), delta).get();
+      GeneratorMutator mutator = new GeneratorMutator(taskStore, generator.getId());
+      return mutator.modifyGenerator(delta).asEither().get();
    }
 
    public GeneratorDelta getFullGeneratorDelta() {

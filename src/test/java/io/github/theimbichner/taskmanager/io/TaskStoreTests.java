@@ -15,6 +15,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import io.github.theimbichner.taskmanager.task.Generator;
+import io.github.theimbichner.taskmanager.task.GeneratorMutator;
 import io.github.theimbichner.taskmanager.task.GeneratorDelta;
 import io.github.theimbichner.taskmanager.task.ItemId;
 import io.github.theimbichner.taskmanager.task.Orchestration;
@@ -62,8 +63,8 @@ public class TaskStoreTests {
          null,
          null);
 
-      Table table = TableMutator.createTable(taskStore).get();
-      TableMutator tableMutator = new TableMutator(taskStore, table.getId());
+      Table table = TableMutator.createTable(secondaryTaskStore).get();
+      TableMutator tableMutator = new TableMutator(secondaryTaskStore, table.getId());
       Table overwriteTable = tableMutator.modifyTable(tableDelta).get();
 
       Task task = orchestrator.createTask(table.getId()).get();
@@ -73,12 +74,13 @@ public class TaskStoreTests {
       DatePattern datePattern = new UniformDatePattern(
          Instant.ofEpochSecond(0),
          Duration.ofSeconds(100));
-      Generator generator = orchestrator
-         .createGenerator(table.getId(), field, datePattern)
+      Generator generator = GeneratorMutator
+         .createGenerator(secondaryTaskStore, table.getId(), field, datePattern)
          .get();
-      Generator overwriteGenerator = orchestrator
-         .modifyGenerator(generator.getId(), generatorDelta)
-         .get();
+      GeneratorMutator generatorMutator = new GeneratorMutator(
+         secondaryTaskStore,
+         generator.getId());
+      Generator overwriteGenerator = generatorMutator.modifyGenerator(generatorDelta).get();
 
       return Stream.of(
          Arguments.of(
@@ -87,7 +89,7 @@ public class TaskStoreTests {
             taskStore.getTasks(),
             (Comparator<Task>) TestComparators::compareTasks,
             (Supplier<Task>) () -> {
-               Table tempTable = TableMutator.createTable(taskStore).asEither().get();
+               Table tempTable = TableMutator.createTable(secondaryTaskStore).asEither().get();
                return orchestrator.createTask(tempTable.getId()).get();
             },
             TaskStore.MAXIMUM_TASKS_CACHED),
@@ -97,9 +99,10 @@ public class TaskStoreTests {
             taskStore.getGenerators(),
             (Comparator<Generator>) TestComparators::compareGenerators,
             (Supplier<Generator>) () -> {
-               Table tempTable = TableMutator.createTable(taskStore).asEither().get();
-               return orchestrator
-                  .createGenerator(tempTable.getId(), field, datePattern)
+               Table tempTable = TableMutator.createTable(secondaryTaskStore).asEither().get();
+               return GeneratorMutator
+                  .createGenerator(secondaryTaskStore, tempTable.getId(), field, datePattern)
+                  .asEither()
                   .get();
             },
             TaskStore.MAXIMUM_GENERATORS_CACHED),
@@ -108,7 +111,7 @@ public class TaskStoreTests {
             overwriteTable,
             taskStore.getTables(),
             (Comparator<Table>) TestComparators::compareTables,
-            (Supplier<Table>) () -> TableMutator.createTable(taskStore).asEither().get(),
+            (Supplier<Table>) () -> TableMutator.createTable(secondaryTaskStore).asEither().get(),
             TaskStore.MAXIMUM_TABLES_CACHED));
    }
 

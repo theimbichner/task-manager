@@ -6,7 +6,6 @@ import io.vavr.control.Either;
 
 import io.github.theimbichner.taskmanager.io.TaskAccessException;
 import io.github.theimbichner.taskmanager.io.TaskStore;
-import io.github.theimbichner.taskmanager.time.DatePattern;
 
 // TODO don't save items when unnecessary
 
@@ -29,23 +28,7 @@ public class Orchestration {
       });
    }
 
-   public Either<TaskAccessException, Generator> createGenerator(
-      ItemId<Table> tableId,
-      String field,
-      DatePattern pattern
-   ) {
-      return taskStore.getTables().getById(tableId).asEither().flatMap(table -> {
-         Generator generator = Generator.newGenerator(table, field, pattern);
-         Table updateTable = table.withGenerator(generator.getId());
-
-         return taskStore.getTables().save(updateTable).asEither()
-            .<Generator>flatMap(x -> taskStore.getGenerators().save(generator).asEither())
-            .peekLeft(x -> taskStore.cancelTransaction())
-            .flatMap(this::commit);
-      });
-   }
-
-   public Either<TaskAccessException, Generator> modifyGenerator(
+   private Either<TaskAccessException, Generator> modifyGenerator(
       ItemId<Generator> generatorId,
       GeneratorDelta delta
    ) {

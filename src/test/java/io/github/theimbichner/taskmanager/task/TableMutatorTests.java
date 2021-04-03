@@ -65,7 +65,8 @@ public class TableMutatorTests {
       tableMutator.modifyTable(dataTableDelta).checkError();
 
       ItemId<Task> taskId = orchestrator.createTask(tableId).get().getId();
-      generatorId = orchestrator.createGenerator(
+      generatorId = GeneratorMutator.createGenerator(
+         taskStore,
          tableId,
          "alpha",
          pattern).get().getId();
@@ -106,13 +107,14 @@ public class TableMutatorTests {
    @Test
    void testModifyEmptyTable() throws TaskAccessException {
       Table table = TableMutator.createTable(taskStore).get();
+      TableMutator mutator = new TableMutator(taskStore, table.getId());
       TableDelta delta = new TableDelta(
          Schema.empty()
             .withColumn("alpha", TypeDescriptor.fromTypeName("DateTime"))
             .withColumn("beta", TypeDescriptor.fromTypeName("String")),
          "Renamed table");
 
-      Table result = tableMutator.modifyTable(delta).get();
+      Table result = mutator.modifyTable(delta).get();
 
       assertThat(result)
          .usingComparator(TestComparators::compareTablesIgnoringId)
@@ -122,13 +124,14 @@ public class TableMutatorTests {
    @Test
    void testModifyEmptyTableIsSaved() throws TaskAccessException {
       Table table = TableMutator.createTable(taskStore).get();
+      TableMutator mutator = new TableMutator(taskStore, table.getId());
       TableDelta delta = new TableDelta(
          Schema.empty()
             .withColumn("alpha", TypeDescriptor.fromTypeName("DateTime"))
             .withColumn("beta", TypeDescriptor.fromTypeName("String")),
          "Renamed table");
 
-      table = tableMutator.modifyTable(delta).get();
+      table = mutator.modifyTable(delta).get();
 
       taskStore.cancelTransaction();
       Table savedTable = getTable(table.getId());
