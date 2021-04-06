@@ -28,27 +28,6 @@ public class Orchestration {
       });
    }
 
-   private Either<TaskAccessException, Generator> modifyGenerator(
-      ItemId<Generator> generatorId,
-      GeneratorDelta delta
-   ) {
-      return taskStore.getGenerators().getById(generatorId).asEither().flatMap(generator -> {
-         Vector<Either<TaskAccessException, Task>> tasks = generator
-            .getTaskIds()
-            .asList()
-            .map(taskId -> taskStore.getTasks().getById(taskId).asEither()
-               .map(task -> task.withSeriesModification(delta, generator))
-               .flatMap(t -> taskStore.getTasks().save(t).asEither()));
-         return Either.sequenceRight(tasks)
-            .flatMap(x -> {
-               Generator modifiedGenerator = generator.withModification(delta);
-               return taskStore.getGenerators().save(modifiedGenerator).asEither();
-            })
-            .peekLeft(x -> taskStore.cancelTransaction())
-            .flatMap(this::commit);
-      });
-   }
-
    /* TODO should the call to unlinkGenerator on earlier tasks in the series
     * cause the modification timestamp to update on those tasks?
     */
@@ -63,10 +42,11 @@ public class Orchestration {
             throw new IllegalStateException(msg);
          }
 
-         removePriorTasksFromGenerator(generatorId, taskId);
-         modifyGenerator(generatorId, delta);
+         GeneratorMutator generatorMutator = new GeneratorMutator(taskStore, generatorId);
 
-         return taskStore.getTasks().getById(taskId).asEither()
+         return removePriorTasksFromGenerator(generatorId, taskId)
+            .flatMap(x -> generatorMutator.modifyGenerator(delta).asEither())
+            .flatMap(x -> taskStore.getTasks().getById(taskId).asEither())
             .peekLeft(x -> taskStore.cancelTransaction())
             .flatMap(this::commit);
       });
