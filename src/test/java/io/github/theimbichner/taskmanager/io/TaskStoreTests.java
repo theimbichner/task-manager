@@ -18,11 +18,11 @@ import io.github.theimbichner.taskmanager.task.Generator;
 import io.github.theimbichner.taskmanager.task.GeneratorMutator;
 import io.github.theimbichner.taskmanager.task.GeneratorDelta;
 import io.github.theimbichner.taskmanager.task.ItemId;
-import io.github.theimbichner.taskmanager.task.Orchestration;
 import io.github.theimbichner.taskmanager.task.Table;
 import io.github.theimbichner.taskmanager.task.TableMutator;
 import io.github.theimbichner.taskmanager.task.TableDelta;
 import io.github.theimbichner.taskmanager.task.Task;
+import io.github.theimbichner.taskmanager.task.TaskMutator;
 import io.github.theimbichner.taskmanager.task.TaskDelta;
 import io.github.theimbichner.taskmanager.task.TestComparators;
 import io.github.theimbichner.taskmanager.task.property.PropertyMap;
@@ -49,7 +49,6 @@ public class TaskStoreTests {
 
    static Stream<Arguments> provideTaskGeneratorTable() throws TaskAccessException {
       TaskStore secondaryTaskStore = InMemoryDataStore.createTaskStore();
-      Orchestration orchestrator = new Orchestration(secondaryTaskStore);
 
       TableDelta tableDelta = new TableDelta(Schema.empty(), "modified");
       TaskDelta taskDelta = new TaskDelta(
@@ -67,8 +66,9 @@ public class TaskStoreTests {
       TableMutator tableMutator = new TableMutator(secondaryTaskStore, table.getId());
       Table overwriteTable = tableMutator.modifyTable(tableDelta).get();
 
-      Task task = orchestrator.createTask(table.getId()).get();
-      Task overwriteTask = orchestrator.modifyAndSeverTask(task.getId(), taskDelta).get();
+      Task task = TaskMutator.createTask(secondaryTaskStore, table.getId()).get();
+      TaskMutator taskMutator = new TaskMutator(secondaryTaskStore, task.getId());
+      Task overwriteTask = taskMutator.modifyAndSeverTask(taskDelta).get();
 
       String field = "";
       DatePattern datePattern = new UniformDatePattern(
@@ -90,7 +90,7 @@ public class TaskStoreTests {
             (Comparator<Task>) TestComparators::compareTasks,
             (Supplier<Task>) () -> {
                Table tempTable = TableMutator.createTable(secondaryTaskStore).asEither().get();
-               return orchestrator.createTask(tempTable.getId()).get();
+               return TaskMutator.createTask(secondaryTaskStore, tempTable.getId()).asEither().get();
             },
             TaskStore.MAXIMUM_TASKS_CACHED),
          Arguments.of(

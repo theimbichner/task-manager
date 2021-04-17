@@ -45,7 +45,6 @@ public class TableMutatorTests {
    @BeforeEach
    void beforeEach() throws TaskAccessException {
       taskStore = InMemoryDataStore.createTaskStore();
-      Orchestration orchestrator = new Orchestration(taskStore);
 
       patternStart = LocalDate.now(ZoneOffset.UTC)
          .plusDays(2)
@@ -64,7 +63,7 @@ public class TableMutatorTests {
          null);
       tableMutator.modifyTable(dataTableDelta).checkError();
 
-      ItemId<Task> taskId = orchestrator.createTask(tableId).get().getId();
+      ItemId<Task> taskId = TaskMutator.createTask(taskStore, tableId).get().getId();
       generatorId = GeneratorMutator.createGenerator(
          taskStore,
          tableId,

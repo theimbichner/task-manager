@@ -26,15 +26,16 @@ import static org.assertj.core.api.Assertions.*;
 
 public class OrchestrationTests {
    private TaskStore taskStore;
-   private Orchestration orchestrator;
 
    private ItemId<Table> dataTableId;
    private ItemId<Task> dataTaskId;
+   private TaskMutator taskMutator;
    private ItemId<Generator> dataGeneratorId;
    private SetList<ItemId<Task>> generatedTaskIds;
    private SetList<ItemId<Task>> allTaskIds;
    private ItemId<Task> priorTaskId;
    private ItemId<Task> middleTaskId;
+   private TaskMutator middleTaskMutator;
    private ItemId<Task> subsequentTaskId;
 
    private Instant patternStart;
@@ -49,7 +50,6 @@ public class OrchestrationTests {
    @BeforeEach
    void beforeEach() throws TaskAccessException {
       taskStore = InMemoryDataStore.createTaskStore();
-      orchestrator = new Orchestration(taskStore);
 
       patternStart = LocalDate.now(ZoneOffset.UTC)
          .plusDays(2)
@@ -68,7 +68,8 @@ public class OrchestrationTests {
          null);
       tableMutator.modifyTable(dataTableDelta).checkError();
 
-      dataTaskId = orchestrator.createTask(dataTableId).get().getId();
+      dataTaskId = TaskMutator.createTask(taskStore, dataTableId).get().getId();
+      taskMutator = new TaskMutator(taskStore, dataTaskId);
       dataGeneratorId = GeneratorMutator
          .createGenerator(taskStore, dataTableId, "alpha", pattern)
          .get()
@@ -80,6 +81,7 @@ public class OrchestrationTests {
 
       priorTaskId = getGeneratedTaskId(patternStart);
       middleTaskId = getGeneratedTaskId(patternStart.plus(patternStep));
+      middleTaskMutator = new TaskMutator(taskStore, middleTaskId);
       subsequentTaskId = getGeneratedTaskId(
          patternStart.plus(patternStep.multipliedBy(2)));
 
@@ -96,18 +98,18 @@ public class OrchestrationTests {
    }
 
    @Test
-   void testCreateTask() {
+   void testCreateTask() throws TaskAccessException {
       Table table = getTable(dataTableId);
 
-      Task result = orchestrator.createTask(dataTableId).get();
+      Task result = TaskMutator.createTask(taskStore, dataTableId).get();
       assertThat(result)
          .usingComparator(TestComparators::compareTasksIgnoringId)
          .isEqualTo(Task.newTask(table));
    }
 
    @Test
-   void testCreateTaskResultIsSaved() {
-      Task result = orchestrator.createTask(dataTableId).get();
+   void testCreateTaskResultIsSaved() throws TaskAccessException {
+      Task result = TaskMutator.createTask(taskStore, dataTableId).get();
 
       taskStore.cancelTransaction();
       Task savedTask = getTask(result.getId());
@@ -118,10 +120,10 @@ public class OrchestrationTests {
    }
 
    @Test
-   void testCreateTaskTableIsSaved() {
+   void testCreateTaskTableIsSaved() throws TaskAccessException {
       Table table = getTable(dataTableId);
 
-      Task task = orchestrator.createTask(dataTableId).get();
+      Task task = TaskMutator.createTask(taskStore, dataTableId).get();
       Table expectedTable = table.withTasks(Vector.of(task.getId()));
 
       taskStore.cancelTransaction();
@@ -133,10 +135,10 @@ public class OrchestrationTests {
    }
 
    @Test
-   void testModifyAndSeverTaskStandalone() {
+   void testModifyAndSeverTaskStandalone() throws TaskAccessException {
       Task task = getTask(dataTaskId);
 
-      Task result = orchestrator.modifyAndSeverTask(dataTaskId, taskDelta).get();
+      Task result = taskMutator.modifyAndSeverTask(taskDelta).get();
 
       assertThat(result)
          .usingComparator(TestComparators::compareTasksIgnoringId)
@@ -144,8 +146,8 @@ public class OrchestrationTests {
    }
 
    @Test
-   void testModifyAndSeverTaskStandaloneIsSaved() {
-      Task task = orchestrator.modifyAndSeverTask(dataTaskId, taskDelta).get();
+   void testModifyAndSeverTaskStandaloneIsSaved() throws TaskAccessException {
+      Task task = taskMutator.modifyAndSeverTask(taskDelta).get();
 
       taskStore.cancelTransaction();
       Task savedTask = getTask(dataTaskId);
@@ -156,10 +158,10 @@ public class OrchestrationTests {
    }
 
    @Test
-   void testModifyAndSeverTaskStandaloneGeneratorIsUnchanged() {
+   void testModifyAndSeverTaskStandaloneGeneratorIsUnchanged() throws TaskAccessException {
       Generator generator = getGenerator(dataGeneratorId);
 
-      orchestrator.modifyAndSeverTask(dataTaskId, taskDelta).get();
+      taskMutator.modifyAndSeverTask(taskDelta).get();
 
       taskStore.cancelTransaction();
       Generator savedGenerator = getGenerator(dataGeneratorId);
@@ -170,12 +172,12 @@ public class OrchestrationTests {
    }
 
    @Test
-   void testModifyAndSeverTaskStandaloneGeneratedTasksAreUnchanged() {
+   void testModifyAndSeverTaskStandaloneGeneratedTasksAreUnchanged() throws TaskAccessException {
       Vector<Task> expectedTasks = generatedTaskIds
          .asList()
          .map(this::getTask);
 
-      orchestrator.modifyAndSeverTask(dataTaskId, taskDelta).get();
+      taskMutator.modifyAndSeverTask(taskDelta).get();
 
       taskStore.cancelTransaction();
       Vector<Task> actualTasks = generatedTaskIds
@@ -188,10 +190,10 @@ public class OrchestrationTests {
    }
 
    @Test
-   void testModifyAndSeverTaskStandaloneTableIsUnchanged() {
+   void testModifyAndSeverTaskStandaloneTableIsUnchanged() throws TaskAccessException {
       Table expectedTable = getTable(dataTableId);
 
-      orchestrator.modifyAndSeverTask(dataTaskId, taskDelta).get();
+      taskMutator.modifyAndSeverTask(taskDelta).get();
 
       taskStore.cancelTransaction();
       Table actualTable = getTable(dataTableId);
@@ -202,13 +204,13 @@ public class OrchestrationTests {
    }
 
    @Test
-   void testModifyAndSeverTaskSeries() {
+   void testModifyAndSeverTaskSeries() throws TaskAccessException {
       Task task = getTask(middleTaskId);
       Task expectedTask = task
          .withoutGenerator()
          .withModification(taskDelta);
 
-      Task result = orchestrator.modifyAndSeverTask(middleTaskId, taskDelta).get();
+      Task result = middleTaskMutator.modifyAndSeverTask(taskDelta).get();
 
       assertThat(result)
          .usingComparator(TestComparators::compareTasksIgnoringId)
@@ -216,8 +218,8 @@ public class OrchestrationTests {
    }
 
    @Test
-   void testModifyAndSeverTaskSeriesIsSaved() {
-      Task task = orchestrator.modifyAndSeverTask(middleTaskId, taskDelta).get();
+   void testModifyAndSeverTaskSeriesIsSaved() throws TaskAccessException {
+      Task task = middleTaskMutator.modifyAndSeverTask(taskDelta).get();
 
       taskStore.cancelTransaction();
       Task savedTask = getTask(middleTaskId);
@@ -228,13 +230,13 @@ public class OrchestrationTests {
    }
 
    @Test
-   void testModifyAndSeverTaskSeriesOtherTasksAreUnchanged() {
+   void testModifyAndSeverTaskSeriesOtherTasksAreUnchanged() throws TaskAccessException {
       Vector<Task> expectedTasks = allTaskIds
          .asList()
          .map(this::getTask)
          .filter(task -> !task.getId().equals(middleTaskId));
 
-      orchestrator.modifyAndSeverTask(middleTaskId, taskDelta).get();
+      middleTaskMutator.modifyAndSeverTask(taskDelta).get();
 
       taskStore.cancelTransaction();
       Vector<Task> actualTasks = allTaskIds
@@ -248,11 +250,11 @@ public class OrchestrationTests {
    }
 
    @Test
-   void testModifyAndSeverTaskSeriesGeneratorIsSaved() {
+   void testModifyAndSeverTaskSeriesGeneratorIsSaved() throws TaskAccessException {
       Generator expectedGenerator = getGenerator(dataGeneratorId)
          .withoutTask(middleTaskId);
 
-      orchestrator.modifyAndSeverTask(middleTaskId, taskDelta).get();
+      middleTaskMutator.modifyAndSeverTask(taskDelta).get();
 
       taskStore.cancelTransaction();
       Generator savedGenerator = getGenerator(dataGeneratorId);
@@ -263,10 +265,10 @@ public class OrchestrationTests {
    }
 
    @Test
-   void testModifyAndSeverTaskTableIsUnchanged() {
+   void testModifyAndSeverTaskTableIsUnchanged() throws TaskAccessException {
       Table expectedTable = getTable(dataTableId);
 
-      orchestrator.modifyAndSeverTask(middleTaskId, taskDelta).get();
+      middleTaskMutator.modifyAndSeverTask(taskDelta).get();
 
       taskStore.cancelTransaction();
       Table savedTable = getTable(dataTableId);
@@ -277,10 +279,10 @@ public class OrchestrationTests {
    }
 
    @Test
-   void testModifySeries() {
+   void testModifySeries() throws TaskAccessException {
       Task task = getTask(middleTaskId);
       Generator generator = getGenerator(dataGeneratorId);
-      Task result = orchestrator.modifySeries(middleTaskId, generatorDelta).get();
+      Task result = middleTaskMutator.modifySeries(generatorDelta).get();
 
       assertThat(result)
          .usingComparator(TestComparators::compareTasksIgnoringId)
@@ -288,8 +290,8 @@ public class OrchestrationTests {
    }
 
    @Test
-   void testModifySeriesIsSaved() {
-      Task task = orchestrator.modifySeries(middleTaskId, generatorDelta).get();
+   void testModifySeriesIsSaved() throws TaskAccessException {
+      Task task = middleTaskMutator.modifySeries(generatorDelta).get();
 
       taskStore.cancelTransaction();
       Task savedTask = getTask(middleTaskId);
@@ -300,10 +302,10 @@ public class OrchestrationTests {
    }
 
    @Test
-   void testModifySeriesPriorTaskIsSaved() {
+   void testModifySeriesPriorTaskIsSaved() throws TaskAccessException {
       Task expectedTask = getTask(priorTaskId).withoutGenerator();
 
-      orchestrator.modifySeries(middleTaskId, generatorDelta).get();
+      middleTaskMutator.modifySeries(generatorDelta).get();
 
       taskStore.cancelTransaction();
       Task savedTask = getTask(priorTaskId);
@@ -314,12 +316,12 @@ public class OrchestrationTests {
    }
 
    @Test
-   void testModifySeriesSubsequentTaskIsSaved() {
+   void testModifySeriesSubsequentTaskIsSaved() throws TaskAccessException {
       Generator generator = getGenerator(dataGeneratorId);
       Task expectedTask = getTask(subsequentTaskId)
          .withSeriesModification(generatorDelta, generator);
 
-      orchestrator.modifySeries(middleTaskId, generatorDelta).get();
+      middleTaskMutator.modifySeries(generatorDelta).get();
 
       taskStore.cancelTransaction();
       Task savedTask = getTask(subsequentTaskId);
@@ -330,12 +332,12 @@ public class OrchestrationTests {
    }
 
    @Test
-   void testModifySeriesGeneratorIsSaved() {
+   void testModifySeriesGeneratorIsSaved() throws TaskAccessException {
       Generator expectedGenerator = getGenerator(dataGeneratorId)
          .withoutTask(priorTaskId)
          .withModification(generatorDelta);
 
-      orchestrator.modifySeries(middleTaskId, generatorDelta).get();
+      middleTaskMutator.modifySeries(generatorDelta).get();
 
       taskStore.cancelTransaction();
       Generator savedGenerator = getGenerator(dataGeneratorId);
@@ -346,10 +348,10 @@ public class OrchestrationTests {
    }
 
    @Test
-   void testModifySeriesStandaloneTaskIsUnchanged() {
+   void testModifySeriesStandaloneTaskIsUnchanged() throws TaskAccessException {
       Task expectedTask = getTask(dataTaskId);
 
-      orchestrator.modifySeries(middleTaskId, generatorDelta).get();
+      middleTaskMutator.modifySeries(generatorDelta).get();
 
       taskStore.cancelTransaction();
       Task savedTask = getTask(dataTaskId);
@@ -360,10 +362,10 @@ public class OrchestrationTests {
    }
 
    @Test
-   void testModifySeriesTableIsUnchanged() {
+   void testModifySeriesTableIsUnchanged() throws TaskAccessException {
       Table expectedTable = getTable(dataTableId);
 
-      orchestrator.modifySeries(middleTaskId, generatorDelta).get();
+      middleTaskMutator.modifySeries(generatorDelta).get();
 
       taskStore.cancelTransaction();
       Table savedTable = getTable(dataTableId);
@@ -376,7 +378,7 @@ public class OrchestrationTests {
    @Test
    void testModifySeriesStandaloneTaskIsInvalid() {
       assertThatExceptionOfType(IllegalStateException.class)
-         .isThrownBy(() -> orchestrator.modifySeries(dataTaskId, generatorDelta));
+         .isThrownBy(() -> taskMutator.modifySeries(generatorDelta));
    }
 
    private Table getTable(ItemId<Table> id) {

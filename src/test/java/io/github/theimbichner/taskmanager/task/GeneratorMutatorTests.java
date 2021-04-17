@@ -25,7 +25,6 @@ import static org.assertj.core.api.Assertions.*;
 
 public class GeneratorMutatorTests {
    private TaskStore taskStore;
-   private Orchestration orchestrator;
 
    private ItemId<Table> dataTableId;
    private ItemId<Task> dataTaskId;
@@ -45,7 +44,6 @@ public class GeneratorMutatorTests {
    @BeforeEach
    void beforeEach() throws TaskAccessException {
       taskStore = InMemoryDataStore.createTaskStore();
-      orchestrator = new Orchestration(taskStore);
 
       patternStart = LocalDate.now(ZoneOffset.UTC)
          .plusDays(2)
@@ -64,7 +62,7 @@ public class GeneratorMutatorTests {
          null);
       tableMutator.modifyTable(dataTableDelta).checkError();
 
-      dataTaskId = orchestrator.createTask(dataTableId).get().getId();
+      dataTaskId = TaskMutator.createTask(taskStore, dataTableId).get().getId();
       dataGeneratorId = GeneratorMutator
          .createGenerator(taskStore, dataTableId, "alpha", pattern)
          .get()

@@ -15,7 +15,6 @@ import io.github.theimbichner.taskmanager.time.UniformDatePattern;
 
 public class DataProvider {
    private final TaskStore taskStore;
-   private final Orchestration orchestrator;
    private final ItemId<Table> tableId;
    private final TableMutator tableMutator;
    private final String generationField;
@@ -28,7 +27,6 @@ public class DataProvider {
 
    public DataProvider() {
       taskStore = InMemoryDataStore.createTaskStore();
-      orchestrator = new Orchestration(taskStore);
 
       tableId = TableMutator.createTable(taskStore).asEither().get().getId();
       tableMutator = new TableMutator(taskStore, tableId);
@@ -94,12 +92,13 @@ public class DataProvider {
    }
 
    public Task createDefaultTask() {
-      return orchestrator.createTask(tableId).get();
+      return TaskMutator.createTask(taskStore, tableId).asEither().get();
    }
 
    public Task createModifiedTask() {
       ItemId<Task> taskId = createDefaultTask().getId();
-      return orchestrator.modifyAndSeverTask(taskId, getTaskDelta()).get();
+      TaskMutator taskMutator = new TaskMutator(taskStore, taskId);
+      return taskMutator.modifyAndSeverTask(getTaskDelta()).asEither().get();
    }
 
    public Task createDefaultTaskWithGenerator() {
@@ -117,7 +116,8 @@ public class DataProvider {
       generator = taskStore.getGenerators().getById(generator.getId()).asEither().get();
 
       ItemId<Task> taskId = generator.getTaskIds().asList().get(0);
-      return orchestrator.modifySeries(taskId, getFullGeneratorDelta()).get();
+      TaskMutator taskMutator = new TaskMutator(taskStore, taskId);
+      return taskMutator.modifySeries(getFullGeneratorDelta()).asEither().get();
    }
 
    public TaskDelta getTaskDelta() {
