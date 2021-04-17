@@ -33,11 +33,7 @@ public class GeneratorMutatorTests {
    private SetList<ItemId<Task>> generatedTaskIds;
    private SetList<ItemId<Task>> allTaskIds;
 
-   private Instant patternStart;
-   private Duration patternStep;
    private DatePattern pattern;
-
-   private Instant lastGenerationTimestamp;
 
    private GeneratorDelta generatorDelta;
 
@@ -45,11 +41,11 @@ public class GeneratorMutatorTests {
    void beforeEach() throws TaskAccessException {
       taskStore = InMemoryDataStore.createTaskStore();
 
-      patternStart = LocalDate.now(ZoneOffset.UTC)
+      Instant patternStart = LocalDate.now(ZoneOffset.UTC)
          .plusDays(2)
          .atStartOfDay(ZoneOffset.UTC)
          .toInstant();
-      patternStep = Duration.parse("PT17M36.5S");
+      Duration patternStep = Duration.parse("PT17M36.5S");
       pattern = new UniformDatePattern(patternStart, patternStep);
 
       dataTableId = TableMutator.createTable(taskStore).get().getId();
@@ -69,7 +65,7 @@ public class GeneratorMutatorTests {
          .getId();
       generatorMutator = new GeneratorMutator(taskStore, dataGeneratorId);
 
-      lastGenerationTimestamp = patternStart.plus(Duration.parse("PT45M"));
+      Instant lastGenerationTimestamp = patternStart.plus(Duration.parse("PT45M"));
       allTaskIds = tableMutator.getTasksFromTable(lastGenerationTimestamp).get();
       generatedTaskIds = allTaskIds.remove(dataTaskId);
 

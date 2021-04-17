@@ -35,7 +35,6 @@ public class TableMutatorTests {
 
    private Instant patternStart;
    private Duration patternStep;
-   private DatePattern pattern;
 
    private Instant lastGenerationTimestamp;
 
@@ -51,7 +50,7 @@ public class TableMutatorTests {
          .atStartOfDay(ZoneOffset.UTC)
          .toInstant();
       patternStep = Duration.parse("PT17M36.5S");
-      pattern = new UniformDatePattern(patternStart, patternStep);
+      DatePattern pattern = new UniformDatePattern(patternStart, patternStep);
 
       tableId = TableMutator.createTable(taskStore).get().getId();
       tableMutator = new TableMutator(taskStore, tableId);
