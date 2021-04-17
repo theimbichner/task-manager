@@ -27,10 +27,10 @@ import static org.assertj.core.api.Assertions.*;
 public class TaskMutatorTests {
    private TaskStore taskStore;
 
-   private ItemId<Table> dataTableId;
-   private ItemId<Task> dataTaskId;
+   private ItemId<Table> tableId;
+   private ItemId<Task> taskId;
    private TaskMutator taskMutator;
-   private ItemId<Generator> dataGeneratorId;
+   private ItemId<Generator> generatorId;
    private SetList<ItemId<Task>> generatedTaskIds;
    private SetList<ItemId<Task>> allTaskIds;
    private ItemId<Task> priorTaskId;
@@ -52,8 +52,8 @@ public class TaskMutatorTests {
       Duration patternStep = Duration.parse("PT17M36.5S");
       DatePattern pattern = new UniformDatePattern(patternStart, patternStep);
 
-      dataTableId = TableMutator.createTable(taskStore).get().getId();
-      TableMutator tableMutator = new TableMutator(taskStore, dataTableId);
+      tableId = TableMutator.createTable(taskStore).get().getId();
+      TableMutator tableMutator = new TableMutator(taskStore, tableId);
 
       TableDelta dataTableDelta = new TableDelta(
          Schema.empty()
@@ -62,16 +62,16 @@ public class TaskMutatorTests {
          null);
       tableMutator.modifyTable(dataTableDelta).checkError();
 
-      dataTaskId = TaskMutator.createTask(taskStore, dataTableId).get().getId();
-      taskMutator = new TaskMutator(taskStore, dataTaskId);
-      dataGeneratorId = GeneratorMutator
-         .createGenerator(taskStore, dataTableId, "alpha", pattern)
+      taskId = TaskMutator.createTask(taskStore, tableId).get().getId();
+      taskMutator = new TaskMutator(taskStore, taskId);
+      generatorId = GeneratorMutator
+         .createGenerator(taskStore, tableId, "alpha", pattern)
          .get()
          .getId();
 
       Instant lastGenerationTimestamp = patternStart.plus(Duration.parse("PT45M"));
       allTaskIds = tableMutator.getTasksFromTable(lastGenerationTimestamp).get();
-      generatedTaskIds = allTaskIds.remove(dataTaskId);
+      generatedTaskIds = allTaskIds.remove(taskId);
 
       priorTaskId = getGeneratedTaskId(patternStart);
       middleTaskId = getGeneratedTaskId(patternStart.plus(patternStep));
@@ -93,9 +93,9 @@ public class TaskMutatorTests {
 
    @Test
    void testCreateTask() throws TaskAccessException {
-      Table table = getTable(dataTableId);
+      Table table = getTable(tableId);
 
-      Task result = TaskMutator.createTask(taskStore, dataTableId).get();
+      Task result = TaskMutator.createTask(taskStore, tableId).get();
       assertThat(result)
          .usingComparator(TestComparators::compareTasksIgnoringId)
          .isEqualTo(Task.newTask(table));
@@ -103,7 +103,7 @@ public class TaskMutatorTests {
 
    @Test
    void testCreateTaskResultIsSaved() throws TaskAccessException {
-      Task result = TaskMutator.createTask(taskStore, dataTableId).get();
+      Task result = TaskMutator.createTask(taskStore, tableId).get();
 
       taskStore.cancelTransaction();
       Task savedTask = getTask(result.getId());
@@ -115,13 +115,13 @@ public class TaskMutatorTests {
 
    @Test
    void testCreateTaskTableIsSaved() throws TaskAccessException {
-      Table table = getTable(dataTableId);
+      Table table = getTable(tableId);
 
-      Task task = TaskMutator.createTask(taskStore, dataTableId).get();
+      Task task = TaskMutator.createTask(taskStore, tableId).get();
       Table expectedTable = table.withTasks(Vector.of(task.getId()));
 
       taskStore.cancelTransaction();
-      Table savedTable = getTable(dataTableId);
+      Table savedTable = getTable(tableId);
 
       assertThat(savedTable)
          .usingComparator(TestComparators::compareTablesIgnoringId)
@@ -130,7 +130,7 @@ public class TaskMutatorTests {
 
    @Test
    void testModifyAndSeverTaskStandalone() throws TaskAccessException {
-      Task task = getTask(dataTaskId);
+      Task task = getTask(taskId);
 
       Task result = taskMutator.modifyAndSeverTask(taskDelta).get();
 
@@ -144,7 +144,7 @@ public class TaskMutatorTests {
       Task task = taskMutator.modifyAndSeverTask(taskDelta).get();
 
       taskStore.cancelTransaction();
-      Task savedTask = getTask(dataTaskId);
+      Task savedTask = getTask(taskId);
 
       assertThat(task)
          .usingComparator(TestComparators::compareTasks)
@@ -153,12 +153,12 @@ public class TaskMutatorTests {
 
    @Test
    void testModifyAndSeverTaskStandaloneGeneratorIsUnchanged() throws TaskAccessException {
-      Generator generator = getGenerator(dataGeneratorId);
+      Generator generator = getGenerator(generatorId);
 
       taskMutator.modifyAndSeverTask(taskDelta).get();
 
       taskStore.cancelTransaction();
-      Generator savedGenerator = getGenerator(dataGeneratorId);
+      Generator savedGenerator = getGenerator(generatorId);
 
       assertThat(savedGenerator)
          .usingComparator(TestComparators::compareGenerators)
@@ -185,12 +185,12 @@ public class TaskMutatorTests {
 
    @Test
    void testModifyAndSeverTaskStandaloneTableIsUnchanged() throws TaskAccessException {
-      Table expectedTable = getTable(dataTableId);
+      Table expectedTable = getTable(tableId);
 
       taskMutator.modifyAndSeverTask(taskDelta).get();
 
       taskStore.cancelTransaction();
-      Table actualTable = getTable(dataTableId);
+      Table actualTable = getTable(tableId);
 
       assertThat(actualTable)
          .usingComparator(TestComparators::compareTables)
@@ -245,13 +245,13 @@ public class TaskMutatorTests {
 
    @Test
    void testModifyAndSeverTaskSeriesGeneratorIsSaved() throws TaskAccessException {
-      Generator expectedGenerator = getGenerator(dataGeneratorId)
+      Generator expectedGenerator = getGenerator(generatorId)
          .withoutTask(middleTaskId);
 
       middleTaskMutator.modifyAndSeverTask(taskDelta).get();
 
       taskStore.cancelTransaction();
-      Generator savedGenerator = getGenerator(dataGeneratorId);
+      Generator savedGenerator = getGenerator(generatorId);
 
       assertThat(savedGenerator)
          .usingComparator(TestComparators::compareGeneratorsIgnoringId)
@@ -260,12 +260,12 @@ public class TaskMutatorTests {
 
    @Test
    void testModifyAndSeverTaskTableIsUnchanged() throws TaskAccessException {
-      Table expectedTable = getTable(dataTableId);
+      Table expectedTable = getTable(tableId);
 
       middleTaskMutator.modifyAndSeverTask(taskDelta).get();
 
       taskStore.cancelTransaction();
-      Table savedTable = getTable(dataTableId);
+      Table savedTable = getTable(tableId);
 
       assertThat(savedTable)
          .usingComparator(TestComparators::compareTables)
@@ -275,7 +275,7 @@ public class TaskMutatorTests {
    @Test
    void testModifySeries() throws TaskAccessException {
       Task task = getTask(middleTaskId);
-      Generator generator = getGenerator(dataGeneratorId);
+      Generator generator = getGenerator(generatorId);
       Task result = middleTaskMutator.modifySeries(generatorDelta).get();
 
       assertThat(result)
@@ -311,7 +311,7 @@ public class TaskMutatorTests {
 
    @Test
    void testModifySeriesSubsequentTaskIsSaved() throws TaskAccessException {
-      Generator generator = getGenerator(dataGeneratorId);
+      Generator generator = getGenerator(generatorId);
       Task expectedTask = getTask(subsequentTaskId)
          .withSeriesModification(generatorDelta, generator);
 
@@ -327,14 +327,14 @@ public class TaskMutatorTests {
 
    @Test
    void testModifySeriesGeneratorIsSaved() throws TaskAccessException {
-      Generator expectedGenerator = getGenerator(dataGeneratorId)
+      Generator expectedGenerator = getGenerator(generatorId)
          .withoutTask(priorTaskId)
          .withModification(generatorDelta);
 
       middleTaskMutator.modifySeries(generatorDelta).get();
 
       taskStore.cancelTransaction();
-      Generator savedGenerator = getGenerator(dataGeneratorId);
+      Generator savedGenerator = getGenerator(generatorId);
 
       assertThat(savedGenerator)
          .usingComparator(TestComparators::compareGeneratorsIgnoringId)
@@ -343,12 +343,12 @@ public class TaskMutatorTests {
 
    @Test
    void testModifySeriesStandaloneTaskIsUnchanged() throws TaskAccessException {
-      Task expectedTask = getTask(dataTaskId);
+      Task expectedTask = getTask(taskId);
 
       middleTaskMutator.modifySeries(generatorDelta).get();
 
       taskStore.cancelTransaction();
-      Task savedTask = getTask(dataTaskId);
+      Task savedTask = getTask(taskId);
 
       assertThat(savedTask)
          .usingComparator(TestComparators::compareTasks)
@@ -357,12 +357,12 @@ public class TaskMutatorTests {
 
    @Test
    void testModifySeriesTableIsUnchanged() throws TaskAccessException {
-      Table expectedTable = getTable(dataTableId);
+      Table expectedTable = getTable(tableId);
 
       middleTaskMutator.modifySeries(generatorDelta).get();
 
       taskStore.cancelTransaction();
-      Table savedTable = getTable(dataTableId);
+      Table savedTable = getTable(tableId);
 
       assertThat(savedTable)
          .usingComparator(TestComparators::compareTables)

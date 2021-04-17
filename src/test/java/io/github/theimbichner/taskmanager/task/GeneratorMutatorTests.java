@@ -26,9 +26,9 @@ import static org.assertj.core.api.Assertions.*;
 public class GeneratorMutatorTests {
    private TaskStore taskStore;
 
-   private ItemId<Table> dataTableId;
-   private ItemId<Task> dataTaskId;
-   private ItemId<Generator> dataGeneratorId;
+   private ItemId<Table> tableId;
+   private ItemId<Task> taskId;
+   private ItemId<Generator> generatorId;
    private GeneratorMutator generatorMutator;
    private SetList<ItemId<Task>> generatedTaskIds;
    private SetList<ItemId<Task>> allTaskIds;
@@ -48,8 +48,8 @@ public class GeneratorMutatorTests {
       Duration patternStep = Duration.parse("PT17M36.5S");
       pattern = new UniformDatePattern(patternStart, patternStep);
 
-      dataTableId = TableMutator.createTable(taskStore).get().getId();
-      TableMutator tableMutator = new TableMutator(taskStore, dataTableId);
+      tableId = TableMutator.createTable(taskStore).get().getId();
+      TableMutator tableMutator = new TableMutator(taskStore, tableId);
 
       TableDelta dataTableDelta = new TableDelta(
          Schema.empty()
@@ -58,16 +58,16 @@ public class GeneratorMutatorTests {
          null);
       tableMutator.modifyTable(dataTableDelta).checkError();
 
-      dataTaskId = TaskMutator.createTask(taskStore, dataTableId).get().getId();
-      dataGeneratorId = GeneratorMutator
-         .createGenerator(taskStore, dataTableId, "alpha", pattern)
+      taskId = TaskMutator.createTask(taskStore, tableId).get().getId();
+      generatorId = GeneratorMutator
+         .createGenerator(taskStore, tableId, "alpha", pattern)
          .get()
          .getId();
-      generatorMutator = new GeneratorMutator(taskStore, dataGeneratorId);
+      generatorMutator = new GeneratorMutator(taskStore, generatorId);
 
       Instant lastGenerationTimestamp = patternStart.plus(Duration.parse("PT45M"));
       allTaskIds = tableMutator.getTasksFromTable(lastGenerationTimestamp).get();
-      generatedTaskIds = allTaskIds.remove(dataTaskId);
+      generatedTaskIds = allTaskIds.remove(taskId);
 
       generatorDelta = new GeneratorDelta(
          PropertyMap.empty().put("beta", Property.DELETE),
@@ -79,11 +79,11 @@ public class GeneratorMutatorTests {
 
    @Test
    void testCreateGenerator() throws TaskAccessException {
-      Table table = getTable(dataTableId);
+      Table table = getTable(tableId);
 
       Generator result = GeneratorMutator.createGenerator(
          taskStore,
-         dataTableId,
+         tableId,
          "alpha",
          pattern).get();
       assertThat(result)
@@ -95,7 +95,7 @@ public class GeneratorMutatorTests {
    void testCreateGeneratorResultIsSaved() throws TaskAccessException {
       Generator generator = GeneratorMutator.createGenerator(
          taskStore,
-         dataTableId,
+         tableId,
          "alpha",
          pattern).get();
 
@@ -109,17 +109,17 @@ public class GeneratorMutatorTests {
 
    @Test
    void testCreateGeneratorTableIsSaved() throws TaskAccessException {
-      Table table = getTable(dataTableId);
+      Table table = getTable(tableId);
 
       Generator generator = GeneratorMutator.createGenerator(
          taskStore,
-         dataTableId,
+         tableId,
          "alpha",
          pattern).get();
       Table expectedTable = table.withGenerator(generator.getId());
 
       taskStore.cancelTransaction();
-      Table savedTable = getTable(dataTableId);
+      Table savedTable = getTable(tableId);
 
       assertThat(savedTable)
          .usingComparator(TestComparators::compareTables)
@@ -128,7 +128,7 @@ public class GeneratorMutatorTests {
 
    @Test
    void testModifyGenerator() throws TaskAccessException {
-      Generator generator = getGenerator(dataGeneratorId);
+      Generator generator = getGenerator(generatorId);
 
       Generator result = generatorMutator.modifyGenerator(generatorDelta).get();
 
@@ -142,7 +142,7 @@ public class GeneratorMutatorTests {
       Generator generator = generatorMutator.modifyGenerator(generatorDelta).get();
 
       taskStore.cancelTransaction();
-      Generator savedGenerator = getGenerator(dataGeneratorId);
+      Generator savedGenerator = getGenerator(generatorId);
 
       assertThat(generator)
          .usingComparator(TestComparators::compareGenerators)
@@ -151,7 +151,7 @@ public class GeneratorMutatorTests {
 
    @Test
    void testModifyGeneratorTasksAreSaved() throws TaskAccessException {
-      Generator generator = getGenerator(dataGeneratorId);
+      Generator generator = getGenerator(generatorId);
       Vector<Task> expectedTasks = generatedTaskIds
          .asList()
          .map(this::getTask)
@@ -169,12 +169,12 @@ public class GeneratorMutatorTests {
 
    @Test
    void testModifyGeneratorStandaloneTaskIsUnchanged() throws TaskAccessException {
-      Task expectedTask = getTask(dataTaskId);
+      Task expectedTask = getTask(taskId);
 
       generatorMutator.modifyGenerator(generatorDelta).checkError();
 
       taskStore.cancelTransaction();
-      Task savedTask = getTask(dataTaskId);
+      Task savedTask = getTask(taskId);
 
       assertThat(savedTask)
          .usingComparator(TestComparators::compareTasks)
@@ -183,12 +183,12 @@ public class GeneratorMutatorTests {
 
    @Test
    void testModifyGeneratorTableIsUnchanged() throws TaskAccessException {
-      Table expectedTable = getTable(dataTableId);
+      Table expectedTable = getTable(tableId);
 
       generatorMutator.modifyGenerator(generatorDelta).checkError();
 
       taskStore.cancelTransaction();
-      Table savedTable = getTable(dataTableId);
+      Table savedTable = getTable(tableId);
 
       assertThat(savedTable)
          .usingComparator(TestComparators::compareTables)
