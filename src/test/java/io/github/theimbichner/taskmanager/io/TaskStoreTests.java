@@ -15,12 +15,14 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import io.github.theimbichner.taskmanager.task.Generator;
+import io.github.theimbichner.taskmanager.task.GeneratorMutator;
 import io.github.theimbichner.taskmanager.task.GeneratorDelta;
 import io.github.theimbichner.taskmanager.task.ItemId;
-import io.github.theimbichner.taskmanager.task.Orchestration;
 import io.github.theimbichner.taskmanager.task.Table;
+import io.github.theimbichner.taskmanager.task.TableMutator;
 import io.github.theimbichner.taskmanager.task.TableDelta;
 import io.github.theimbichner.taskmanager.task.Task;
+import io.github.theimbichner.taskmanager.task.TaskMutator;
 import io.github.theimbichner.taskmanager.task.TaskDelta;
 import io.github.theimbichner.taskmanager.task.TestComparators;
 import io.github.theimbichner.taskmanager.task.property.PropertyMap;
@@ -45,9 +47,8 @@ public class TaskStoreTests {
       IOUtils.deleteFolder(TEST_ROOT);
    }
 
-   static Stream<Arguments> provideTaskGeneratorTable() {
+   static Stream<Arguments> provideTaskGeneratorTable() throws TaskAccessException {
       TaskStore secondaryTaskStore = InMemoryDataStore.createTaskStore();
-      Orchestration orchestrator = new Orchestration(secondaryTaskStore);
 
       TableDelta tableDelta = new TableDelta(Schema.empty(), "modified");
       TaskDelta taskDelta = new TaskDelta(
@@ -61,22 +62,25 @@ public class TaskStoreTests {
          null,
          null);
 
-      Table table = orchestrator.createTable().get();
-      Table overwriteTable = orchestrator.modifyTable(table.getId(), tableDelta).get();
+      Table table = TableMutator.createTable(secondaryTaskStore).get();
+      TableMutator tableMutator = new TableMutator(secondaryTaskStore, table.getId());
+      Table overwriteTable = tableMutator.modifyTable(tableDelta).get();
 
-      Task task = orchestrator.createTask(table.getId()).get();
-      Task overwriteTask = orchestrator.modifyAndSeverTask(task.getId(), taskDelta).get();
+      Task task = TaskMutator.createTask(secondaryTaskStore, table.getId()).get();
+      TaskMutator taskMutator = new TaskMutator(secondaryTaskStore, task.getId());
+      Task overwriteTask = taskMutator.modifyAndSeverTask(taskDelta).get();
 
       String field = "";
       DatePattern datePattern = new UniformDatePattern(
          Instant.ofEpochSecond(0),
          Duration.ofSeconds(100));
-      Generator generator = orchestrator
-         .createGenerator(table.getId(), field, datePattern)
+      Generator generator = GeneratorMutator
+         .createGenerator(secondaryTaskStore, table.getId(), field, datePattern)
          .get();
-      Generator overwriteGenerator = orchestrator
-         .modifyGenerator(generator.getId(), generatorDelta)
-         .get();
+      GeneratorMutator generatorMutator = new GeneratorMutator(
+         secondaryTaskStore,
+         generator.getId());
+      Generator overwriteGenerator = generatorMutator.modifyGenerator(generatorDelta).get();
 
       return Stream.of(
          Arguments.of(
@@ -85,8 +89,8 @@ public class TaskStoreTests {
             taskStore.getTasks(),
             (Comparator<Task>) TestComparators::compareTasks,
             (Supplier<Task>) () -> {
-               Table tempTable = orchestrator.createTable().get();
-               return orchestrator.createTask(tempTable.getId()).get();
+               Table tempTable = TableMutator.createTable(secondaryTaskStore).asEither().get();
+               return TaskMutator.createTask(secondaryTaskStore, tempTable.getId()).asEither().get();
             },
             TaskStore.MAXIMUM_TASKS_CACHED),
          Arguments.of(
@@ -95,9 +99,10 @@ public class TaskStoreTests {
             taskStore.getGenerators(),
             (Comparator<Generator>) TestComparators::compareGenerators,
             (Supplier<Generator>) () -> {
-               Table tempTable = orchestrator.createTable().get();
-               return orchestrator
-                  .createGenerator(tempTable.getId(), field, datePattern)
+               Table tempTable = TableMutator.createTable(secondaryTaskStore).asEither().get();
+               return GeneratorMutator
+                  .createGenerator(secondaryTaskStore, tempTable.getId(), field, datePattern)
+                  .asEither()
                   .get();
             },
             TaskStore.MAXIMUM_GENERATORS_CACHED),
@@ -106,7 +111,7 @@ public class TaskStoreTests {
             overwriteTable,
             taskStore.getTables(),
             (Comparator<Table>) TestComparators::compareTables,
-            (Supplier<Table>) () -> orchestrator.createTable().get(),
+            (Supplier<Table>) () -> TableMutator.createTable(secondaryTaskStore).asEither().get(),
             TaskStore.MAXIMUM_TABLES_CACHED));
    }
 
@@ -118,10 +123,10 @@ public class TaskStoreTests {
       DataStore<ItemId<T>, T> dataStore,
       Comparator<T> comparator
    ) {
-      dataStore.save(t).get();
+      dataStore.save(t).asEither().get();
       dataStore.deleteById(t.getId());
-      dataStore.save(overwrite).get();
-      T result = dataStore.getById(t.getId()).get();
+      dataStore.save(overwrite).asEither().get();
+      T result = dataStore.getById(t.getId()).asEither().get();
       assertThat(result).usingComparator(comparator).isEqualTo(overwrite);
    }
 
@@ -135,9 +140,9 @@ public class TaskStoreTests {
       Supplier<T> supplier,
       int cacheSize
    ) {
-      dataStore.save(t).get();
+      dataStore.save(t).asEither().get();
       uncache(dataStore, supplier, cacheSize);
-      T result = dataStore.getById(t.getId()).get();
+      T result = dataStore.getById(t.getId()).asEither().get();
       assertThat(result).usingComparator(comparator).isEqualTo(t);
    }
 
@@ -151,10 +156,10 @@ public class TaskStoreTests {
       Supplier<T> supplier,
       int cacheSize
    ) {
-      dataStore.save(t).get();
-      dataStore.save(overwrite).get();
+      dataStore.save(t).asEither().get();
+      dataStore.save(overwrite).asEither().get();
       uncache(dataStore, supplier, cacheSize);
-      T result = dataStore.getById(t.getId()).get();
+      T result = dataStore.getById(t.getId()).asEither().get();
       assertThat(result).usingComparator(comparator).isEqualTo(overwrite);
    }
 
@@ -168,11 +173,11 @@ public class TaskStoreTests {
       Supplier<T> supplier,
       int cacheSize
    ) {
-      dataStore.save(t).get();
+      dataStore.save(t).asEither().get();
       uncache(dataStore, supplier, cacheSize);
-      dataStore.save(overwrite).get();
+      dataStore.save(overwrite).asEither().get();
       uncache(dataStore, supplier, cacheSize);
-      T result = dataStore.getById(t.getId()).get();
+      T result = dataStore.getById(t.getId()).asEither().get();
       assertThat(result).usingComparator(comparator).isEqualTo(overwrite);
    }
 
@@ -182,7 +187,7 @@ public class TaskStoreTests {
       int count
    ) {
       for (int i = 0; i <= count; i++) {
-         dataStore.save(supplier.get()).get();
+         dataStore.save(supplier.get()).asEither().get();
       }
    }
 }

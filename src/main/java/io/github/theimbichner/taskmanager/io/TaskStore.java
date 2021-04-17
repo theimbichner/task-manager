@@ -3,8 +3,6 @@ package io.github.theimbichner.taskmanager.io;
 import java.io.File;
 import java.io.IOException;
 
-import io.vavr.control.Either;
-
 import io.github.theimbichner.taskmanager.task.Generator;
 import io.github.theimbichner.taskmanager.task.ItemId;
 import io.github.theimbichner.taskmanager.task.Table;
@@ -66,7 +64,7 @@ public class TaskStore {
       return tables;
    }
 
-   public Either<TaskAccessException, Void> commit() {
+   public TaskAccessResult<Void> commit() {
       return base.commit();
    }
 

@@ -2,13 +2,12 @@ package io.github.theimbichner.taskmanager.io;
 
 import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
-import io.vavr.control.Either;
 
 public abstract class MultiChannelDataStore<K, V extends Storable<K>> {
    private HashMap<String, DataStore<K, V>> channels = HashMap.empty();
 
    protected abstract DataStore<K, V> createChannel(String channelId);
-   protected abstract Either<TaskAccessException, Void> performCommit();
+   protected abstract TaskAccessResult<Void> performCommit();
    protected abstract void performCancel();
 
    public final DataStore<K, V> getChannel(String channelId) {
@@ -19,7 +18,7 @@ public abstract class MultiChannelDataStore<K, V extends Storable<K>> {
       return result;
    }
 
-   public final Either<TaskAccessException, Void> commit() {
+   public final TaskAccessResult<Void> commit() {
       return performCommit()
          .peek(x -> sendEvents(TransactionEvent.COMMIT_SUCCESS))
          .peekLeft(x -> sendEvents(TransactionEvent.COMMIT_FAILURE));

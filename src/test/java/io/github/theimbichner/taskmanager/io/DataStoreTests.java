@@ -18,8 +18,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import io.github.theimbichner.taskmanager.task.TypeAdapter;
 
-import static org.assertj.core.api.Assertions.*;
-import static org.assertj.vavr.api.VavrAssertions.*;
+import static io.github.theimbichner.taskmanager.io.TaskAccessResultAssertions.*;
 
 public class DataStoreTests {
    private static final File TEST_ROOT = new File("./DataStoreTests/");

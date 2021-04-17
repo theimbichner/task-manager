@@ -15,8 +15,8 @@ import io.github.theimbichner.taskmanager.time.UniformDatePattern;
 
 public class DataProvider {
    private final TaskStore taskStore;
-   private final Orchestration orchestrator;
    private final ItemId<Table> tableId;
+   private final TableMutator tableMutator;
    private final String generationField;
    private final DatePattern datePattern;
 
@@ -27,9 +27,9 @@ public class DataProvider {
 
    public DataProvider() {
       taskStore = InMemoryDataStore.createTaskStore();
-      orchestrator = new Orchestration(taskStore);
 
-      tableId = orchestrator.createTable().get().getId();
+      tableId = TableMutator.createTable(taskStore).asEither().get().getId();
+      tableMutator = new TableMutator(taskStore, tableId);
 
       generationField = "";
       datePattern = new UniformDatePattern(
@@ -47,7 +47,7 @@ public class DataProvider {
    }
 
    public Table getTable() {
-      return taskStore.getTables().getById(tableId).get();
+      return taskStore.getTables().getById(tableId).asEither().get();
    }
 
    public String getGenerationField() {
@@ -92,30 +92,32 @@ public class DataProvider {
    }
 
    public Task createDefaultTask() {
-      return orchestrator.createTask(tableId).get();
+      return TaskMutator.createTask(taskStore, tableId).asEither().get();
    }
 
    public Task createModifiedTask() {
       ItemId<Task> taskId = createDefaultTask().getId();
-      return orchestrator.modifyAndSeverTask(taskId, getTaskDelta()).get();
+      TaskMutator taskMutator = new TaskMutator(taskStore, taskId);
+      return taskMutator.modifyAndSeverTask(getTaskDelta()).asEither().get();
    }
 
    public Task createDefaultTaskWithGenerator() {
       Generator generator = createModifiedGenerator();
-      orchestrator.getTasksFromTable(tableId, Instant.now().plusSeconds(600)).get();
-      generator = taskStore.getGenerators().getById(generator.getId()).get();
+      tableMutator.getTasksFromTable(Instant.now().plusSeconds(600)).asEither().get();
+      generator = taskStore.getGenerators().getById(generator.getId()).asEither().get();
 
       ItemId<Task> taskId = generator.getTaskIds().asList().get(0);
-      return taskStore.getTasks().getById(taskId).get();
+      return taskStore.getTasks().getById(taskId).asEither().get();
    }
 
    public Task createModifiedTaskWithGenerator() {
       Generator generator = createDefaultGenerator();
-      orchestrator.getTasksFromTable(tableId, Instant.now().plusSeconds(600)).get();
-      generator = taskStore.getGenerators().getById(generator.getId()).get();
+      tableMutator.getTasksFromTable(Instant.now().plusSeconds(600)).asEither().get();
+      generator = taskStore.getGenerators().getById(generator.getId()).asEither().get();
 
       ItemId<Task> taskId = generator.getTaskIds().asList().get(0);
-      return orchestrator.modifySeries(taskId, getFullGeneratorDelta()).get();
+      TaskMutator taskMutator = new TaskMutator(taskStore, taskId);
+      return taskMutator.modifySeries(getFullGeneratorDelta()).asEither().get();
    }
 
    public TaskDelta getTaskDelta() {
@@ -126,13 +128,17 @@ public class DataProvider {
    }
 
    public Generator createDefaultGenerator() {
-      return orchestrator.createGenerator(tableId, generationField, datePattern).get();
+      return GeneratorMutator
+         .createGenerator(taskStore, tableId, generationField, datePattern)
+         .asEither()
+         .get();
    }
 
    public Generator createModifiedGenerator() {
       Generator generator = createDefaultGenerator();
       GeneratorDelta delta = getFullGeneratorDelta();
-      return orchestrator.modifyGenerator(generator.getId(), delta).get();
+      GeneratorMutator mutator = new GeneratorMutator(taskStore, generator.getId());
+      return mutator.modifyGenerator(delta).asEither().get();
    }
 
    public GeneratorDelta getFullGeneratorDelta() {

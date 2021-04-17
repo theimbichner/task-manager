@@ -1,7 +1,6 @@
 package io.github.theimbichner.taskmanager.io;
 
 import io.vavr.collection.Set;
-import io.vavr.control.Either;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -26,40 +25,42 @@ public class JsonAdapterDataStore<K, V extends Storable<K>> extends DataStore<K,
    }
 
    @Override
-   public Either<TaskAccessException, Set<K>> listIds() {
-      return delegate.listIds().map(ids -> ids.map(keyAdapter::deconvert));
+   public TaskAccessResult<Set<K>> listIds() {
+      return delegate.listIds().andThen(ids -> ids.map(keyAdapter::deconvert));
    }
 
    @Override
-   public Either<TaskAccessException, V> getById(K id) {
+   public TaskAccessResult<V> getById(K id) {
       try {
-         return delegate.getById(keyAdapter.convert(id))
-            .map(result -> {
+         return delegate
+            .getById(keyAdapter.convert(id))
+            .andThen(result -> {
                JSONObject json = new JSONObject(result.getValue());
                return valueAdapter.deconvert(json);
             });
       }
       catch (JSONException e) {
-         return Either.left(new TaskAccessException(e));
+         return TaskAccessResult.ofLeft(new TaskAccessException(e));
       }
    }
 
    @Override
-   public Either<TaskAccessException, V> save(V value) {
+   public TaskAccessResult<V> save(V value) {
       try {
          JSONObject json = valueAdapter.convert(value);
          String stringValue = json.toString();
          String id = keyAdapter.convert(value.getId());
-         return delegate.save(new StringStorable(id, stringValue))
-            .map(x -> value);
+         return delegate
+            .save(new StringStorable(id, stringValue))
+            .andThen(x -> value);
       }
       catch (JSONException e) {
-         return Either.left(new TaskAccessException(e));
+         return TaskAccessResult.ofLeft(new TaskAccessException(e));
       }
    }
 
    @Override
-   public Either<TaskAccessException, Void> deleteById(K id) {
+   public TaskAccessResult<Void> deleteById(K id) {
       return delegate.deleteById(keyAdapter.convert(id));
    }
 }
