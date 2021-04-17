@@ -24,7 +24,7 @@ import io.github.theimbichner.taskmanager.time.UniformDatePattern;
 
 import static org.assertj.core.api.Assertions.*;
 
-public class OrchestrationTests {
+public class TaskMutatorTests {
    private TaskStore taskStore;
 
    private ItemId<Table> dataTableId;
