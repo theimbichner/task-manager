@@ -92,7 +92,7 @@ public class Table implements Storable<ItemId<Table>> {
       return new Table(result);
    }
 
-   SetList<ItemId<Task>> getAllTaskIds() {
+   SetList<ItemId<Task>> getTaskIds() {
       return taskIds;
    }
 
@@ -108,7 +108,7 @@ public class Table implements Storable<ItemId<Table>> {
       return new Table(result);
    }
 
-   public SetList<ItemId<Generator>> getAllGeneratorIds() {
+   public SetList<ItemId<Generator>> getGeneratorIds() {
       return generatorIds;
    }
 

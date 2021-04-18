@@ -32,13 +32,13 @@ public class TableMutator {
       return TaskAccessResult.transaction(taskStore, () -> {
          Table table = taskStore.getTables().getById(tableId).get();
 
-         for (ItemId<Generator> generatorId : table.getAllGeneratorIds().asList()) {
+         for (ItemId<Generator> generatorId : table.getGeneratorIds().asList()) {
             Seq<ItemId<Task>> newTasks = runGenerator(generatorId, timestamp).get();
             table = table.withTasks(newTasks);
          }
 
          table = taskStore.getTables().save(table).get();
-         return table.getAllTaskIds();
+         return table.getTaskIds();
       });
    }
 
@@ -46,14 +46,14 @@ public class TableMutator {
       return TaskAccessResult.transaction(taskStore, () -> {
          Table table = taskStore.getTables().getById(tableId).get();
 
-         for (ItemId<Task> id : table.getAllTaskIds().asList()) {
+         for (ItemId<Task> id : table.getTaskIds().asList()) {
             Task task = taskStore.getTasks().getById(id).get();
             TaskDelta taskDelta = delta.asTaskDelta(task.getProperties());
             task = task.withModification(taskDelta);
             taskStore.getTasks().save(task).checkError();
          }
 
-         for (ItemId<Generator> id : table.getAllGeneratorIds().asList()) {
+         for (ItemId<Generator> id : table.getGeneratorIds().asList()) {
             Generator generator = taskStore.getGenerators().getById(id).get();
             generator = generator.adjustToSchema(delta.getSchema());
             taskStore.getGenerators().save(generator).checkError();

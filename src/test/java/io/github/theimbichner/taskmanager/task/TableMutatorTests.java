@@ -197,7 +197,7 @@ public class TableMutatorTests {
       taskStore.cancelTransaction();
       Table savedTable = getTable(tableId);
 
-      assertThat(savedTable.getAllTaskIds().asList())
+      assertThat(savedTable.getTaskIds().asList())
          .containsExactlyInAnyOrderElementsOf(allTaskIds.asList());
    }
 
