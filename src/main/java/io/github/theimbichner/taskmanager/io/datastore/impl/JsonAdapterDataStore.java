@@ -8,12 +8,12 @@ import org.json.JSONObject;
 import io.github.theimbichner.taskmanager.io.TaskAccessException;
 import io.github.theimbichner.taskmanager.io.TaskAccessResult;
 import io.github.theimbichner.taskmanager.io.datastore.DataStore;
+import io.github.theimbichner.taskmanager.io.datastore.DelegatingDataStore;
 import io.github.theimbichner.taskmanager.io.datastore.Storable;
 import io.github.theimbichner.taskmanager.io.datastore.StringStorable;
 import io.github.theimbichner.taskmanager.task.TypeAdapter;
 
-public class JsonAdapterDataStore<K, V extends Storable<K>> extends DataStore<K, V> {
-   private final DataStore<String, StringStorable> delegate;
+public class JsonAdapterDataStore<K, V extends Storable<K>> extends DelegatingDataStore<K, V, String, StringStorable> {
    private final TypeAdapter<V, JSONObject> valueAdapter;
    private final TypeAdapter<K, String> keyAdapter;
 
@@ -22,22 +22,20 @@ public class JsonAdapterDataStore<K, V extends Storable<K>> extends DataStore<K,
       TypeAdapter<V, JSONObject> valueAdapter,
       TypeAdapter<K, String> keyAdapter
    ) {
-      this.delegate = delegate;
+      super(delegate);
       this.valueAdapter = valueAdapter;
       this.keyAdapter = keyAdapter;
-
-      delegate.registerChild(this);
    }
 
    @Override
    public TaskAccessResult<Set<K>> listIds() {
-      return delegate.listIds().andThen(ids -> ids.map(keyAdapter::deconvert));
+      return getDelegate().listIds().andThen(ids -> ids.map(keyAdapter::deconvert));
    }
 
    @Override
    public TaskAccessResult<V> getById(K id) {
       try {
-         return delegate
+         return getDelegate()
             .getById(keyAdapter.convert(id))
             .andThen(result -> {
                JSONObject json = new JSONObject(result.getValue());
@@ -55,7 +53,7 @@ public class JsonAdapterDataStore<K, V extends Storable<K>> extends DataStore<K,
          JSONObject json = valueAdapter.convert(value);
          String stringValue = json.toString();
          String id = keyAdapter.convert(value.getId());
-         return delegate
+         return getDelegate()
             .save(new StringStorable(id, stringValue))
             .andThen(x -> value);
       }
@@ -66,6 +64,6 @@ public class JsonAdapterDataStore<K, V extends Storable<K>> extends DataStore<K,
 
    @Override
    public TaskAccessResult<Void> deleteById(K id) {
-      return delegate.deleteById(keyAdapter.convert(id));
+      return getDelegate().deleteById(keyAdapter.convert(id));
    }
 }

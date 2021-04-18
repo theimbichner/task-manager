@@ -7,24 +7,22 @@ import io.vavr.collection.Set;
 
 import io.github.theimbichner.taskmanager.io.TaskAccessResult;
 import io.github.theimbichner.taskmanager.io.datastore.DataStore;
+import io.github.theimbichner.taskmanager.io.datastore.DelegatingDataStore;
 import io.github.theimbichner.taskmanager.io.datastore.Storable;
 
-public class CachedDataStore<K, V extends Storable<K>> extends DataStore<K, V> {
+public class CachedDataStore<K, V extends Storable<K>> extends DelegatingDataStore<K, V, K, V> {
    private final Cache<K, V> cache;
-   private final DataStore<K, V> delegate;
 
    public CachedDataStore(DataStore<K, V> dataStore, int maxSize) {
-      delegate = dataStore;
+      super(dataStore);
       cache = Caffeine.newBuilder()
          .maximumSize(maxSize)
          .build();
-
-      dataStore.registerChild(this);
    }
 
    @Override
    public TaskAccessResult<Set<K>> listIds() {
-      return delegate.listIds();
+      return getDelegate().listIds();
    }
 
    @Override
@@ -34,18 +32,18 @@ public class CachedDataStore<K, V extends Storable<K>> extends DataStore<K, V> {
          return TaskAccessResult.ofRight(value);
       }
 
-      return delegate.getById(id).peek(this::addToCache);
+      return getDelegate().getById(id).peek(this::addToCache);
    }
 
    @Override
    public TaskAccessResult<V> save(V value) {
-      return delegate.save(value).peek(this::addToCache);
+      return getDelegate().save(value).peek(this::addToCache);
    }
 
    @Override
    public TaskAccessResult<Void> deleteById(K id) {
       cache.invalidate(id);
-      return delegate.deleteById(id);
+      return getDelegate().deleteById(id);
    }
 
    @Override

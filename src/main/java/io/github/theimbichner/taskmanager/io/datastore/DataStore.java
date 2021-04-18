@@ -6,7 +6,7 @@ import io.vavr.collection.Vector;
 import io.github.theimbichner.taskmanager.io.TaskAccessResult;
 
 public abstract class DataStore<K, V extends Storable<K>> {
-   private Vector<DataStore<?, ?>> children = Vector.empty();
+   private Vector<DelegatingDataStore<?, ?, K, V>> children = Vector.empty();
 
    public abstract TaskAccessResult<Set<K>> listIds();
    public abstract TaskAccessResult<V> getById(K id);
@@ -17,7 +17,7 @@ public abstract class DataStore<K, V extends Storable<K>> {
    protected void onCommitSuccess() {}
    protected void onCancel() {}
 
-   public final void registerChild(DataStore<?, ?> child) {
+   public final void registerChild(DelegatingDataStore<?, ?, K, V> child) {
       children = children.append(child);
    }
 
