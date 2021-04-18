@@ -68,12 +68,12 @@ public class Task implements Storable<ItemId<Task>> {
       return name;
    }
 
-   public DateTime getDateCreated() {
-      return new DateTime(modifyRecord.getDateCreated());
+   public Instant getDateCreated() {
+      return modifyRecord.getDateCreated();
    }
 
-   public DateTime getDateLastModified() {
-      return new DateTime(modifyRecord.getDateLastModified());
+   public Instant getDateLastModified() {
+      return modifyRecord.getDateLastModified();
    }
 
    public String getMarkup() {

@@ -34,17 +34,15 @@ public class TaskTests {
       Task task = Task.newTask(data.getTable());
       Instant after = Instant.now();
 
-      assertThat(task.getName()).isEqualTo("");
+      assertThat(task.getName()).isEmpty();
 
-      assertThat(task.getDateCreated().getStart())
+      assertThat(task.getDateCreated())
          .isAfterOrEqualTo(before)
-         .isBeforeOrEqualTo(after)
-         .isEqualTo(task.getDateCreated().getEnd());
-      assertThat(task.getDateLastModified().getStart())
-         .isEqualTo(task.getDateCreated().getStart())
-         .isEqualTo(task.getDateLastModified().getEnd());
+         .isBeforeOrEqualTo(after);
+      assertThat(task.getDateLastModified())
+         .isEqualTo(task.getDateCreated());
 
-      assertThat(task.getMarkup()).isEqualTo("");
+      assertThat(task.getMarkup()).isEmpty();
       assertThat(task.getGeneratorId()).isNull();
       assertThat(task.getProperties().asMap()).isEmpty();
    }
@@ -69,9 +67,8 @@ public class TaskTests {
       Instant beforeModify = Instant.now();
       task = task.withModification(data.getTaskDelta());
 
-      assertThat(task.getDateLastModified().getStart())
-         .isAfterOrEqualTo(beforeModify)
-         .isEqualTo(task.getDateLastModified().getEnd());
+      assertThat(task.getDateLastModified())
+         .isAfterOrEqualTo(beforeModify);
 
       assertThat(task.getName()).isEqualTo(data.getTemplateName());
       assertThat(task.getMarkup()).isEqualTo(data.getMarkup());
@@ -98,9 +95,8 @@ public class TaskTests {
       TaskDelta delta = new TaskDelta(data.getProperties(), null, null);
       task = task.withModification(delta);
 
-      assertThat(task.getDateLastModified().getStart())
-         .isAfterOrEqualTo(beforeModify)
-         .isEqualTo(task.getDateLastModified().getEnd());
+      assertThat(task.getDateLastModified())
+         .isAfterOrEqualTo(beforeModify);
 
       assertThat(task.getName()).isEqualTo(oldName);
       assertThat(task.getMarkup()).isEqualTo(oldMarkup);
@@ -124,14 +120,9 @@ public class TaskTests {
       assertThat(newTask.getId()).isEqualTo(task.getId());
       assertThat(newTask.getName()).isEqualTo(task.getName());
 
-      assertThat(newTask.getDateCreated().getStart())
-         .isEqualTo(task.getDateCreated().getStart());
-      assertThat(newTask.getDateCreated().getEnd())
-         .isEqualTo(task.getDateCreated().getEnd());
-      assertThat(newTask.getDateLastModified().getStart())
-         .isEqualTo(task.getDateLastModified().getStart());
-      assertThat(newTask.getDateLastModified().getEnd())
-         .isEqualTo(task.getDateLastModified().getEnd());
+      assertThat(newTask.getDateCreated()).isEqualTo(task.getDateCreated());
+      assertThat(newTask.getDateLastModified())
+         .isEqualTo(task.getDateLastModified());
 
       assertThat(newTask.getMarkup()).isEqualTo(task.getMarkup());
       assertThat(newTask.getGeneratorId()).isEqualTo(task.getGeneratorId());
