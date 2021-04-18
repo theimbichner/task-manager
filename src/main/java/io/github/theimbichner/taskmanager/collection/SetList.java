@@ -2,6 +2,7 @@ package io.github.theimbichner.taskmanager.collection;
 
 import java.util.NoSuchElementException;
 
+import io.vavr.Lazy;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.HashSet;
@@ -9,33 +10,36 @@ import io.vavr.collection.Vector;
 
 public class SetList<T> {
    private final HashSet<T> set;
-   private HashSet<T> removed;
-   private Vector<T> list;
+   private final HashSet<T> removed;
+   private final Vector<T> list;
+   private final Lazy<SetList<T>> cleaned;
 
    private SetList(HashSet<T> set, HashSet<T> removed, Vector<T> list) {
       this.set = set;
       this.removed = removed;
       this.list = list;
+      this.cleaned = Lazy.of(this::cleaned);
    }
 
    public static <T> SetList<T> empty() {
       return new SetList<>(HashSet.empty(), HashSet.empty(), Vector.empty());
    }
 
-   private void clean() {
-      list = list.removeAll(removed);
-      removed = HashSet.empty();
+   private SetList<T> cleaned() {
+      return new SetList<>(set, HashSet.empty(), list.removeAll(removed));
    }
 
    public SetList<T> add(T t) {
       if (set.contains(t)) {
          return this;
       }
+
+      SetList<T> base = this;
       if (removed.contains(t)) {
-         clean();
+         base = cleaned.get();
       }
 
-      return new SetList<>(set.add(t), removed, list.append(t));
+      return new SetList<>(base.set.add(t), base.removed, base.list.append(t));
    }
 
    public SetList<T> addAll(Iterable<T> ts) {
@@ -69,15 +73,16 @@ public class SetList<T> {
    }
 
    public Tuple2<Vector<T>, Vector<T>> split(T t) {
-      clean();
-      int index = list.indexOf(t, 0);
-      if (index == -1) {
+      if (!set.contains(t)) {
          throw new NoSuchElementException();
       }
 
+      Vector<T> cleanList = asList();
+      int index = cleanList.indexOf(t, 0);
+
       // t should fall into the right Vector
-      Vector<T> left = list.dropRight(list.size() - index);
-      Vector<T> right = list.drop(index);
+      Vector<T> left = cleanList.dropRight(cleanList.size() - index);
+      Vector<T> right = cleanList.drop(index);
 
       return Tuple.of(left, right);
    }
@@ -99,7 +104,6 @@ public class SetList<T> {
    }
 
    public Vector<T> asList() {
-      clean();
-      return list;
+      return cleaned.get().list;
    }
 }
