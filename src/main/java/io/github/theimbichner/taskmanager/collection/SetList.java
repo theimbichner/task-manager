@@ -18,7 +18,12 @@ public class SetList<T> {
       this.set = set;
       this.removed = removed;
       this.list = list;
-      this.cleaned = Lazy.of(this::cleaned);
+      if (removed.isEmpty()) {
+         this.cleaned = Lazy.of(() -> this);
+      }
+      else {
+         this.cleaned = Lazy.of(this::cleaned);
+      }
    }
 
    public static <T> SetList<T> empty() {
