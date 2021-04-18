@@ -1,10 +1,15 @@
-package io.github.theimbichner.taskmanager.io;
+package io.github.theimbichner.taskmanager.io.datastore.impl;
 
 import io.vavr.collection.Set;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import io.github.theimbichner.taskmanager.io.TaskAccessException;
+import io.github.theimbichner.taskmanager.io.TaskAccessResult;
+import io.github.theimbichner.taskmanager.io.datastore.DataStore;
+import io.github.theimbichner.taskmanager.io.datastore.Storable;
+import io.github.theimbichner.taskmanager.io.datastore.StringStorable;
 import io.github.theimbichner.taskmanager.task.TypeAdapter;
 
 public class JsonAdapterDataStore<K, V extends Storable<K>> extends DataStore<K, V> {

@@ -1,4 +1,4 @@
-package io.github.theimbichner.taskmanager.io;
+package io.github.theimbichner.taskmanager.io.datastore.impl;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -19,6 +19,13 @@ import io.vavr.collection.Vector;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONTokener;
+
+import io.github.theimbichner.taskmanager.io.IOUtils;
+import io.github.theimbichner.taskmanager.io.TaskAccessException;
+import io.github.theimbichner.taskmanager.io.TaskAccessResult;
+import io.github.theimbichner.taskmanager.io.datastore.DataStore;
+import io.github.theimbichner.taskmanager.io.datastore.MultiChannelDataStore;
+import io.github.theimbichner.taskmanager.io.datastore.StringStorable;
 
 public class FileDataStore extends MultiChannelDataStore<String, StringStorable> {
    private class Channel extends DataStore<String, StringStorable> {

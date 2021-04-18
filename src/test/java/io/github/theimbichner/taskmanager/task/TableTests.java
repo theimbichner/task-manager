@@ -10,8 +10,8 @@ import org.json.JSONObject;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import io.github.theimbichner.taskmanager.io.InMemoryDataStore;
 import io.github.theimbichner.taskmanager.io.TaskStore;
+import io.github.theimbichner.taskmanager.io.datastore.impl.InMemoryDataStore;
 import io.github.theimbichner.taskmanager.task.property.Schema;
 import io.github.theimbichner.taskmanager.task.property.TypeDescriptor;
 import io.github.theimbichner.taskmanager.time.DateTime;

@@ -1,4 +1,4 @@
-package io.github.theimbichner.taskmanager.io;
+package io.github.theimbichner.taskmanager.io.datastore;
 
 import java.io.File;
 import java.io.IOException;
@@ -16,6 +16,11 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import io.github.theimbichner.taskmanager.io.IOUtils;
+import io.github.theimbichner.taskmanager.io.datastore.impl.CachedDataStore;
+import io.github.theimbichner.taskmanager.io.datastore.impl.FileDataStore;
+import io.github.theimbichner.taskmanager.io.datastore.impl.InMemoryDataStore;
+import io.github.theimbichner.taskmanager.io.datastore.impl.JsonAdapterDataStore;
 import io.github.theimbichner.taskmanager.task.TypeAdapter;
 
 import static io.github.theimbichner.taskmanager.io.TaskAccessResultAssertions.*;

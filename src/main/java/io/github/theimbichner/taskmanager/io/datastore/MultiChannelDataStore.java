@@ -1,7 +1,9 @@
-package io.github.theimbichner.taskmanager.io;
+package io.github.theimbichner.taskmanager.io.datastore;
 
 import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
+
+import io.github.theimbichner.taskmanager.io.TaskAccessResult;
 
 public abstract class MultiChannelDataStore<K, V extends Storable<K>> {
    private HashMap<String, DataStore<K, V>> channels = HashMap.empty();

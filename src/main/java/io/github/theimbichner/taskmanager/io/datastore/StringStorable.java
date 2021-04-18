@@ -1,4 +1,4 @@
-package io.github.theimbichner.taskmanager.io;
+package io.github.theimbichner.taskmanager.io.datastore;
 
 public class StringStorable implements Storable<String> {
    private final String id;

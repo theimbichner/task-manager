@@ -11,7 +11,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import io.github.theimbichner.taskmanager.collection.SetList;
-import io.github.theimbichner.taskmanager.io.Storable;
+import io.github.theimbichner.taskmanager.io.datastore.Storable;
 import io.github.theimbichner.taskmanager.task.property.Property;
 import io.github.theimbichner.taskmanager.task.property.PropertyMap;
 import io.github.theimbichner.taskmanager.task.property.Schema;

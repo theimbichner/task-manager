@@ -1,7 +1,9 @@
-package io.github.theimbichner.taskmanager.io;
+package io.github.theimbichner.taskmanager.io.datastore;
 
 import io.vavr.collection.Set;
 import io.vavr.collection.Vector;
+
+import io.github.theimbichner.taskmanager.io.TaskAccessResult;
 
 public abstract class DataStore<K, V extends Storable<K>> {
    private Vector<DataStore<?, ?>> children = Vector.empty();

@@ -1,9 +1,16 @@
-package io.github.theimbichner.taskmanager.io;
+package io.github.theimbichner.taskmanager.io.datastore.impl;
 
 import java.util.NoSuchElementException;
 
 import io.vavr.collection.HashMap;
 import io.vavr.collection.Set;
+
+import io.github.theimbichner.taskmanager.io.TaskAccessException;
+import io.github.theimbichner.taskmanager.io.TaskAccessResult;
+import io.github.theimbichner.taskmanager.io.TaskStore;
+import io.github.theimbichner.taskmanager.io.datastore.DataStore;
+import io.github.theimbichner.taskmanager.io.datastore.MultiChannelDataStore;
+import io.github.theimbichner.taskmanager.io.datastore.Storable;
 
 public class InMemoryDataStore<K, V extends Storable<K>> extends MultiChannelDataStore<K, V> {
    private HashMap<String, HashMap<K, V>> committedData = HashMap.empty();

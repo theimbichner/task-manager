@@ -1,9 +1,13 @@
-package io.github.theimbichner.taskmanager.io;
+package io.github.theimbichner.taskmanager.io.datastore.impl;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 
 import io.vavr.collection.Set;
+
+import io.github.theimbichner.taskmanager.io.TaskAccessResult;
+import io.github.theimbichner.taskmanager.io.datastore.DataStore;
+import io.github.theimbichner.taskmanager.io.datastore.Storable;
 
 public class CachedDataStore<K, V extends Storable<K>> extends DataStore<K, V> {
    private final Cache<K, V> cache;
