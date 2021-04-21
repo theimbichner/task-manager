@@ -8,6 +8,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.github.theimbichner.taskmanager.io.datastore.impl.InMemoryDataStore;
 import io.github.theimbichner.taskmanager.task.Table;
 import io.github.theimbichner.taskmanager.task.TableMutator;
 import io.github.theimbichner.taskmanager.task.TestComparators;

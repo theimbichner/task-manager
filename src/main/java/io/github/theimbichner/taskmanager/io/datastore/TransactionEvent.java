@@ -1,4 +1,4 @@
-package io.github.theimbichner.taskmanager.io;
+package io.github.theimbichner.taskmanager.io.datastore;
 
 import java.util.function.Consumer;
 

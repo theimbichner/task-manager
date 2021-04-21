@@ -4,7 +4,7 @@ import java.time.Instant;
 
 import org.json.JSONObject;
 
-import io.github.theimbichner.taskmanager.io.Storable;
+import io.github.theimbichner.taskmanager.io.datastore.Storable;
 import io.github.theimbichner.taskmanager.task.property.Property;
 import io.github.theimbichner.taskmanager.task.property.PropertyMap;
 import io.github.theimbichner.taskmanager.time.DateTime;
@@ -68,12 +68,12 @@ public class Task implements Storable<ItemId<Task>> {
       return name;
    }
 
-   public DateTime getDateCreated() {
-      return new DateTime(modifyRecord.getDateCreated());
+   public Instant getDateCreated() {
+      return modifyRecord.getDateCreated();
    }
 
-   public DateTime getDateLastModified() {
-      return new DateTime(modifyRecord.getDateLastModified());
+   public Instant getDateLastModified() {
+      return modifyRecord.getDateLastModified();
    }
 
    public String getMarkup() {

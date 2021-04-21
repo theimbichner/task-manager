@@ -48,22 +48,20 @@ public class GeneratorTests {
       Generator generator = Generator.newGenerator(table, field, pattern);
       Instant after = Instant.now();
 
-      assertThat(generator.getName()).isEqualTo("");
-      assertThat(generator.getTemplateName()).isEqualTo("");
-      assertThat(generator.getTemplateMarkup()).isEqualTo("");
-      assertThat(generator.getTemplateDuration()).isEqualTo(0);
+      assertThat(generator.getName()).isEmpty();
+      assertThat(generator.getTemplateName()).isEmpty();
+      assertThat(generator.getTemplateMarkup()).isEmpty();
+      assertThat(generator.getTemplateDuration()).isZero();
       assertThat(generator.getTemplateTableId()).isEqualTo(data.getTable().getId());
       assertThat(generator.getTemplateProperties().asMap()).isEqualTo(generationFieldMap.asMap());
       assertThat(generator.getGenerationField()).isEqualTo(data.getGenerationField());
       assertThat(generator.getTaskIds().asList()).isEmpty();
 
-      assertThat(generator.getDateCreated().getStart())
+      assertThat(generator.getDateCreated())
          .isAfterOrEqualTo(before)
-         .isBeforeOrEqualTo(after)
-         .isEqualTo(generator.getDateCreated().getEnd());
-      assertThat(generator.getDateLastModified().getStart())
-         .isEqualTo(generator.getDateCreated().getStart())
-         .isEqualTo(generator.getDateLastModified().getEnd());
+         .isBeforeOrEqualTo(after);
+      assertThat(generator.getDateLastModified())
+         .isEqualTo(generator.getDateCreated());
 
       assertThat(generator.getGenerationDatePattern())
          .isEqualTo(data.getGenerationDatePattern());
@@ -100,14 +98,10 @@ public class GeneratorTests {
       assertThat(newGenerator.getTemplateProperties().asMap())
          .isEqualTo(generator.getTemplateProperties().asMap());
 
-      assertThat(newGenerator.getDateCreated().getStart())
-         .isEqualTo(generator.getDateCreated().getStart());
-      assertThat(newGenerator.getDateCreated().getEnd())
-         .isEqualTo(generator.getDateCreated().getEnd());
-      assertThat(newGenerator.getDateLastModified().getStart())
-         .isEqualTo(generator.getDateLastModified().getStart());
-      assertThat(newGenerator.getDateLastModified().getEnd())
-         .isEqualTo(generator.getDateLastModified().getEnd());
+      assertThat(newGenerator.getDateCreated())
+         .isEqualTo(generator.getDateCreated());
+      assertThat(newGenerator.getDateLastModified())
+         .isEqualTo(generator.getDateLastModified());
 
       Instant start = Instant.ofEpochSecond(0);
       Instant end = Instant.ofEpochSecond(1000);
@@ -145,9 +139,8 @@ public class GeneratorTests {
       Instant beforeModify = Instant.now();
       generator = generator.withModification(data.getFullGeneratorDelta());
 
-      assertThat(generator.getDateLastModified().getStart())
-         .isAfterOrEqualTo(beforeModify)
-         .isEqualTo(generator.getDateLastModified().getEnd());
+      assertThat(generator.getDateLastModified())
+         .isAfterOrEqualTo(beforeModify);
 
       assertThat(generator.getName()).isEqualTo(data.getName());
       assertThat(generator.getTemplateName()).isEqualTo(data.getTemplateName());
@@ -176,9 +169,8 @@ public class GeneratorTests {
       Instant beforeModify = Instant.now();
       generator = generator.withModification(delta);
 
-      assertThat(generator.getDateLastModified().getStart())
-         .isAfterOrEqualTo(beforeModify)
-         .isEqualTo(generator.getDateLastModified().getEnd());
+      assertThat(generator.getDateLastModified())
+         .isAfterOrEqualTo(beforeModify);
 
       assertThat(generator.getName()).isEqualTo(oldName);
       assertThat(generator.getTemplateName()).isEqualTo(oldTemplateName);
@@ -342,7 +334,7 @@ public class GeneratorTests {
       Generator generator = data.createDefaultGenerator();
       DatePattern datePattern = data.getGenerationDatePattern();
       String generationField = data.getGenerationField();
-      Instant start = generator.getDateCreated().getStart();
+      Instant start = generator.getDateCreated();
       Instant firstInstant = Instant.now().plusSeconds(100);
       Instant secondInstant = Instant.now().plusSeconds(350);
 

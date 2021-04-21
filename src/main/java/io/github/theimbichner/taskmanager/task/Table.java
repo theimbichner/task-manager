@@ -1,14 +1,15 @@
 package io.github.theimbichner.taskmanager.task;
 
+import java.time.Instant;
+
 import io.vavr.collection.Vector;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import io.github.theimbichner.taskmanager.collection.SetList;
-import io.github.theimbichner.taskmanager.io.Storable;
+import io.github.theimbichner.taskmanager.io.datastore.Storable;
 import io.github.theimbichner.taskmanager.task.property.Schema;
-import io.github.theimbichner.taskmanager.time.DateTime;
 import io.github.theimbichner.taskmanager.time.ModifyRecord;
 
 /*
@@ -71,12 +72,12 @@ public class Table implements Storable<ItemId<Table>> {
       return name;
    }
 
-   public DateTime getDateCreated() {
-      return new DateTime(modifyRecord.getDateCreated());
+   public Instant getDateCreated() {
+      return modifyRecord.getDateCreated();
    }
 
-   public DateTime getDateLastModified() {
-      return new DateTime(modifyRecord.getDateLastModified());
+   public Instant getDateLastModified() {
+      return modifyRecord.getDateLastModified();
    }
 
    public Table withModification(TableDelta delta) {
@@ -92,7 +93,7 @@ public class Table implements Storable<ItemId<Table>> {
       return new Table(result);
    }
 
-   SetList<ItemId<Task>> getAllTaskIds() {
+   SetList<ItemId<Task>> getTaskIds() {
       return taskIds;
    }
 
@@ -108,7 +109,7 @@ public class Table implements Storable<ItemId<Table>> {
       return new Table(result);
    }
 
-   public SetList<ItemId<Generator>> getAllGeneratorIds() {
+   public SetList<ItemId<Generator>> getGeneratorIds() {
       return generatorIds;
    }
 

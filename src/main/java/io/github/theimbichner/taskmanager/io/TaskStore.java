@@ -3,6 +3,12 @@ package io.github.theimbichner.taskmanager.io;
 import java.io.File;
 import java.io.IOException;
 
+import io.github.theimbichner.taskmanager.io.datastore.DataStore;
+import io.github.theimbichner.taskmanager.io.datastore.MultiChannelDataStore;
+import io.github.theimbichner.taskmanager.io.datastore.StringStorable;
+import io.github.theimbichner.taskmanager.io.datastore.impl.CachedDataStore;
+import io.github.theimbichner.taskmanager.io.datastore.impl.FileDataStore;
+import io.github.theimbichner.taskmanager.io.datastore.impl.JsonAdapterDataStore;
 import io.github.theimbichner.taskmanager.task.Generator;
 import io.github.theimbichner.taskmanager.task.ItemId;
 import io.github.theimbichner.taskmanager.task.Table;

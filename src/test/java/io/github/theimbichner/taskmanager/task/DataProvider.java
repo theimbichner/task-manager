@@ -5,8 +5,8 @@ import java.time.Instant;
 
 import io.vavr.collection.HashMap;
 
-import io.github.theimbichner.taskmanager.io.InMemoryDataStore;
 import io.github.theimbichner.taskmanager.io.TaskStore;
+import io.github.theimbichner.taskmanager.io.datastore.impl.InMemoryDataStore;
 import io.github.theimbichner.taskmanager.task.property.Property;
 import io.github.theimbichner.taskmanager.task.property.PropertyMap;
 import io.github.theimbichner.taskmanager.time.DatePattern;
