@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.SplitPane?>
+<?import javafx.scene.layout.VBox?>
+
+<?import io.github.theimbichner.taskmanager.fxclient.Controller?>
+
+<SplitPane xmlns:fx="http://javafx.com/fxml"
+   fx:controller="io.github.theimbichner.taskmanager.fxclient.Controller">
+   <VBox fx:id="tableList"></VBox>
+   <VBox fx:id="taskList"></VBox>
+</SplitPane>

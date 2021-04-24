@@ -111,6 +111,9 @@
                      <rules>
                         <rule>
                            <element>PACKAGE</element>
+                           <excludes>
+                              <exclude>io.github.theimbichner.taskmanager.fxclient*</exclude>
+                           </excludes>
                            <limits>
                               <limit>
                                  <counter>INSTRUCTION</counter>
