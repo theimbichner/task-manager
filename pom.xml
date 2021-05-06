@@ -152,7 +152,7 @@
             <artifactId>javafx-maven-plugin</artifactId>
             <version>0.0.6</version>
             <configuration>
-               <mainClass>io.github.theimbichner.taskmanager.Main</mainClass>
+               <mainClass>io.github.theimbichner.taskmanager.fxclient.Main</mainClass>
             </configuration>
          </plugin>
       </plugins>
