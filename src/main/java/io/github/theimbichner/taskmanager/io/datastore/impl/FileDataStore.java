@@ -77,7 +77,7 @@ public class FileDataStore extends MultiChannelDataStore<String, StringStorable>
       @Override
       public TaskAccessResult<StringStorable> getById(String id) {
          try {
-            File file = lookupById(id);
+            File file = lookUpById(id);
             String fileContents = Files.readString(file.toPath());
             return TaskAccessResult.ofRight(new StringStorable(id, fileContents));
          }
@@ -114,7 +114,7 @@ public class FileDataStore extends MultiChannelDataStore<String, StringStorable>
       @Override
       public TaskAccessResult<Void> deleteById(String id) {
          try {
-            lookupById(id);
+            lookUpById(id);
          }
          catch (IOException e) {
             return TaskAccessResult.ofLeft(new TaskAccessException(e));
@@ -139,7 +139,7 @@ public class FileDataStore extends MultiChannelDataStore<String, StringStorable>
          return new File(getActiveFolder(channelId), filename);
       }
 
-      private File lookupById(String id) throws IOException {
+      private File lookUpById(String id) throws IOException {
          String filename = id + extension;
 
          Vector<String> folders = getRegisteredFolders();
