@@ -88,16 +88,21 @@ public class FileDataStore extends MultiChannelDataStore<String, StringStorable>
 
       @Override
       public TaskAccessResult<StringStorable> save(StringStorable s) {
-         File file = getTempFile();
+         File tempFile = getTempFile();
 
          try (
-            FileOutputStream stream = new FileOutputStream(file);
+            FileOutputStream stream = new FileOutputStream(tempFile);
             OutputStreamWriter writer = new OutputStreamWriter(stream, StandardCharsets.UTF_8)
          ) {
             writer.write(s.getValue());
+         }
+         catch (IOException e) {
+            return TaskAccessResult.ofLeft(new TaskAccessException(e));
+         }
 
+         try {
             Path target = getUncommittedFile(s.getId()).toPath();
-            Files.move(file.toPath(), target, StandardCopyOption.ATOMIC_MOVE);
+            Files.move(tempFile.toPath(), target, StandardCopyOption.ATOMIC_MOVE);
 
             return TaskAccessResult.ofRight(s);
          }
@@ -115,12 +120,12 @@ public class FileDataStore extends MultiChannelDataStore<String, StringStorable>
             return TaskAccessResult.ofLeft(new TaskAccessException(e));
          }
 
-         File file = getTempFile();
+         File tempFile = getTempFile();
          try {
-            IOUtils.writeEmptyfile(file);
+            IOUtils.writeEmptyfile(tempFile);
 
             Path target = getUncommittedFile(id).toPath();
-            Files.move(file.toPath(), target, StandardCopyOption.ATOMIC_MOVE);
+            Files.move(tempFile.toPath(), target, StandardCopyOption.ATOMIC_MOVE);
 
             return TaskAccessResult.ofRight(null);
          }
