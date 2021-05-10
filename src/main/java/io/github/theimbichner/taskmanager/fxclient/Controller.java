@@ -5,8 +5,10 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.time.Instant;
+import java.util.ArrayList;
 
 import javafx.application.Platform;
+import javafx.scene.Node;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.layout.VBox;
@@ -38,70 +40,59 @@ public class Controller {
          return;
       }
 
-      populateTableList();
+      refreshTableList();
    }
 
-   private void populateTableList() {
+   private void refreshTableList() {
       taskStore.getTables().listIds()
          .andThen(tableIds -> {
-            Vector<Button> buttons = Vector.empty();
+            ArrayList<Node> entries = new ArrayList<>();
             // TODO order of iteration is completely random
             for (ItemId<Table> id : tableIds) {
                Table table = taskStore.getTables().getById(id).get();
-               buttons = buttons.append(newSelectTableButton(table));
+               entries.add(TableSelectionButtons.newTableEntry(this, table));
             }
-            buttons = buttons.append(newCreateTableButton());
+            entries.add(newCreateTableButton());
 
-            return buttons;
+            return entries;
          })
-         .peek(buttons -> {
+         .peek(entries -> {
             tableList.getChildren().clear();
-            tableList.getChildren().addAll(buttons.asJava());
+            tableList.getChildren().addAll(entries);
          })
          .peekLeft(this::showError);
    }
 
-   private void populateTaskList() {
+   private void refreshTaskList() {
       TableMutator mutator = new TableMutator(taskStore, currentTable);
       mutator.getTasksFromTable(Instant.now())
          .andThen(taskIds -> {
-            Vector<Button> buttons = Vector.empty();
+            ArrayList<Node> entries = new ArrayList<>();
             for (ItemId<Task> id : taskIds.asList()) {
                Task task = taskStore.getTasks().getById(id).get();
-               buttons = buttons.append(newSelectTaskButton(task));
+               entries.add(TaskSelectionButtons.newTaskEntry(this, task));
             }
-            buttons = buttons.append(newCreateTaskButton());
+            entries.add(newCreateTaskButton());
 
-            return buttons;
+            return entries;
          })
-         .peek(buttons -> {
+         .peek(entries -> {
             taskList.getChildren().clear();
-            taskList.getChildren().addAll(buttons.asJava());
+            taskList.getChildren().addAll(entries);
          })
          .peekLeft(this::showError);
    }
 
-   private Button newSelectTableButton(Table table) {
-      Button button = new Button(table.getId().toString());
-      button.setOnAction(event -> {
-         currentTable = table.getId();
-         populateTaskList();
-      });
-
-      return button;
-   }
-
-   private Button newSelectTaskButton(Task task) {
-      Button button = new Button(task.getId().toString());
-
-      return button;
+   public void setCurrentTable(ItemId<Table> tableId) {
+      currentTable = tableId;
+      refreshTaskList();
    }
 
    private Button newCreateTableButton() {
       Button button = new Button("+");
       button.setOnAction(event -> {
          TableMutator.createTable(taskStore).peekLeft(this::showError);
-         populateTableList();
+         refreshTableList();
       });
 
       return button;
@@ -111,7 +102,7 @@ public class Controller {
       Button button = new Button("+");
       button.setOnAction(event -> {
          TaskMutator.createTask(taskStore, currentTable).peekLeft(this::showError);
-         populateTaskList();
+         refreshTaskList();
       });
 
       return button;
@@ -123,6 +114,7 @@ public class Controller {
    }
 
    private void showError(Exception e) {
+      e.printStackTrace();
       Platform.runLater(() -> {
          StringWriter writer = new StringWriter();
          e.printStackTrace(new PrintWriter(writer));
